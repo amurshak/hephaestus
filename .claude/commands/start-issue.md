@@ -39,11 +39,18 @@ If after 3 iterations:
 - Commit each logical unit separately
 - If a task is blocked: try one alternative approach. If still blocked, skip it with a TODO comment and continue.
 
-## Phase 4: Auto-verify
+## Phase 4: Pre-ship critique
+
+Launch reviewer subagent for code critique before running tests.
+
+- **FAIL**: Fix blocking issues, re-critique (max 3 iterations). If still FAIL after 3: commit progress, create draft PR with `[BLOCKED]` prefix, file follow-up issue.
+- **PASS WITH CHANGES**: Fix blocking issues, proceed.
+- **PASS**: Proceed.
+
+## Phase 5: Test
 
 1. **Test** (tester subagent): Run full test suite per project CLAUDE.md
-2. **Code critique** (reviewer subagent): Check for blocking issues
-3. If either fails:
+2. If tests fail:
    - Analyze the root cause — don't blindly retry
    - Go back to Phase 2 with failure context (max 2 cycles)
    - If still failing after 2 cycles: commit progress on the branch, create a draft PR (`--draft`) with `[FAILING]` prefix and failure analysis in the body, file a follow-up issue

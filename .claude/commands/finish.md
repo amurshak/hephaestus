@@ -17,16 +17,14 @@ Steps:
 4. **Clean up** — delete merged branches automatically:
    - `git branch --merged | grep -v main | grep -v master` to identify stale branches
    - Delete them: `git branch -d <branch>`
-   - Pop any stashes created during this session (matching `autopilot-pre-*` pattern)
+   - Pop stashes if any exist: `git stash list | grep -q "autopilot-pre" && git stash pop || true`
 
-5. **Auto-update docs**: Update CHANGELOG.md with a new entry for the shipped work. Commit the doc changes.
-
-6. **Create breadcrumbs for remaining work**:
+5. **Create breadcrumbs for remaining work**:
    - Check if there are any TODO/FIXME comments added during this session's implementation
    - Check if the PR body contains "Known Limitations" or "Assumptions Made"
    - If either exists: create follow-up issues for each significant item via `gh issue create`
 
-7. **Print session summary**:
+6. **Print session summary** (CHANGELOG is updated by `/ship` — do not update it again here):
    - One-line: what shipped (feature/fix name, PR number, issue number)
    - Follow-up issues created (if any, with links)
    - Manual actions needed (if any, e.g., "PR awaiting manual merge")

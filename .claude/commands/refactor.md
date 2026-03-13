@@ -17,12 +17,18 @@ Log the refactoring plan (what changes, what's preserved, expected impact) but p
 3. Run tests after each change per the project's CLAUDE.md (test command, lint command)
 4. If tests fail after a change, fix and re-test before proceeding
 
-### Phase 4: Report
+### Phase 4: Ship
+1. Push the branch: `git push -u origin <branch-name>`
+2. Create a PR via `gh pr create` with a body covering: summary of what changed, metrics (lines/complexity before/after), test results, API changes or risks
+3. Merge: `gh pr merge --squash --auto` (or leave open if auto-merge can't be enabled)
+
+### Phase 5: Report
 Output:
+- **PR URL**: Link to the merged (or open) PR
 - **Summary**: What changed and why
 - **Metrics**: Lines of code before/after, complexity before/after
 - **Test results**: All passing
-- **Risks**: Anything that downstream code should know about
+- **Risks**: Anything downstream code should know about
 
 ## Constraints
 - If refactoring changes public API contracts: implement with a deprecation path (keep old signature as a wrapper), flag the API change prominently in the PR body under "API Changes", and file a follow-up issue for removing the deprecated path
