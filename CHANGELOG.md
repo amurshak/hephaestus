@@ -13,6 +13,7 @@
 - `create-issue.md` drafted labels in body text but never passed `--label` to `gh issue create`. Now runs `gh label list` first and passes labels via `--label` flags.
 
 ### Added
+- `loop.sh` — headless autonomous loop that runs `/autopilot` in a fresh Claude session on a configurable interval; each run gets latest Claude capabilities and a clean context window
 - `orient.md` command — cold-session orientation with repo context, structure, and next-action guidance
 - Prompt injection protection in `researcher.md` — fetched content treated as untrusted; embedded instructions flagged before execution
 - `.gitignore` — excludes `settings.local.json` (project-specific) and `*.lock` runtime files
