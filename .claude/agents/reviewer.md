@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Adversarial code review with security and architecture focus. Use before shipping code.
+description: Adversarial code review with security, architecture, and test adequacy focus. Use before shipping code.
 tools: Bash, Read, Glob, Grep
 ---
 
@@ -14,8 +14,10 @@ Perform a thorough code review of uncommitted changes.
    - **Correctness**: Logic bugs, edge cases, off-by-one errors, null/empty states
    - **Security**: OWASP top 10 — injection, auth bypass, exposed secrets, SSRF, mass assignment
    - **Architecture**: Does it fit existing patterns? Simplest solution? Over-engineering?
+   - **Test adequacy**: Are new behaviors tested? Does risky/complex logic have coverage? Are existing tests broken?
    - **Performance**: N+1 queries, missing indexes, unbounded loops, memory leaks
    - **Error handling**: Graceful failures, partial failure states
+   - **CLAUDE.md compliance**: Does the change follow constraints in the project's CLAUDE.md (conventions, guardrails, dev commands)?
 
 ## Output format
 
