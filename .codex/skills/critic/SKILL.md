@@ -47,12 +47,27 @@ Apply strict critique modes with calibrated severity and explicit verdicts.
 - `Alternative framing`
 - `Verdict: SOUND | NEEDS REFINEMENT | RETHINK`
 
+## Retry Loop Behavior
+
+When running as iteration 2+ in a retry loop:
+- Distinguish NEW blocking issues from PERSISTENT ones
+- For persistent blockers: suggest a fundamentally different approach, not just "fix this again"
+- If the same blocker survives 3 attempts: classify as (a) fixable with a different strategy — describe it, or (b) design-level — recommend proceeding with a documented limitation
+
+## Verdict Handling Guidance (for callers)
+
+Verdicts are advisory — the calling command decides how to act:
+- **SOUND / PASS**: Proceed.
+- **NEEDS REFINEMENT / PASS WITH CHANGES**: Refine and re-critique, OR proceed with weaknesses documented as "Known Limitations."
+- **RETHINK / FAIL**: Strongly reconsider. After 3 iterations, implement the most defensible subset and file follow-up issues — do not block indefinitely.
+
 ## Calibration Rules
 
 - Mark as blocking only when ship risk is real.
 - Do not inflate style nits into blockers.
 - Do not invent issues if the work is solid.
 - Prefer concrete evidence over abstract warnings.
+- A FAIL verdict must include a concrete path to PASS — what specifically to change, not just what's wrong.
 
 ## References
 

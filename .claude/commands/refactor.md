@@ -25,7 +25,7 @@ Output:
 - **Risks**: Anything that downstream code should know about
 
 ## Constraints
-- Never change public API contracts without explicit approval (this is the one exception to autonomous operation)
+- If refactoring changes public API contracts: implement with a deprecation path (keep old signature as a wrapper), flag the API change prominently in the PR body under "API Changes", and file a follow-up issue for removing the deprecated path
 - Never refactor without passing tests as a safety net
 - One focused change at a time — no big bang rewrites
 - If tests don't exist for the target, write characterization tests first
