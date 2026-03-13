@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Fixed
+- `ship.md` was missing `git push -u origin HEAD` before `gh pr create`, causing PR creation to fail when the branch hadn't been pushed yet.
+- `refactor.md` was missing a branch creation step — commits would land on whatever branch was currently checked out (typically `master`/`main`). Added `git checkout -b refactor/<short-description>` in Phase 2 and clarified the push step in Phase 4.
+- `test-issue.md` referenced `<detected-repo>` in `gh issue view` without a preceding step to detect the repo. Added a "Detect repo" step 1 (consistent with all other commands that use `--repo`).
 - `loop.sh` killed itself on the first failed `claude` run: `set -euo pipefail` caused the entire loop to exit when the `claude | tee` pipeline returned non-zero. Removed `-e`, use `PIPESTATUS[0]` to capture claude's exit code, log the error, and continue looping.
 - `loop.sh` had no protection against concurrent instances, non-numeric interval arguments, or `claude` being absent from PATH. Added `mkdir`-based atomic lockfile (project-scoped), numeric+range validation, and `command -v claude` guard.
 - `finish.md` branch cleanup silently skipped all squash-merged branches: `git branch --merged` never lists them because squash commits are not in the target's ancestry. Replaced with `gh pr view --json headRefName` to get the branch name directly, and switched to `git branch -D` (force delete). Also added `git checkout $BASE` before deletion (cannot delete the checked-out branch) and remote branch cleanup.

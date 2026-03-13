@@ -9,7 +9,8 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 4. Identify: repeated patterns, unused code, unnecessary abstractions, tight coupling
 
 ### Phase 2: Plan
-Log the refactoring plan (what changes, what's preserved, expected impact) but proceed immediately to implementation — do not wait for approval.
+1. Log the refactoring plan (what changes, what's preserved, expected impact) but proceed immediately to implementation — do not wait for approval.
+2. Create a feature branch: `git checkout -b refactor/<short-description>` where `<short-description>` is a kebab-case summary derived from $ARGUMENTS.
 
 ### Phase 3: Implement
 1. Make single, focused changes — one concern per commit
@@ -18,7 +19,7 @@ Log the refactoring plan (what changes, what's preserved, expected impact) but p
 4. If tests fail after a change, fix and re-test before proceeding
 
 ### Phase 4: Ship
-1. Push the branch: `git push -u origin <branch-name>`
+1. Push the branch: `git push -u origin refactor/<short-description>`
 2. Create a PR via `gh pr create` with a body covering: summary of what changed, metrics (lines/complexity before/after), test results, API changes or risks
 3. Merge: `gh pr merge --squash --auto` (or leave open if auto-merge can't be enabled)
 

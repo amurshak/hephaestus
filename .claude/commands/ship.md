@@ -35,6 +35,10 @@ If any gate fails:
 
 ### 5. Push and create PR
 ```
+git push -u origin HEAD
+```
+
+```
 gh pr create --repo <detected-repo> \
   --title "<concise title>" \
   --body "$(cat <<'EOF'
