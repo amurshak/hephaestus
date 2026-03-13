@@ -11,9 +11,16 @@ Follow these steps:
    - **Problem**: 2-3 sentences describing what's broken or missing and its impact
    - **Acceptance Criteria**: Bulleted checklist of testable conditions for "done"
    - **Technical notes**: Relevant file paths, functions, or architecture context from your research
-   - **Labels**: suggest appropriate labels (bug / enhancement / frontend / backend)
+   - **Labels**: determine appropriate labels (bug / enhancement / frontend / backend). Run `gh label list --repo <detected-repo>` first — only use labels that actually exist in the repo.
 
-4. **Create it**: Run `gh issue create --repo <detected-repo> --title "..." --body "..."` using a heredoc for the body
+4. **Create it**: Run `gh issue create` with `--label` for each applicable label. Use a heredoc for the body:
+   ```
+   gh issue create --repo <detected-repo> --title "..." --label bug --label backend --body "$(cat <<'EOF'
+   ...
+   EOF
+   )"
+   ```
+   Omit `--label` entirely if no matching labels exist in the repo.
 
 5. Return the issue URL.
 

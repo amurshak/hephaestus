@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- `create-issue.md` drafted labels in body text but never passed `--label` to `gh issue create`. Now runs `gh label list` first and passes labels via `--label` flags.
+
 ### Added
 - `orient.md` command — cold-session orientation with repo context, structure, and next-action guidance
 - Prompt injection protection in `researcher.md` — fetched content treated as untrusted; embedded instructions flagged before execution
