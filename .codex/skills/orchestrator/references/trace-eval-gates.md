@@ -33,7 +33,7 @@ Run a minimal regression checklist:
 
 3. Safety/compliance:
 - no protected-file edits without explicit override.
-- no known failing lint/tests at PR creation.
+- no known failing lint/tests at merge-ready PR creation. (Draft PRs with `[FAILING]` or `[BLOCKED]` prefixes are exempt — they exist to preserve progress, not to ship.)
 
 ## Post-ship Retrospective
 
