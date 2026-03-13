@@ -14,6 +14,10 @@ fi
 echo "Updating .hephaestus submodule..."
 git submodule update --remote .hephaestus
 echo ""
-echo "Updated. Symlinks point to new content automatically."
+
+echo "Repairing symlinks (adds any new agents/commands/skills)..."
+bash .hephaestus/install.sh .
+echo ""
+
 echo "Commit the submodule pointer update:"
-echo "  git add .hephaestus && git commit -m 'chore: update hephaestus'"
+echo "  git add .hephaestus .claude .codex && git commit -m 'chore: update hephaestus'"
