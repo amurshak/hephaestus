@@ -19,7 +19,7 @@ Launch reviewer subagent for code critique. This is the last quality check befor
 ### 3. Run all quality gates in parallel
 Launch as parallel subagents:
 - **Tests**: run per project CLAUDE.md (test command, lint command, build command)
-- **Git state**: `git status` (all staged) + `git log --oneline origin/master..HEAD` (commits ready)
+- **Git state**: `git status` (all staged) + detect base branch (`BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || git remote show origin 2>/dev/null | awk '/HEAD branch/{print $NF}' || echo master)`), then `git log --oneline origin/$BASE..HEAD` (commits ready)
 
 If any gate fails:
 - Analyze root cause — don't blindly re-run
