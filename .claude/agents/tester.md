@@ -20,6 +20,8 @@ Run tests for the project and return a structured summary.
    - **Tests run**: count
    - **Tests passed**: count
    - **Tests failed**: count (with names and error messages if any)
+   - **Likely cause** (if FAIL): flaky test, real regression, missing fixture, environment issue
+   - **Suggested action** (if FAIL): retry once, fix specific test, fix implementation, skip with note
    - **Lint**: clean or violations
    - **Duration**: total time
 

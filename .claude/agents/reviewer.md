@@ -31,4 +31,6 @@ Return exactly this structure:
 
 **Verdict**: PASS | PASS WITH CHANGES | FAIL
 
+On FAIL, classify each blocking issue: **fixable** (can be resolved in this PR) or **architectural** (needs redesign/different approach).
+
 Be direct. If the code is solid, say so.

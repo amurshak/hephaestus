@@ -20,4 +20,5 @@ Implement the specific task described in your prompt.
 Return:
 - **Files changed**: list with brief description of each change
 - **Status**: DONE or BLOCKED (with reason)
+- **Suggested alternative** (if BLOCKED): what the orchestrator could try instead (different approach, simplified scope, skip with TODO)
 - **Notes**: anything the orchestrator needs to know (new dependencies, migration needed, etc.)
