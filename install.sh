@@ -41,6 +41,37 @@ echo ""
 # ── 1. Submodule ─────────────────────────────────────────────────────────────
 cd "$TARGET"
 
+# Normalize a git URL for comparison: strip protocol, trailing .git, leading slashes
+normalize_url() {
+  echo "$1" | sed -E 's#^(https?://|git@|ssh://)[^/]*[:/]##; s#\.git$##'
+}
+
+HEPHAESTUS_NORMALIZED=$(normalize_url "$HEPHAESTUS_REPO")
+
+# Check if hephaestus is already registered as a submodule at a different path
+if [ -f .gitmodules ]; then
+  EXISTING_PATH=""
+  EXISTING_URL=""
+  while IFS= read -r line; do
+    case "$line" in
+      *"path = "*)  EXISTING_PATH="${line#*path = }" ;;
+      *"url = "*)
+        EXISTING_URL="${line#*url = }"
+        if [ -n "$EXISTING_PATH" ] && [ "$EXISTING_PATH" != ".hephaestus" ]; then
+          if [ "$(normalize_url "$EXISTING_URL")" = "$HEPHAESTUS_NORMALIZED" ]; then
+            echo "[error] hephaestus already exists at ./$EXISTING_PATH (via .gitmodules)"
+            echo "        → To use it: ./$EXISTING_PATH/install.sh ."
+            echo "        → To relocate: git rm -f $EXISTING_PATH && re-run install.sh"
+            exit 1
+          fi
+        fi
+        EXISTING_PATH=""
+        EXISTING_URL=""
+        ;;
+    esac
+  done < .gitmodules
+fi
+
 if [ -d ".hephaestus/.git" ] || grep -q '\.hephaestus' .gitmodules 2>/dev/null; then
   echo "[skip] .hephaestus submodule already registered — running update"
   git submodule update --init .hephaestus
