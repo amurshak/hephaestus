@@ -5,12 +5,11 @@
 `amurshak/hephaestus` — portable AI workflow toolkit distributed as a git submodule.
 
 ## What it is
-Shared agents, slash commands, and Codex skills that enable autonomous issue-to-ship workflows. Installed into other projects via `./install.sh <target>`. Not a standalone app.
+Shared agents and slash commands that enable autonomous issue-to-ship workflows. Installed into other projects via `./install.sh <target>`. Not a standalone app.
 
 ## Structure
 - `.claude/agents/` — coder, reviewer, tester, explorer, researcher
 - `.claude/commands/` — autopilot, start-issue, ship, finish, critique, refactor, research, create-issue, test-issue, update-docs, update-hephaestus, orient
-- `.codex/skills/` — orchestrator, critic, research-issue
 - `install.sh` / `update.sh` — submodule install/update scripts
 - `CHANGELOG.md` — release history
 
@@ -21,7 +20,7 @@ No build or test pipeline — all files are markdown. Quality gates: code review
 ```
 gh issue list --state open --repo amurshak/hephaestus
 ```
-If no open issues, self-triage: scan for TODOs, inconsistencies between agents/commands/codex skills, missing functionality.
+If no open issues, self-triage: scan for TODOs, inconsistencies between agents/commands, missing functionality.
 
 ## Next action
 Run `/autopilot` — it will pick the highest-priority open issue or self-triage if the queue is empty.

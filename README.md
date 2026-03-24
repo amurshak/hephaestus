@@ -2,7 +2,7 @@
 
 **The machine that builds the machine.**
 
-A git submodule that gives [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://openai.com/index/introducing-codex/) a complete delivery workflow — from GitHub issue to merged PR, hands-off. It plans its own work, critiques its own plans, writes code in parallel, reviews what it wrote, runs your tests, and ships. When things break, it retries with a different approach or winds down cleanly. When there's nothing to do, it finds work. When you improve the workflow, those improvements propagate to every project. Install it once, share it everywhere.
+A git submodule that gives [Claude Code](https://docs.anthropic.com/en/docs/claude-code) a complete delivery workflow — from GitHub issue to merged PR, hands-off. It plans its own work, critiques its own plans, writes code in parallel, reviews what it wrote, runs your tests, and ships. When things break, it retries with a different approach or winds down cleanly. When there's nothing to do, it finds work. When you improve the workflow, those improvements propagate to every project. Install it once, share it everywhere.
 
 ```
 /autopilot
@@ -127,13 +127,11 @@ Five specialized agents that commands orchestrate:
 | **explorer** | Read-only codebase investigation. Fans out across subsystems in parallel. |
 | **researcher** | Web search with source cross-referencing and injection protection. |
 
-Codex equivalents: **orchestrator**, **critic**, **research-issue** in `.codex/skills/`.
-
 ---
 
 ## Adopting in an existing project
 
-If your project already has `.claude/commands/`, agents, or Codex skills, run the audit first:
+If your project already has `.claude/commands/` or agents, run the audit first:
 
 ```bash
 ./install.sh --audit /path/to/your/project
