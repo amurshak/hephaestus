@@ -26,6 +26,7 @@ Synthesize all subagent findings into:
 2. **Key findings**: Organized by facet, with the most important points from each researcher
 3. **Conflicting viewpoints**: Where sources disagree and which position is stronger
 4. **Recommendations**: Actionable next steps based on the research
-5. **Sources**: URLs for the most authoritative references
+5. **Confidence**: HIGH / MEDIUM / LOW with brief justification (aggregate from researcher subagents)
+6. **Sources**: URLs for the most authoritative references
 
 Keep it concise and scannable. Bullets over prose.

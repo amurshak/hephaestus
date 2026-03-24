@@ -26,8 +26,11 @@ Use a short imperative title, for example: `Fix token refresh race condition`.
 
 ## Creation Command
 
-Use:
+1. Check available labels first: `gh label list --repo <owner/repo>`
+2. Create the issue with label flags:
 
 ```bash
-gh issue create --repo <owner/repo> --title "<title>" --body "<body>"
+gh issue create --repo <owner/repo> --title "<title>" --body "<body>" --label "<label1>" --label "<label2>"
 ```
+
+Only pass `--label` flags for labels that exist in the repo (from step 1). If no matching labels exist, omit the flags.

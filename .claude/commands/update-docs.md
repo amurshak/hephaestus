@@ -10,12 +10,13 @@ Steps:
    - Keep CLAUDE.md under ~300 lines — trim verbose sections if needed
 
 3. **Update CHANGELOG.md**:
-   - Add a new entry at the top in this format:
+   - Add entries under the existing `## Unreleased` heading in this format:
      ```
-     ### [Unreleased] - YYYY-MM-DD
-     #### Added / Changed / Fixed
+     ## Unreleased
+     ### Added / Changed / Fixed
      - <concise description of what shipped>
      ```
+   - Use `###` for category headings (Added, Changed, Fixed) — one per category, do not duplicate
    - Reference issue/PR numbers where applicable
 
 4. **Update README.md** only if a public-facing feature or API changed (new endpoint, new CLI command, changed env var).

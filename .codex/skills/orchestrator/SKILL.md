@@ -57,15 +57,21 @@ Run a deterministic issue-to-ship workflow with explicit gates, repo detection, 
 - Map results to issue acceptance criteria when an issue number is available.
 - If verification fails: analyze root cause, re-plan with failure context (max 2 cycles). If still failing: commit progress, draft PR with failure analysis, file follow-up issue.
 
-5. Ship:
+5. Pre-ship critique:
+- Launch reviewer for code critique before shipping.
+- **FAIL**: Fix blocking issues, re-critique (max 3 iterations). If still FAIL: commit progress, draft PR with `[BLOCKED]` prefix, file follow-up issue.
+- **PASS WITH CHANGES**: Fix blocking issues, proceed.
+- **PASS**: Proceed.
+
+6. Ship:
 - Update `CHANGELOG.md`.
 - Push and create merge-ready PR with quality-gate checklist.
 - Enable squash auto-merge (if auto-merge can't be enabled, note it and proceed).
 
-6. Finish:
+7. Finish:
 - Confirm PR merged (or note pending merge).
 - Close issue with PR reference.
-- Delete merged local branches.
+- Delete merged branches (local and remote).
 - File follow-up issues for any remaining work.
 
 ## Session Management
