@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- README: "Forking and customization" section — which files are safe to modify, how to pull upstream updates.
+
 ## 1.0.0 — 2026-03-24
 
 ### Changed
