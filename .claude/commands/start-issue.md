@@ -29,9 +29,9 @@ Start working on issue $ARGUMENTS. Run autonomously through the full plan-critiq
 2. **Self-critique** (general critique mode): Evaluate the plan for logic, assumptions, completeness, trade-offs.
 3. **Refine**: Update the plan to address weaknesses.
 4. **Re-critique**: Evaluate the refined plan.
-5. **Repeat** until verdict reaches **SOUND** (max 3 iterations).
+5. **Repeat** until verdict reaches **SOUND** (per CLAUDE.md retry limits).
 
-If after 3 iterations:
+If critique iterations are exhausted:
 - **NEEDS REFINEMENT**: Proceed with the best version. The remaining concerns become "Known Limitations" documented in the PR.
 - **RETHINK**: Proceed with the most defensible subset of the plan — implement what IS sound, skip what isn't. File a follow-up issue for the unsound parts.
 
@@ -46,7 +46,7 @@ If after 3 iterations:
 
 Launch reviewer subagent for code critique before running tests.
 
-- **FAIL**: Fix blocking issues, re-critique (max 3 iterations). If still FAIL after 3: commit progress, create draft PR with `[BLOCKED]` prefix, file follow-up issue.
+- **FAIL**: Fix blocking issues, re-critique (per CLAUDE.md retry limits). If still FAIL: commit progress, create draft PR with `[BLOCKED]` prefix, file follow-up issue.
 - **PASS WITH CHANGES**: Fix blocking issues, proceed.
 - **PASS**: Proceed.
 
@@ -55,7 +55,7 @@ Launch reviewer subagent for code critique before running tests.
 1. **Test** (tester subagent): Run full test suite per project CLAUDE.md
 2. If tests fail:
    - Analyze the root cause — don't blindly retry
-   - Go back to Phase 2 with failure context (max 2 cycles)
+   - Go back to Phase 2 with failure context (per CLAUDE.md retry limits)
    - If still failing after 2 cycles: commit progress on the branch, create a draft PR (`--draft`) with `[FAILING]` prefix and failure analysis in the body, file a follow-up issue
 
 Report completion: files changed, test results, critique verdict, any assumptions made. Ready for `/ship`.

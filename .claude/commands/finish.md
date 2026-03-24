@@ -26,7 +26,14 @@ Steps:
    - Check if the PR body contains "Known Limitations" or "Assumptions Made"
    - If either exists: create follow-up issues for each significant item via `gh issue create`
 
-6. **Print session summary** (CHANGELOG is updated by `/ship` — do not update it again here):
+6. **Retrospective** — briefly capture what the pipeline learned:
+   - What failed during this issue's pipeline (critique rejections, test failures, blocked tasks)?
+   - What fixed it (alternative approach, simplified scope, skipped non-critical)?
+   - Any reusable insight (e.g., "integration tests needed before refactoring auth module")?
+   - Add as a comment on the closed issue: `gh issue comment <#> --repo <detected-repo> --body "<retrospective>"`
+   - Keep it short — 2-4 sentences. Skip if the pipeline ran cleanly with no failures.
+
+7. **Print session summary** (CHANGELOG is updated by `/ship` — do not update it again here):
    - One-line: what shipped (feature/fix name, PR number, issue number)
    - Follow-up issues created (if any, with links)
    - Manual actions needed (if any, e.g., "PR awaiting manual merge")

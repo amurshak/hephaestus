@@ -10,9 +10,12 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 4. Measure current state: line count, function count, nesting depth, number of parameters
 5. Identify: repeated patterns, unused code, unnecessary abstractions, tight coupling
 
-### Phase 2: Plan
-1. Log the refactoring plan (what changes, what's preserved, expected impact) but proceed immediately to implementation — do not wait for approval.
-2. Create a feature branch: `git checkout -b refactor/<short-description>` where `<short-description>` is a kebab-case summary derived from $ARGUMENTS.
+### Phase 2: Plan-Critique Loop
+1. Create a feature branch: `git checkout -b refactor/<short-description>` where `<short-description>` is a kebab-case summary derived from $ARGUMENTS.
+2. Build a refactoring plan (what changes, what's preserved, expected impact) via TodoWrite.
+3. Self-critique the plan (general critique mode): evaluate risks, coupling, test coverage gaps, API contract changes.
+4. Refine and re-critique until verdict reaches **SOUND** (max 3 iterations per CLAUDE.md retry limits).
+5. If NEEDS REFINEMENT after 3: proceed with best version, document caveats in PR. If RETHINK: file follow-up issue and wind down.
 
 ### Phase 3: Implement
 1. Make single, focused changes — one concern per commit
@@ -24,7 +27,7 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 
 Launch reviewer subagent for code critique before shipping.
 
-- **FAIL**: Fix blocking issues, re-critique (max 3 iterations). If still FAIL after 3: commit progress, create draft PR with `[BLOCKED]` prefix, file follow-up issue.
+- **FAIL**: Fix blocking issues, re-critique (per CLAUDE.md retry limits). If still FAIL: commit progress, create draft PR with `[BLOCKED]` prefix, file follow-up issue.
 - **PASS WITH CHANGES**: Fix blocking issues, proceed.
 - **PASS**: Proceed.
 

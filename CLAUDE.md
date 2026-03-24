@@ -37,6 +37,11 @@ All delivery commands enforce a deterministic loop:
 5. **Ship** — PR with quality-gate checklist, squash auto-merge
 6. **Finish** — Close issue, delete merged branches, update docs
 
+**Retry limits** (all commands reference these — do not hardcode separately):
+- Plan-critique loop: max **3** iterations
+- Pre-ship code critique: max **3** iterations
+- Test-fix cycles: max **2** full plan-implement-test cycles
+
 Autonomy-first: commands resolve ambiguity via documented assumptions, recover from failures by trying alternative approaches, and wind down cleanly when limits are reached (commit progress, file follow-up issues). Hard stops are reserved for irreversible risk only (security vulnerabilities, data loss, force-push).
 
 ## Key Design Constraints
@@ -95,7 +100,7 @@ When the user gives feedback about how commands, agents, or workflows should beh
 When modifying agents or commands:
 - Preserve the YAML frontmatter format in agent files (name, description, tools, isolation)
 - Preserve the `$ARGUMENTS` placeholder in commands — it receives user input at invocation
-- Keep retry limits consistent across commands and skills (plan-critique: 3, test cycles: 2, pre-ship critique: 3)
+- Retry limits are defined in "Core Workflow Pattern" above — commands must reference them, not hardcode
 - Commands that delegate to subagents should specify which agent type to use and what structured output to expect
 - Codex skill `references/` docs mirror the logic in Claude commands — keep them in sync
 
