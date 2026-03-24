@@ -1,0 +1,49 @@
+
+## Development Commands
+
+```bash
+# Test
+npm test
+
+# Lint
+npm run lint
+
+# Build
+npm run build
+```
+
+## Hephaestus Commands
+
+Shared commands from the [hephaestus](https://github.com/amurshak/hephaestus) submodule:
+
+| Command | What it does |
+|---|---|
+| `/autopilot` | Full pipeline — pick issue, plan, implement, test, ship, finish |
+| `/start-issue 42` | Plan-critique-implement for one issue |
+| `/ship` | Code review → quality gates → CHANGELOG → PR → auto-merge |
+| `/finish` | Close issue, clean branches, file follow-ups |
+| `/refactor` | Autonomous refactoring with review gate |
+| `/research` | Parallel web research with synthesized findings |
+| `/critique` | Adversarial review — code or strategy |
+| `/create-issue` | Codebase-informed issue creation with labels |
+| `/test-issue` | Run quality gates, verify acceptance criteria |
+| `/update-docs` | Sync CLAUDE.md, CHANGELOG with recent work |
+| `/orient` | Cold-start: repo state, open issues, next action |
+
+## Agents
+
+| Agent | Role |
+|---|---|
+| **coder** | Writes code in isolated worktrees. Parallel for independent tasks. |
+| **reviewer** | Security, architecture, test adequacy. PASS / PASS WITH CHANGES / FAIL. |
+| **tester** | Runs test/lint/build from Development Commands above. |
+| **explorer** | Read-only codebase investigation. |
+| **researcher** | Web search with source cross-referencing. |
+
+## Updating Hephaestus
+
+```bash
+.hephaestus/update.sh
+```
+
+This pulls the latest and re-runs install.sh to pick up new commands and agents.
