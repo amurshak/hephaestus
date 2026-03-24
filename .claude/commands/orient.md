@@ -1,3 +1,4 @@
+<!-- requires: none -->
 # Orient — Hephaestus
 
 ## Repo
@@ -8,7 +9,7 @@ Shared agents, slash commands, and Codex skills that enable autonomous issue-to-
 
 ## Structure
 - `.claude/agents/` — coder, reviewer, tester, explorer, researcher
-- `.claude/commands/` — autopilot, start-issue, ship, finish, critique, refactor, research, create-issue, test-issue, update-docs, orient
+- `.claude/commands/` — autopilot, start-issue, ship, finish, critique, refactor, research, create-issue, test-issue, update-docs, update-hephaestus, orient
 - `.codex/skills/` — orchestrator, critic, research-issue
 - `install.sh` / `update.sh` — submodule install/update scripts
 - `CHANGELOG.md` — release history

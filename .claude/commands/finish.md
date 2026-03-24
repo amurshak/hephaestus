@@ -1,3 +1,4 @@
+<!-- requires: none -->
 Finish and close issue $ARGUMENTS. Run autonomously.
 
 Steps:
