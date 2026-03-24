@@ -56,6 +56,8 @@ Commands are designed to run without human intervention. The escalation hierarch
 
 **Retry exhaustion**: When retry limits are reached, do NOT stop and ask. Instead: commit progress on a branch, create a draft PR with a descriptive prefix (`[WIP]`, `[BLOCKED]`, `[FAILING]`), file a follow-up issue with context, and wind down.
 
+**Transition to next phase**: When work is complete and ready to ship, invoke `/ship` directly (or present it as a concrete option). Do not ask vague questions like "Want me to commit and ship this?" — the workflow has explicit commands for every transition. Use them.
+
 ## Session Management
 
 Every session must end at a clean checkpoint:
@@ -71,6 +73,10 @@ Natural stopping points (in order of preference):
 - After shipping a PR (even if not yet merged)
 - After committing progress and filing follow-up issues
 - Never mid-implementation with uncommitted changes
+
+## Improving the Workflow
+
+When the user gives feedback about how commands, agents, or workflows should behave, consider whether the improvement applies broadly across projects. If it does, persist it in the repo (CLAUDE.md, the relevant command/agent file, or Codex skill) — not just in local memory. Local memory is per-machine; repo changes propagate to every project using hephaestus.
 
 ## Editing Guidelines
 
