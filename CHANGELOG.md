@@ -7,6 +7,10 @@
 - `install.sh` now detects if hephaestus is already registered as a submodule at a different path (e.g. `hephaestus/` vs `.hephaestus/`) and prints actionable guidance instead of creating a duplicate. Handles HTTPS/SSH URL comparison.
 
 ### Added
+- `install.sh --audit` flag: prints a conflict table showing what would change without modifying the filesystem.
+- `install.sh --force` flag: replaces existing files with hephaestus symlinks.
+- `install.sh` default skip messages now include actionable guidance (rm + re-run, diff commands).
+- `install.sh` near-name collision detection: warns when target and hephaestus have confusingly similar filenames (e.g., `critic.md` vs `critique.md`).
 - `install.sh` post-install validation: checks target CLAUDE.md for development commands section, warns if missing.
 - `install.sh` orient.md scaffolding: copies `templates/orient.md` template if the target project doesn't have one.
 - `templates/orient.md` — project-specific orient template with placeholder sections matching what hephaestus commands expect.
