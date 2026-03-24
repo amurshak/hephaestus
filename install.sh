@@ -2,7 +2,7 @@
 # install.sh — Set up hephaestus submodule and symlinks in a target project
 #
 # Usage:
-#   ./install.sh [--audit | --force] <target_project_path>
+#   ./install.sh [--audit | --force | --clean] <target_project_path>
 #
 # Flags:
 #   --audit   Show what would happen without modifying the filesystem
@@ -38,6 +38,11 @@ done
 
 if [ "$AUDIT_MODE" = true ] && [ "$FORCE_MODE" = true ]; then
   echo "Error: --audit and --force cannot be used together."
+  exit 1
+fi
+
+if [ "$AUDIT_MODE" = true ] && [ "$CLEAN_MODE" = true ]; then
+  echo "Error: --audit and --clean cannot be used together."
   exit 1
 fi
 
@@ -334,30 +339,13 @@ detect_stale_links() {
 STALE_FOUND=false
 detect_stale_links ".claude/agents"
 detect_stale_links ".claude/commands"
-# Codex skills: directory symlinks
-if [ -d ".codex/skills" ]; then
-  for d in .codex/skills/*; do
-    [ -L "$d" ] || continue
-    local_target=$(readlink "$d")
-    [[ "$local_target" == *".hephaestus/"* ]] || continue
-    if [ ! -e "$d" ]; then
-      name=$(basename "$d")
-      if [ "$CLEAN_MODE" = true ]; then
-        rm "$d"
-        echo "  [cleaned] $name → $local_target (target removed)"
-      else
-        echo "  [stale] $name → $local_target (target removed)"
-        echo "          → remove: rm $d"
-      fi
-      STALE_FOUND=true
-    fi
-  done
-fi
+detect_stale_links ".codex/skills"
 
 if [ "$STALE_FOUND" = true ]; then
+  echo ""
+  echo "Stale symlinks found (targets removed upstream)."
   if [ "$CLEAN_MODE" != true ]; then
-    echo ""
-    echo "  Run with --clean to auto-remove stale symlinks."
+    echo "  Run with --clean to auto-remove."
   fi
   echo ""
 elif [ "$CLEAN_MODE" = true ]; then
