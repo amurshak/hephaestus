@@ -37,7 +37,9 @@ fi
 
 # Lockfile: prevent concurrent instances from conflicting.
 # Use project-scoped name and mkdir for atomic lock (avoids TOCTOU race).
-LOCK_DIR="/tmp/hephaestus-$(basename "$(pwd)").lock"
+# Hash the full path (not just basename) to avoid collisions between
+# identically-named directories under different parents.
+LOCK_DIR="/tmp/hephaestus-$(printf '%s' "$(pwd)" | { shasum 2>/dev/null || sha1sum; } | cut -c1-12).lock"
 if ! mkdir "${LOCK_DIR}" 2>/dev/null; then
   LOCK_PID=$(cat "${LOCK_DIR}/pid" 2>/dev/null || echo "unknown")
   echo "Error: Another loop.sh instance is running for this project (PID ${LOCK_PID})." >&2
