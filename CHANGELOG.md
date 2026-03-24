@@ -8,6 +8,7 @@
 - README: added "Adopting in an existing project" section with audit workflow, migration pattern (project logic → CLAUDE.md), and uninstall guidance.
 
 ### Added
+- `install.sh` post-install health check: validates symlinks, checks gh CLI, orient.md, and CLAUDE.md in a ✓/✗ summary.
 - `/update-hephaestus` command — pulls latest submodule, re-runs install with `--clean`, shows changelog diff and version transition.
 - `VERSION` file for version tracking.
 - `update.sh` now shows version transition and changelog diff between old and new HEAD.
