@@ -1,3 +1,4 @@
+<!-- requires: researcher, explorer -->
 Conduct thorough research on: $ARGUMENTS
 
 **Always delegate to subagent(s)** — web search results are bulky and should not fill the main context window.

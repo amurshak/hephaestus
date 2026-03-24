@@ -1,3 +1,4 @@
+<!-- requires: coder, reviewer, explorer -->
 Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause for plan approval.
 
 ## Process

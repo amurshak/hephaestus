@@ -1,3 +1,4 @@
+<!-- requires: explorer -->
 Create a GitHub issue for: $ARGUMENTS
 
 Follow these steps:

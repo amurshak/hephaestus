@@ -1,3 +1,4 @@
+<!-- requires: tester -->
 Test the current implementation. Issue number (optional): $ARGUMENTS
 
 **Always delegate to subagent(s)** — test output is verbose and should not pollute the main context window.

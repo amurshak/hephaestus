@@ -1,3 +1,4 @@
+<!-- requires: coder, reviewer, tester, explorer -->
 Start working on issue $ARGUMENTS. Run autonomously through the full plan-critique-implement cycle.
 
 ## Autonomy Rules
