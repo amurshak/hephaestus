@@ -1,128 +1,126 @@
 # hephaestus
 
-The machine that builds the machine.
+**The machine that builds the machine.**
 
-An autonomous issue-to-ship delivery system for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://openai.com/index/introducing-codex/), distributed as a git submodule. Install once, share across every project. Fire-and-forget with quality gates — not the usual interactive prompt-approve-repeat loop. Works with any tech stack: hephaestus discovers your test, lint, and build commands from your project's `CLAUDE.md`.
+Turn GitHub issues into merged PRs — autonomously. One command, no babysitting.
 
-## What happens when you run `/autopilot`
+```
+you:  /autopilot
+      ↓
+      reads the issue
+      ↓
+      explores the codebase (parallel agents)
+      ↓
+      plans → critiques its own plan → refines (up to 3 rounds)
+      ↓
+      implements (parallel coders in isolated worktrees)
+      ↓
+      reviews its own code (security, architecture, test coverage)
+      ↓
+      runs your tests, lint, and build
+      ↓
+      updates CHANGELOG, opens PR, squash-merges
+      ↓
+      closes the issue, cleans up branches
+done.
+```
 
-Open a GitHub issue. Run `/autopilot`. Get a merged PR.
+If something fails along the way, it doesn't just stop. It retries with a different approach, and if that's exhausted, it commits what it has, opens a draft PR explaining what went wrong, files a follow-up issue, and leaves your repo clean. Every time.
 
-Here's what actually happens behind the scenes: hephaestus reads the issue, explores the relevant codebase (parallel explorer subagents across subsystems), then enters a plan-critique loop — building an implementation plan, adversarially critiquing it, and refining until the plan is sound (up to 3 iterations). It implements the plan using parallel coder subagents in isolated worktrees, then runs a pre-ship code review (security, architecture, test adequacy, CLAUDE.md compliance). Tests, lint, and build run as parallel quality gates. It updates the CHANGELOG, creates a PR with a quality-gate checklist, enables squash auto-merge, closes the issue, and deletes merged branches.
+No open issues? It self-triages — scans the codebase for TODOs, inconsistencies, and gaps, creates an issue, and gets to work.
 
-When tests fail, it analyzes the root cause and retries with a revised plan (up to 2 full plan-implement-test cycles). When code review finds issues, it fixes and re-submits (up to 3 iterations). When retry limits are exhausted, it commits progress, creates a draft PR with a descriptive prefix (`[FAILING]`, `[BLOCKED]`, `[WIP]`), files a follow-up issue with context for the next session, and winds down cleanly. It never leaves your repo in a dirty state — every session ends with committed code, pushed branches, and breadcrumbs for what remains.
+## Why this exists
 
-If the issue queue is empty, it self-triages: scans for TODOs, inconsistencies, and gaps, creates the highest-impact issue, and continues the pipeline.
+Most AI coding setups are interactive. You prompt, it asks a question, you approve, it writes some code, you review, repeat. That works for exploration, but it doesn't scale.
 
-## Getting started
+Hephaestus is the other mode: **fire-and-forget with quality gates**. You point it at an issue and walk away. It handles the full loop — planning, implementation, code review, testing, shipping — with built-in retry logic and clean failure handling. The same workflow works across every project because it's distributed as a **git submodule** and discovers your stack from your `CLAUDE.md`.
 
-### Install
-
-From the hephaestus repo directory:
+## Get started in 60 seconds
 
 ```bash
+# 1. Install into your project (creates submodule + symlinks, never overwrites existing files)
 ./install.sh /path/to/your/project
+
+# 2. Ship an issue
+/autopilot                 # picks the highest-priority issue and delivers it
+/start-issue 42            # or target a specific issue
+
+# 3. Or run it on a loop, unattended
+nohup ./.hephaestus/loop.sh 30 autopilot.log &   # every 30 min, fresh session each time
 ```
 
-This adds hephaestus as a `.hephaestus` git submodule, creates symlinks into `.claude/agents/`, `.claude/commands/`, and `.codex/skills/`, and never overwrites existing files. Idempotent — safe to re-run.
+Update anytime: `.hephaestus/update.sh` pulls the latest and adds new agents/commands automatically.
 
-### First run
+## What you get
 
-```bash
-/autopilot                 # full autonomous pipeline — pick issue, deliver, ship
-/start-issue 42            # plan-critique-implement cycle for a specific issue
-```
+### Delivery commands
 
-Create your own `.claude/commands/orient.md` for project-specific cold-start context (orient.md is excluded from install — each project owns its own).
-
-### Update
-
-```bash
-.hephaestus/update.sh
-# or manually: git submodule update --remote .hephaestus
-```
-
-Pulls the latest and re-runs `install.sh` to pick up new agents, commands, and skills.
-
-## What's included
-
-### Commands
-
-| Command | What it does |
+| | |
 |---|---|
-| `/autopilot` | Full autonomous pipeline: pick issue (or self-triage), plan, implement, test, ship, finish |
-| `/start-issue` | Plan-critique-implement cycle for a specific issue, ending ready for `/ship` |
-| `/ship` | Pre-ship critique gate, parallel quality gates, CHANGELOG, PR, squash auto-merge |
-| `/finish` | Close issue, delete branches (local + remote), file follow-ups, session summary |
-| `/test-issue` | Run quality gates via tester subagents, verify acceptance criteria |
-| `/refactor` | Analyze, plan, implement, review, ship — with before/after metrics |
-| `/research` | Parallel researcher subagents per facet, synthesized findings with confidence levels |
-| `/critique` | Adversarial review — code mode (via reviewer) or general/strategy mode |
-| `/create-issue` | Research-backed issue creation with labels and testable acceptance criteria |
-| `/update-docs` | Update CLAUDE.md, CHANGELOG, and README after recent work |
-| `/orient` | Cold-session startup: repo context, open issues, recent history, next action |
+| **`/autopilot`** | The full pipeline. Picks an issue (or self-triages), plans, implements, tests, ships, finishes. |
+| **`/start-issue 42`** | Plan-critique-implement for one issue. Pairs with `/ship` when you're ready. |
+| **`/ship`** | Code review gate → quality gates → CHANGELOG → PR → auto-merge. |
+| **`/finish`** | Close issue, delete branches, file follow-ups. |
+| **`/refactor`** | Autonomous refactoring with before/after metrics and review gate. |
 
-The `/autopilot` pipeline covers the same phases as `/start-issue`, `/ship`, `/finish`, and `/update-docs`. Each command also works standalone.
+### Research & quality commands
 
-### Agents
+| | |
+|---|---|
+| **`/research`** | Parallel web research across facets, synthesized with confidence levels. |
+| **`/critique`** | Adversarial review — works on code (via reviewer agent) or strategy/plans. |
+| **`/create-issue`** | Explores the codebase first, then creates a well-scoped issue with labels. |
+| **`/test-issue`** | Runs your full quality gate suite and verifies acceptance criteria. |
+| **`/update-docs`** | Keeps CLAUDE.md, CHANGELOG, and README in sync after shipping. |
+| **`/orient`** | Cold-start context: repo state, open issues, what to do next. |
 
-| Agent | Isolation | Role |
-|---|---|---|
-| coder | worktree | Focused implementation. Multiple coders run in parallel for independent changes. |
-| reviewer | — | Security, architecture, test adequacy, CLAUDE.md compliance. Verdicts: PASS / PASS WITH CHANGES / FAIL. |
-| tester | — | Runs project-specific quality gates (test, lint, build). Structured pass/fail output. |
-| explorer | — | Read-only codebase investigation. Multiple explorers parallelize across subsystems. |
-| researcher | — | Web research with prompt injection protection. Multiple researchers parallelize across facets. |
+### Agents under the hood
 
-All agents declare tools and isolation in YAML frontmatter. All return structured output — never raw verbose logs.
+| Agent | What it does |
+|---|---|
+| **coder** | Writes code in an isolated worktree. Multiple coders run in parallel for independent tasks. |
+| **reviewer** | Adversarial code review: security, architecture, test coverage, convention compliance. |
+| **tester** | Runs your project's test/lint/build commands and returns structured results. |
+| **explorer** | Read-only codebase analysis. Multiple explorers fan out across subsystems simultaneously. |
+| **researcher** | Web research with source cross-referencing and prompt injection protection. |
 
-Codex equivalents exist for the core workflows: **orchestrator**, **critic**, and **research-issue** skills in `.codex/skills/`.
-
-## The pipeline
+## The pipeline in detail
 
 ```
 Orient → Plan → Critique (×3) → Implement → Review (×3) → Test (×2) → Ship → Finish
 ```
 
-| Phase | What happens | On failure |
-|---|---|---|
-| **Orient** | Git status, recent history, repo detection via `git remote get-url origin` | — |
-| **Plan** | Break issue into steps, identify parallel vs. sequential tasks | — |
-| **Critique** | Adversarial self-critique of the plan (max 3 iterations) | NEEDS REFINEMENT: proceed with caveats. RETHINK: implement sound subset, file follow-up. |
-| **Implement** | Parallel coder subagents in worktree isolation | Blocked task: try one alternative, then skip with TODO comment |
-| **Review** | Reviewer subagent: security, architecture, tests, compliance (max 3 iterations) | After 3 FAILs: draft PR with `[BLOCKED]` prefix, file follow-up issue |
-| **Test** | Quality gates from project's CLAUDE.md — test, lint, build (max 2 cycles) | After 2 failures: draft PR with `[FAILING]` prefix, file follow-up issue |
-| **Ship** | Update CHANGELOG, push, create PR with quality-gate checklist, squash auto-merge | Auto-merge unavailable: leave PR open, note in summary |
-| **Finish** | Close issue, delete branches (local + remote), file follow-ups, print summary | — |
+Every phase has a failure mode that keeps things moving:
 
-## Headless operation
+- **Plan-critique loop** — Up to 3 rounds of adversarial self-critique. If the plan still isn't sound, it implements the defensible parts and files a follow-up for the rest.
+- **Implementation** — Parallel coder agents in isolated worktrees. If one is blocked, it tries an alternative, then skips with a TODO and continues.
+- **Code review** — Reviewer agent checks security, architecture, tests, and conventions. Up to 3 fix-and-resubmit cycles. If still failing: `[BLOCKED]` draft PR + follow-up issue.
+- **Testing** — Runs your quality gates (from your project's `CLAUDE.md`). Up to 2 full plan-implement-test cycles. If still failing: `[FAILING]` draft PR with root-cause analysis.
+- **Shipping** — CHANGELOG update, PR with quality-gate checklist, squash auto-merge. If auto-merge isn't available, it leaves the PR open and tells you.
 
-`loop.sh` runs `/autopilot` in a fresh Claude session on a configurable interval. Each session gets the latest model capabilities and a clean context window — no context bloat across runs.
+## Headless mode
+
+`loop.sh` runs `/autopilot` in a fresh Claude session on a repeating interval. Each run gets a clean context window — no bloat from previous sessions.
 
 ```bash
-# Run autopilot every 30 minutes in the background
 nohup ./.hephaestus/loop.sh 30 autopilot.log &
 ```
 
-Sessions run with `--dangerously-skip-permissions` for unattended operation — review your project's `settings.local.json` to control what's allowed. Safety: project-scoped lockfile prevents concurrent instances, numeric interval validation, survives individual session failures, graceful shutdown on SIGINT/SIGTERM.
+Runs with `--dangerously-skip-permissions` for unattended operation — configure allowed actions in your project's `settings.local.json`. Built-in safety: project-scoped lockfile, survives session crashes, clean shutdown on SIGINT/SIGTERM.
 
-## What your project provides
+## Configuring your project
 
-These are **not** in hephaestus — each project owns them:
+Hephaestus reads your project — you don't configure hephaestus. The key file is your **`CLAUDE.md`**: its "Development Commands" section tells every agent what test, lint, and build commands to run. Keep that up to date and everything works.
 
-| File | Why project-specific |
+After installing, create these project-specific files:
+
+| File | Purpose |
 |---|---|
-| `.claude/commands/orient.md` | References your project's repos, structure, and priorities |
-| `.claude/hooks/` | Lint/test commands vary by tech stack |
-| `AGENTS.md` | Skill index referencing local + shared skill paths |
-| `.codex/settings.local.json` | Skill paths and memory config |
-| `.claude/settings.local.json` | Hook paths and allowed permissions |
-| `CLAUDE.md` "Development Commands" | Source of truth for all quality gates (test, lint, build) |
+| `CLAUDE.md` with "Development Commands" | Source of truth for all quality gates |
+| `.claude/commands/orient.md` | Your project's repos, structure, priorities |
+| `.claude/hooks/lint-on-commit.sh` | Your lint command, run before every commit |
+| `.claude/hooks/protect-files.sh` | Block edits to `.env`, lock files, secrets |
+| `AGENTS.md` | Index of available local + shared agents |
+| `.claude/settings.local.json` | Allowed permissions and hook paths |
 
-### After installing, set up
-
-1. **`.claude/commands/orient.md`** — project-specific session startup (git status, open issues, changelog, next action)
-2. **`.claude/hooks/lint-on-commit.sh`** — run your lint command before commits
-3. **`.claude/hooks/protect-files.sh`** — block accidental edits to `.env`, lock files, etc.
-4. **`AGENTS.md`** — skill index listing local + shared skills
-5. **`CLAUDE.md` "Development Commands" section** — this is the source of truth for all quality gates. Keep it up to date and every shared command automatically uses the right test, lint, and build commands for your project.
+Codex equivalents (**orchestrator**, **critic**, **research-issue**) live in `.codex/skills/` for projects using OpenAI Codex.
