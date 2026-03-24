@@ -144,8 +144,42 @@ for d in .hephaestus/.codex/skills/*/; do
 done
 echo ""
 
+# ── 5. Post-install validation ────────────────────────────────────────────────
+
+# Scaffold orient.md if the target project doesn't have one
+if [ ! -e .claude/commands/orient.md ] && [ ! -L .claude/commands/orient.md ]; then
+  cp .hephaestus/templates/orient.md .claude/commands/orient.md
+  echo "[scaffold] orient.md (created template — customize for your project)"
+else
+  echo "[skip] orient.md (already exists)"
+fi
+
+# Check CLAUDE.md for Development Commands section
+if [ -f CLAUDE.md ]; then
+  if grep -qiE '^#{2,} .*(development commands|test(s|ing)?|lint(ing)?|build)' CLAUDE.md; then
+    echo "[ok]   CLAUDE.md has development commands"
+  else
+    echo ""
+    echo "[warn] CLAUDE.md missing test/lint/build commands"
+    echo "       Hephaestus reads these to run quality gates. Add a section like:"
+    echo ""
+    echo "       ## Development Commands"
+    echo "       \`\`\`bash"
+    echo "       npm test          # test"
+    echo "       npm run lint      # lint"
+    echo "       npm run build     # build"
+    echo "       \`\`\`"
+  fi
+else
+  echo ""
+  echo "[warn] No CLAUDE.md found"
+  echo "       Hephaestus reads CLAUDE.md to discover test/lint/build commands."
+  echo "       Create one with a \"Development Commands\" section."
+fi
+echo ""
+
 echo "Done. Next steps:"
-echo "  1. Add a project-specific .claude/commands/orient.md"
+echo "  1. Customize .claude/commands/orient.md for your project"
 echo "  2. Add project-specific .claude/hooks/ (lint-on-commit.sh, protect-files.sh)"
 echo "  3. Update AGENTS.md to list newly available skills"
 echo "  4. git add .gitmodules .hephaestus .claude .codex && git commit"

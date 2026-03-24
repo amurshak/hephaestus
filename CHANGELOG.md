@@ -7,6 +7,9 @@
 - `install.sh` now detects if hephaestus is already registered as a submodule at a different path (e.g. `hephaestus/` vs `.hephaestus/`) and prints actionable guidance instead of creating a duplicate. Handles HTTPS/SSH URL comparison.
 
 ### Added
+- `install.sh` post-install validation: checks target CLAUDE.md for development commands section, warns if missing.
+- `install.sh` orient.md scaffolding: copies `templates/orient.md` template if the target project doesn't have one.
+- `templates/orient.md` — project-specific orient template with placeholder sections matching what hephaestus commands expect.
 - CLAUDE.md: "Core Principles" section — simplicity, self-improvement, and autonomy as the design axioms that guide every layer of the project.
 - CLAUDE.md: "Transition to next phase" convention — invoke `/ship` (or the relevant command) directly when work is ready, don't ask vague questions.
 - CLAUDE.md: "Improving the Workflow" section — workflow feedback that applies broadly should be persisted in the repo, not just local memory.

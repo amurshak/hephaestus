@@ -43,7 +43,7 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 
 - **Commands read the target project's CLAUDE.md** to discover test/lint/build commands. The "Development Commands" section in each installed project drives all quality gates.
 - **Repo detection** is done via `git remote get-url origin` — commands never hardcode repo references.
-- **orient.md is project-specific** — it is explicitly excluded from install.sh symlinking. Each project must create its own.
+- **orient.md is project-specific** — it is excluded from symlinking. If the target project doesn't have one, install.sh scaffolds a template from `templates/orient.md` that must be customized.
 - **install.sh is idempotent** — it never overwrites existing files; re-running is safe.
 - **Symlinks are relative** — agents link as `../../.hephaestus/.claude/agents/<name>`, commands as `../../.hephaestus/.claude/commands/<name>`, skills as `../../.hephaestus/.codex/skills/<name>`.
 
@@ -102,7 +102,7 @@ When modifying agents or commands:
 ## What Target Projects Must Provide
 
 These are NOT in this repo — each installed project owns them:
-- `.claude/commands/orient.md` — project-specific context (repos, structure, next action)
+- `.claude/commands/orient.md` — project-specific context (scaffolded by install.sh, must be customized)
 - `.claude/hooks/` — lint/test hooks for the project's tech stack
 - `CLAUDE.md` with a "Development Commands" section (test, lint, build commands)
 - `AGENTS.md` — index of available local and shared skills
