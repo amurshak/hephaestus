@@ -12,12 +12,18 @@
 #
 # Idempotent: safe to run if already uninstalled.
 
+# Intentionally omit -e: cleanup scripts should continue past individual failures.
 set -uo pipefail
 
 TARGET="${1:-$(pwd)}"
 
 if [ ! -d "$TARGET" ]; then
   echo "Error: target directory '$TARGET' does not exist."
+  exit 1
+fi
+
+if [ ! -d "$TARGET/.git" ]; then
+  echo "Error: '$TARGET' is not a git repository."
   exit 1
 fi
 
@@ -51,14 +57,14 @@ echo "Removing hephaestus symlinks:"
 remove_hephaestus_links ".claude/agents"
 remove_hephaestus_links ".claude/commands"
 
-# Codex skills are directory symlinks
+# Codex skills are directory symlinks (use * without trailing / to catch broken symlinks)
 if [ -d ".codex/skills" ]; then
-  for d in .codex/skills/*/; do
-    [ -L "${d%/}" ] || continue
-    local_target=$(readlink "${d%/}")
+  for d in .codex/skills/*; do
+    [ -L "$d" ] || continue
+    local_target=$(readlink "$d")
     if [[ "$local_target" == *".hephaestus/"* ]]; then
-      rm "${d%/}"
-      echo "  [removed] ${d%/}"
+      rm "$d"
+      echo "  [removed] $d"
       REMOVED_DIRS=$((REMOVED_DIRS + 1))
     fi
   done
@@ -71,12 +77,14 @@ echo ""
 
 # ── 2. Remove .hephaestus submodule ──────────────────────────────────────────
 
-if [ -d ".hephaestus" ] || grep -q '\.hephaestus' .gitmodules 2>/dev/null; then
+SUBMODULE_REMOVED=false
+if [ -d ".hephaestus" ] || grep -qF '.hephaestus' .gitmodules 2>/dev/null; then
   echo "Removing .hephaestus submodule:"
   git submodule deinit -f .hephaestus 2>/dev/null || true
   git rm -f .hephaestus 2>/dev/null || true
   rm -rf .git/modules/.hephaestus 2>/dev/null || true
   echo "  [removed] .hephaestus submodule"
+  SUBMODULE_REMOVED=true
 else
   echo "Submodule:"
   echo "  (no .hephaestus submodule found)"
@@ -86,7 +94,11 @@ echo ""
 # ── 3. Summary ───────────────────────────────────────────────────────────────
 
 TOTAL=$((REMOVED_LINKS + REMOVED_DIRS))
-echo "Done. Removed $TOTAL symlink(s) and the .hephaestus submodule."
+if [ "$SUBMODULE_REMOVED" = true ]; then
+  echo "Done. Removed $TOTAL symlink(s) and the .hephaestus submodule."
+else
+  echo "Done. Removed $TOTAL symlink(s). No submodule was present."
+fi
 echo ""
 echo "Kept (project-specific):"
 echo "  - .claude/commands/orient.md (if present)"
