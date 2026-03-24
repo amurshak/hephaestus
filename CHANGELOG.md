@@ -13,6 +13,11 @@
 - `.codex/skills/` — Codex skill layer removed entirely. No known consumers, historical sync drift with Claude commands (5+ past bugs). Claude commands are the canonical workflow source; maintaining a parallel Codex layer added maintenance cost for no clear benefit. Codex references removed from install.sh, update.sh, uninstall.sh, README, CLAUDE.md, and orient.md.
 
 ### Fixed
+- `update-hephaestus.md` used `ORIG_HEAD` to show post-update changelog, but `git submodule update --remote` does not set `ORIG_HEAD`. Now captures HEAD before/after the update (matching `update.sh` pattern).
+- `orient.md` said "No build or test pipeline" despite `./tests/run.sh` existing with 113 assertions. Updated Development Commands section.
+- CHANGELOG 1.0.0 entry referenced "11 commands, 3 Codex skills" — corrected to "12 commands" (Codex removed).
+- `update-docs.md` referenced "Supersedes /document" — `/document` never existed. Removed.
+- Remaining hardcoded retry limits in `refactor.md`, `critique.md`, `autopilot.md`, and `start-issue.md` now reference "per CLAUDE.md retry limits" instead of hardcoding numbers.
 - `ship.md` and `refactor.md` ran tests but didn't declare `tester` in `<!-- requires: -->`
 - 4 commands (`finish`, `update-docs`, `update-hephaestus`, `orient`) missing `<!-- requires: -->` declarations entirely — now use `<!-- requires: none -->`
 - `CLAUDE.md.snippet` template and `orient.md` command listing omitted `/update-hephaestus`
