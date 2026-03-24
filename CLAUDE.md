@@ -104,6 +104,7 @@ When modifying agents or commands:
 - Retry limits are defined in "Core Workflow Pattern" above — commands must reference them, not hardcode
 - Commands that delegate to subagents should specify which agent type to use and what structured output to expect
 - Claude commands are the canonical workflow source
+- **No bloat**: Replacements must be at least as concise as the original. If the new text is longer without adding information, tighten it. Bloat and drift are the enemies of excellence.
 
 ## What Target Projects Must Provide
 
