@@ -26,3 +26,7 @@ Follow these steps:
 5. Return the issue URL.
 
 Do not create the issue without first doing the research step — vague issues waste time.
+
+### Next steps
+- Run `/start-issue <#>` to begin working on the issue
+- Or run `/autopilot <#>` for fully autonomous implementation

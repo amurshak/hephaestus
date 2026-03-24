@@ -39,3 +39,8 @@ Steps:
    - Manual actions needed (if any, e.g., "PR awaiting manual merge")
 
 If no issue number is provided in $ARGUMENTS, check recent PRs to infer which issue was just shipped.
+
+### Next steps
+- Run `/orient` to see what to work on next
+- Run `/start-issue <#>` to begin a specific issue
+- Run `/create-issue` to plan new work

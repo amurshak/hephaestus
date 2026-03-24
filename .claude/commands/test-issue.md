@@ -22,3 +22,7 @@ Steps:
    - ACs: pass/fail per criterion
 
 If anything fails, identify the root cause and suggest a fix. Do not just report the failure.
+
+### Next steps
+- If all tests pass: run `/ship` to create a PR, or `/finish <#>` if already merged
+- If tests fail: fix the failures and re-run `/test-issue`

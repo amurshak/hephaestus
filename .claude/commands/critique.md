@@ -76,3 +76,8 @@ Verdicts are advisory — the calling command decides how to act on them:
 - **Be calibrated.** Don't elevate minor style issues to blocking. Don't dismiss real architectural concerns as non-blocking.
 - **If it's solid, say so.** Don't invent problems to justify your existence. A clean PASS is a valid outcome.
 - **Be constructive on failure.** A FAIL verdict must include a concrete path to PASS — what specifically to change, not just what's wrong.
+
+### Next steps
+- If PASS: run `/ship` to create a PR
+- If PASS WITH CHANGES or NEEDS REFINEMENT: fix the issues, then re-run `/critique` or proceed to `/ship`
+- If FAIL or RETHINK: address the blocking issues, then re-run `/critique`

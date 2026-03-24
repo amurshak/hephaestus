@@ -51,3 +51,7 @@ Output:
 - Never refactor without passing tests as a safety net
 - One focused change at a time — no big bang rewrites
 - If tests don't exist for the target, write characterization tests first
+
+### Next steps
+- Run `/finish <#>` after merge to close the issue and clean up branches
+- Or run `/orient` to see what to work on next

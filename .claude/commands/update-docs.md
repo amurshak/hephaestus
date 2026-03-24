@@ -26,3 +26,7 @@ Steps:
    git add CLAUDE.md CHANGELOG.md README.md
    git commit -m "docs: update CLAUDE.md and CHANGELOG for <feature>"
    ```
+
+### Next steps
+- Run `/orient` to see what to work on next
+- Or run `/ship` if these doc changes need their own PR

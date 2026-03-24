@@ -77,3 +77,8 @@ If auto-merge cannot be enabled (branch protection, required reviewers, etc.):
 - This is a valid stopping point — the work is preserved in the PR
 
 ### 7. Return the PR URL.
+
+### Next steps
+- Run `/test-issue` to verify CI status if needed
+- Run `/finish <#>` after merge to close the issue, clean up branches, and file follow-ups
+- Or run `/orient` to see what's next

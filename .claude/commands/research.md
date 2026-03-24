@@ -31,3 +31,7 @@ Synthesize all subagent findings into:
 6. **Sources**: URLs for the most authoritative references
 
 Keep it concise and scannable. Bullets over prose.
+
+### Next steps
+- Run `/create-issue` to turn findings into actionable work
+- Or run `/start-issue <#>` if an issue already exists for this topic
