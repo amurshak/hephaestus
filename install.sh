@@ -156,7 +156,7 @@ fi
 
 # Check CLAUDE.md for Development Commands section
 if [ -f CLAUDE.md ]; then
-  if grep -qiE '(development commands|## .*(test|lint|build))' CLAUDE.md; then
+  if grep -qiE '^#{2,} .*(development commands|test(s|ing)?|lint(ing)?|build)' CLAUDE.md; then
     echo "[ok]   CLAUDE.md has development commands"
   else
     echo ""
