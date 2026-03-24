@@ -91,7 +91,7 @@ link_item() {
     else
       echo "  [skip] $name (already exists)"
       echo "         → replace: rm $dest && re-run install.sh"
-      echo "         → compare: diff $dest .hephaestus/${dest#./}"
+      echo "         → compare: diff $dest .hephaestus/$dest"
     fi
   else
     if [ "$AUDIT_MODE" = true ]; then
@@ -112,6 +112,10 @@ check_name_collisions() {
 
   for target_file in "$target_dir"/*.md; do
     [ -e "$target_file" ] || continue
+    # Skip symlinks pointing into .hephaestus (these are ours, not the user's)
+    if [ -L "$target_file" ] && [[ "$(readlink "$target_file")" == *".hephaestus/"* ]]; then
+      continue
+    fi
     local tname
     tname=$(basename "$target_file" .md)
     for heph_file in "$heph_dir"/*.md; do
