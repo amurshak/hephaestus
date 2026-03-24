@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-if [ ! -d ".hephaestus/.git" ] && ! grep -qF '.hephaestus' .gitmodules 2>/dev/null; then
+if [ ! -e ".hephaestus/.git" ] && ! grep -qF '.hephaestus' .gitmodules 2>/dev/null; then
   echo "Error: .hephaestus submodule not found. Run install.sh first."
   exit 1
 fi

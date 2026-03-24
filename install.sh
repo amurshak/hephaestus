@@ -185,19 +185,19 @@ if [ -f .gitmodules ]; then
 fi
 
 if [ "$AUDIT_MODE" = true ]; then
-  if [ -d ".hephaestus/.git" ] || grep -q '\.hephaestus' .gitmodules 2>/dev/null; then
+  if [ -e ".hephaestus/.git" ] || grep -q '\.hephaestus' .gitmodules 2>/dev/null; then
     echo "[ok]   .hephaestus submodule already registered"
   else
     echo "[new]  .hephaestus submodule will be added"
   fi
   echo ""
 else
-  if [ -d ".hephaestus/.git" ] || grep -q '\.hephaestus' .gitmodules 2>/dev/null; then
+  if [ -e ".hephaestus/.git" ] || grep -q '\.hephaestus' .gitmodules 2>/dev/null; then
     echo "[skip] .hephaestus submodule already registered"
     # Only initialize if not yet checked out (e.g., fresh clone without --recurse-submodules).
     # Do NOT run `git submodule update` here — it resets to the committed pointer,
     # undoing any `git submodule update --remote` the developer just did.
-    if [ ! -d ".hephaestus/.git" ]; then
+    if [ ! -e ".hephaestus/.git" ]; then
       git submodule update --init .hephaestus
     fi
   else
@@ -436,6 +436,7 @@ if [ -d .claude/commands ]; then
     [ -e "$cmd" ] || continue
     requires=$(head -1 "$cmd" | sed -n 's/^<!-- requires: \(.*\) -->/\1/p')
     [ -n "$requires" ] || continue
+    [ "$requires" != "none" ] || continue
     missing=""
     IFS=', ' read -ra agents <<< "$requires"
     for agent in "${agents[@]}"; do
