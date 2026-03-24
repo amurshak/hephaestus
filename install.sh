@@ -7,6 +7,7 @@
 # Flags:
 #   --audit   Show what would happen without modifying the filesystem
 #   --force   Replace existing files with hephaestus symlinks
+#   --clean   Remove dangling symlinks pointing to .hephaestus/
 #
 # What it does:
 #   1. Adds this repo as a git submodule at <target>/.hephaestus
@@ -23,12 +24,14 @@ set -euo pipefail
 # ── Parse arguments ──────────────────────────────────────────────────────────
 AUDIT_MODE=false
 FORCE_MODE=false
+CLEAN_MODE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --audit) AUDIT_MODE=true; shift ;;
     --force) FORCE_MODE=true; shift ;;
-    -*) echo "Error: unknown flag '$1'"; echo "Usage: ./install.sh [--audit | --force] <target>"; exit 1 ;;
+    --clean) CLEAN_MODE=true; shift ;;
+    -*) echo "Error: unknown flag '$1'"; echo "Usage: ./install.sh [--audit | --force | --clean] <target>"; exit 1 ;;
     *) break ;;
   esac
 done
@@ -299,7 +302,70 @@ if [ "$COLLISIONS_FOUND" = true ]; then
   echo ""
 fi
 
-# ── 6. Post-install validation ───────────────────────────────────────────────
+# ── 6. Stale symlink detection ────────────────────────────────────────────────
+# Find symlinks pointing into .hephaestus/ whose target no longer exists (e.g., after upstream renames/removals)
+
+detect_stale_links() {
+  local dir="$1"
+  [ -d "$dir" ] || return 0
+
+  for f in "$dir"/*; do
+    # Check for symlinks (including broken ones — -L works on broken symlinks, -e does not)
+    [ -L "$f" ] || continue
+    local link_target
+    link_target=$(readlink "$f")
+    [[ "$link_target" == *".hephaestus/"* ]] || continue
+    # If the symlink target doesn't exist, it's stale
+    if [ ! -e "$f" ]; then
+      local name
+      name=$(basename "$f")
+      if [ "$CLEAN_MODE" = true ]; then
+        rm "$f"
+        echo "  [cleaned] $name → $link_target (target removed)"
+      else
+        echo "  [stale] $name → $link_target (target removed)"
+        echo "          → remove: rm $f"
+      fi
+      STALE_FOUND=true
+    fi
+  done
+}
+
+STALE_FOUND=false
+detect_stale_links ".claude/agents"
+detect_stale_links ".claude/commands"
+# Codex skills: directory symlinks
+if [ -d ".codex/skills" ]; then
+  for d in .codex/skills/*; do
+    [ -L "$d" ] || continue
+    local_target=$(readlink "$d")
+    [[ "$local_target" == *".hephaestus/"* ]] || continue
+    if [ ! -e "$d" ]; then
+      name=$(basename "$d")
+      if [ "$CLEAN_MODE" = true ]; then
+        rm "$d"
+        echo "  [cleaned] $name → $local_target (target removed)"
+      else
+        echo "  [stale] $name → $local_target (target removed)"
+        echo "          → remove: rm $d"
+      fi
+      STALE_FOUND=true
+    fi
+  done
+fi
+
+if [ "$STALE_FOUND" = true ]; then
+  if [ "$CLEAN_MODE" != true ]; then
+    echo ""
+    echo "  Run with --clean to auto-remove stale symlinks."
+  fi
+  echo ""
+elif [ "$CLEAN_MODE" = true ]; then
+  echo "  (no stale symlinks found)"
+  echo ""
+fi
+
+# ── 7. Post-install validation ───────────────────────────────────────────────
 
 if [ "$AUDIT_MODE" = true ]; then
   # In audit mode, just report orient.md and CLAUDE.md status

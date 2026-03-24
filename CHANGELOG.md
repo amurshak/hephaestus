@@ -13,6 +13,7 @@
 - `install.sh --force` flag: replaces existing files with hephaestus symlinks.
 - `install.sh` default skip messages now include actionable guidance (rm + re-run, diff commands).
 - `install.sh` near-name collision detection: warns when target and hephaestus have confusingly similar filenames (e.g., `critic.md` vs `critique.md`).
+- `install.sh` stale symlink detection: finds dangling symlinks pointing to `.hephaestus/` after upstream renames/removals. `--clean` flag auto-removes them.
 - `install.sh` post-install validation: checks target CLAUDE.md for development commands section, warns if missing.
 - `install.sh` orient.md scaffolding: copies `templates/orient.md` template if the target project doesn't have one.
 - `templates/orient.md` — project-specific orient template with placeholder sections matching what hephaestus commands expect.
