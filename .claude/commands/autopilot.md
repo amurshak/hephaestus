@@ -43,9 +43,9 @@ If no open issues are found:
 2. **Critique the plan** (general critique mode): Evaluate logic, assumptions, completeness, trade-offs, risks.
 3. **Refine**: Update the plan to address criticisms.
 4. **Re-critique**: Evaluate the refined plan.
-5. **Repeat** until verdict reaches **SOUND** (max 3 iterations).
+5. **Repeat** until verdict reaches **SOUND** (per CLAUDE.md retry limits).
 
-If after 3 iterations the verdict is still not SOUND:
+If critique iterations are exhausted:
 - **NEEDS REFINEMENT**: Proceed with the best version. Document the unresolved concerns as "Known Limitations" in the PR body.
 - **RETHINK**: The plan has fundamental issues. Commit any useful exploration as a draft PR with `[WIP]` prefix, file a follow-up issue describing the conceptual blockers, then wind down cleanly (see Session Wind-Down).
 
@@ -57,7 +57,7 @@ If after 3 iterations the verdict is still not SOUND:
 
 ### Phase 5: Pre-ship Critique Gate
 - Launch reviewer subagent(s) for code critique
-- **FAIL**: Fix blocking issues, re-critique (max 3 iterations). If still FAIL after 3:
+- **FAIL**: Fix blocking issues, re-critique (per CLAUDE.md retry limits). If still FAIL:
   - Determine if blockers are fixable with a different approach — try once
   - If still blocked: commit progress, create a draft PR with `[BLOCKED]` prefix listing the unresolved issues, file a follow-up issue, wind down
 - **PASS WITH CHANGES**: Fix blocking issues, proceed
@@ -69,7 +69,7 @@ If after 3 iterations the verdict is still not SOUND:
 
 If tests fail:
 - Analyze failure root cause before retrying — don't repeat the same approach
-- **Go back to Phase 3** with failure context incorporated into the plan (max 2 plan-implement-test cycles)
+- **Go back to Phase 3** with failure context incorporated into the plan (per CLAUDE.md retry limits)
 - If still failing after 2 cycles:
   - Commit the current state on a branch
   - Create a draft PR with `[FAILING]` prefix and detailed failure analysis in the body
