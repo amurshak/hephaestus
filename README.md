@@ -28,8 +28,15 @@ Hephaestus is built on three ideas: **simplicity** — one command to deliver, o
 ## Get started
 
 ```bash
-# From the hephaestus repo — this handles the submodule, don't git submodule add manually
+# Install — handles the submodule, don't git submodule add manually
 ./install.sh /path/to/your/project
+```
+
+This adds the `.hephaestus` submodule, symlinks commands and agents, scaffolds an `orient.md` template, validates your `CLAUDE.md`, and runs a health check. Safe to re-run.
+
+```bash
+# Append hephaestus sections to your CLAUDE.md (dev commands, command reference, agents)
+cat .hephaestus/templates/CLAUDE.md.snippet >> CLAUDE.md
 
 # Deliver an issue
 /autopilot                 # picks highest-priority issue, does everything
@@ -39,7 +46,15 @@ Hephaestus is built on three ideas: **simplicity** — one command to deliver, o
 nohup ./.hephaestus/loop.sh 30 autopilot.log &
 ```
 
-Update: `/update-hephaestus` or `.hephaestus/update.sh`
+**Manage the install:**
+
+| | |
+|---|---|
+| `install.sh --audit` | Preview what would change without modifying anything |
+| `install.sh --force` | Replace existing files with hephaestus versions |
+| `install.sh --clean` | Remove dangling symlinks after upstream renames |
+| `/update-hephaestus` | Pull latest, re-install, show what changed |
+| `.hephaestus/uninstall.sh` | Clean removal — only removes hephaestus symlinks |
 
 ---
 
@@ -166,13 +181,20 @@ install.sh works with any submodule URL — forks install identically to upstrea
 
 ## Your project's setup
 
-Hephaestus reads your project. The only thing that matters is your `CLAUDE.md` — specifically the "Development Commands" section. That's where it learns what to test, lint, and build. Keep it current and everything works.
+Hephaestus reads your project's `CLAUDE.md` — specifically the "Development Commands" section. That's where it learns what to test, lint, and build. The fastest way to set this up:
+
+```bash
+cat .hephaestus/templates/CLAUDE.md.snippet >> CLAUDE.md
+```
+
+Then replace the placeholder commands with your actual test/lint/build commands.
+
+install.sh scaffolds `orient.md` automatically. Customize it with your project's repos, structure, and priorities.
 
 Optional but recommended:
 
 | | |
 |---|---|
-| `.claude/commands/orient.md` | Project-specific cold-start context |
 | `.claude/hooks/lint-on-commit.sh` | Your lint command, before every commit |
 | `.claude/hooks/protect-files.sh` | Block edits to `.env`, lock files, secrets |
 | `AGENTS.md` | Index of local + shared agents |
