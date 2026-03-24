@@ -460,6 +460,33 @@ if [ -f CLAUDE.md ] && grep -qiE '^#{2,} .*(development commands|test(s|ing)?|li
 else
   echo "  ✗ CLAUDE.md missing development commands"
 fi
+
+# Validate command → agent dependencies
+# Commands declare dependencies via <!-- requires: agent1, agent2 --> on line 1
+DEPS_OK=true
+if [ -d .claude/commands ]; then
+  for cmd in .claude/commands/*.md; do
+    [ -e "$cmd" ] || continue
+    requires=$(head -1 "$cmd" | sed -n 's/^<!-- requires: \(.*\) -->/\1/p')
+    [ -n "$requires" ] || continue
+    missing=""
+    IFS=', ' read -ra agents <<< "$requires"
+    for agent in "${agents[@]}"; do
+      agent=$(echo "$agent" | tr -d ' ')
+      if [ ! -e ".claude/agents/${agent}.md" ] && [ ! -L ".claude/agents/${agent}.md" ]; then
+        missing="${missing:+$missing, }$agent"
+      fi
+    done
+    if [ -n "$missing" ]; then
+      cmd_name=$(basename "$cmd")
+      echo "  ✗ $cmd_name requires: $requires — missing: $missing"
+      DEPS_OK=false
+    fi
+  done
+fi
+if [ "$DEPS_OK" = true ]; then
+  echo "  ✓ all command dependencies satisfied"
+fi
 echo ""
 
 echo "Done. Next steps:"

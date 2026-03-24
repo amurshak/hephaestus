@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- Commands now declare agent dependencies via `<!-- requires: agent1, agent2 -->` on line 1. install.sh validates that required agents are installed and warns about missing dependencies.
 - README: "Forking and customization" section — which files are safe to modify, how to pull upstream updates.
 
 ## 1.0.0 — 2026-03-24

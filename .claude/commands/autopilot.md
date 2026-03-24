@@ -1,3 +1,4 @@
+<!-- requires: coder, reviewer, tester, explorer -->
 Run the full autonomous pipeline for issue $ARGUMENTS. No human intervention required.
 
 If no issue number is provided, pick the highest-priority open issue from `gh issue list --state open --repo <detected-repo>` (prefer bugs over enhancements, older over newer). If no open issues exist, run **Self-Triage** (Phase 0) to generate work.
