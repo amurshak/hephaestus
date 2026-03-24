@@ -56,7 +56,7 @@ Launch reviewer subagent for code critique before running tests.
 2. If tests fail:
    - Analyze the root cause — don't blindly retry
    - Go back to Phase 2 with failure context (per CLAUDE.md retry limits)
-   - If still failing after exhausting test-fix cycles (per CLAUDE.md retry limits): commit progress on the branch, create a draft PR (`--draft`) with `[FAILING]` prefix and failure analysis in the body, file a follow-up issue
+   - If still failing after all retries (per CLAUDE.md): commit progress on the branch, create a draft PR (`--draft`) with `[FAILING]` prefix and failure analysis in the body, file a follow-up issue
 
 Report completion: files changed, test results, critique verdict, any assumptions made. Ready for `/ship`.
 

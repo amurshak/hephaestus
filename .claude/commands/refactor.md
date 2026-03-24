@@ -15,7 +15,7 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 2. Build a refactoring plan (what changes, what's preserved, expected impact) via TodoWrite.
 3. Self-critique the plan (general critique mode): evaluate risks, coupling, test coverage gaps, API contract changes.
 4. Refine and re-critique until verdict reaches **SOUND** (per CLAUDE.md retry limits).
-5. If NEEDS REFINEMENT after exhausting retries: proceed with best version, document caveats in PR. If RETHINK: file follow-up issue and wind down.
+5. If NEEDS REFINEMENT after all retries: proceed with best version, document caveats in PR. If RETHINK: file follow-up issue and wind down.
 
 ### Phase 3: Implement
 1. Make single, focused changes — one concern per commit
