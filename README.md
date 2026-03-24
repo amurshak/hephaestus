@@ -117,6 +117,28 @@ Codex equivalents: **orchestrator**, **critic**, **research-issue** in `.codex/s
 
 ---
 
+## Adopting in an existing project
+
+If your project already has `.claude/commands/`, agents, or Codex skills, run the audit first:
+
+```bash
+./install.sh --audit /path/to/your/project
+```
+
+This shows what would change — new symlinks, conflicts with your existing files (with line counts), and name collisions — without modifying anything.
+
+**When you have overlapping commands** (e.g., your own `/ship`):
+
+1. Compare: `diff .claude/commands/ship.md .hephaestus/.claude/commands/ship.md`
+2. If your version has project-specific quality checks, move that logic into your `CLAUDE.md` "Development Commands" section — hephaestus reads it from there
+3. Replace: `rm .claude/commands/ship.md && .hephaestus/install.sh .` — or use `--force` to replace all at once
+
+The key idea: **hephaestus handles orchestration, your `CLAUDE.md` handles project-specific configuration.** Move test/lint/build commands and project constraints into `CLAUDE.md`, then let hephaestus commands take over the workflow.
+
+To remove hephaestus later: `.hephaestus/uninstall.sh` removes only hephaestus symlinks and the submodule, keeps your project-specific files.
+
+---
+
 ## Your project's setup
 
 Hephaestus reads your project. The only thing that matters is your `CLAUDE.md` — specifically the "Development Commands" section. That's where it learns what to test, lint, and build. Keep it current and everything works.

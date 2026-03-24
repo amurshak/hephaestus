@@ -5,6 +5,7 @@
 ### Changed
 - Complete README rewrite — leads with value proposition and autonomous delivery pipeline instead of install-only content. Covers all 11 commands, 5 agents, 3 Codex skills, headless operation, failure recovery, and quality gates.
 - `install.sh` now detects if hephaestus is already registered as a submodule at a different path (e.g. `hephaestus/` vs `.hephaestus/`) and prints actionable guidance instead of creating a duplicate. Handles HTTPS/SSH URL comparison.
+- README: added "Adopting in an existing project" section with audit workflow, migration pattern (project logic → CLAUDE.md), and uninstall guidance.
 
 ### Added
 - `uninstall.sh` — cleanly removes hephaestus symlinks and submodule from a target project. Only removes symlinks pointing to `.hephaestus/`, preserves project-specific files. Idempotent.
