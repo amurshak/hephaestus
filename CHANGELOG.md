@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- Complete README rewrite — leads with value proposition and autonomous delivery pipeline instead of install-only content. Covers all 11 commands, 5 agents, 3 Codex skills, headless operation, failure recovery, and quality gates.
+
 ### Fixed
 - `start-issue.md` had no branch creation step — commits would land on whatever branch was checked out when invoked standalone (same bug class as the `refactor.md` fix). Added `git checkout -b issue-<number>-<short-description>` after context loading.
 - `refactor.md` was missing pre-ship critique gate (reviewer subagent, max 3 iterations), CHANGELOG update step, repo detection via `git remote get-url origin`, and had unbounded test retries. Added Phase 4 (Pre-ship Critique) and Phase 5 (Ship with CHANGELOG + repo detection), capped test retries at max 2.
