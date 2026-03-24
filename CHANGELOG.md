@@ -16,8 +16,11 @@
 - `ship.md` and `refactor.md` ran tests but didn't declare `tester` in `<!-- requires: -->`
 - 4 commands (`finish`, `update-docs`, `update-hephaestus`, `orient`) missing `<!-- requires: -->` declarations entirely — now use `<!-- requires: none -->`
 - `CLAUDE.md.snippet` template and `orient.md` command listing omitted `/update-hephaestus`
+- `install.sh` and `update.sh` used `[ -d ".hephaestus/.git" ]` to detect initialized submodules, but modern git submodules use a `.git` file (not directory). Changed to `[ -e ... ]` — fixes `update.sh` silently reverting submodule to committed pointer after `git submodule update --remote`.
+- `install.sh` health check treated `<!-- requires: none -->` as requiring an agent called "none". Now skips the dependency check for commands that declare no requirements.
 
 ### Added
+- Integration test suite for `install.sh`, `update.sh`, and `uninstall.sh` — 113 assertions across 28 test cases. Run via `./tests/run.sh`. Tests use isolated temp git repos (no network required).
 - Commands now declare agent dependencies via `<!-- requires: agent1, agent2 -->` on line 1. install.sh validates that required agents are installed and warns about missing dependencies.
 - README: "Forking and customization" section — which files are safe to modify, how to pull upstream updates.
 

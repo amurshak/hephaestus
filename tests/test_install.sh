@@ -120,12 +120,9 @@ teardown_fixture
 begin_test "flag conflict: --audit + --force"
 setup_fixture
 TARGET=$(create_target)
-output=$(bash "$SOURCE_REPO/install.sh" --audit --force "$TARGET" 2>&1 || true)
-rc=${PIPESTATUS[0]:-$?}
-
-# Capture exit code properly
 bash "$SOURCE_REPO/install.sh" --audit --force "$TARGET" >/dev/null 2>&1
 rc=$?
+
 assert_exit_code "exits 1" 1 "$rc"
 teardown_fixture
 

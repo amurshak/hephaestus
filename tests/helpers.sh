@@ -110,6 +110,9 @@ assert_not_contains() {
 #   SOURCE_REPO  — clone of REMOTE_REPO (where install.sh lives, has origin set)
 
 setup_fixture() {
+  # Clean up any previous fixture (defensive — tests should call teardown explicitly)
+  teardown_fixture 2>/dev/null || true
+
   FIXTURE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-test-XXXXXX")
 
   # Allow file:// transport for local submodule operations (git >= 2.38.1 restricts this)
@@ -150,9 +153,9 @@ create_target() {
 
 teardown_fixture() {
   if [ -n "${FIXTURE_DIR:-}" ] && [ -d "$FIXTURE_DIR" ]; then
-    # Force remove — some .git files are read-only
     rm -rf "$FIXTURE_DIR"
   fi
+  unset FIXTURE_DIR REMOTE_REPO SOURCE_REPO GIT_CONFIG_GLOBAL 2>/dev/null || true
 }
 
 # ── Test lifecycle ───────────────────────────────────────────────────────────
@@ -171,5 +174,5 @@ print_summary() {
   else
     echo -e "${RED}$TESTS_FAILED of $total assertions failed${NC}"
   fi
-  return "$TESTS_FAILED"
+  return $(( TESTS_FAILED > 0 ? 1 : 0 ))
 }
