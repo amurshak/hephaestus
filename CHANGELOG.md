@@ -6,6 +6,7 @@
 - `refactor.md` now enforces a plan-critique loop before implementation (was "proceed immediately"). Same pattern as start-issue.md.
 - Retry limits centralized in CLAUDE.md "Core Workflow Pattern" section. All commands now reference "per CLAUDE.md retry limits" instead of hardcoding numbers.
 - `finish.md` adds a retrospective step: captures what failed, what fixed it, and reusable insights as a comment on the closed issue. Skipped if pipeline ran cleanly.
+- Codex skills (orchestrator, critic, research-issue) rewritten as concise pointers to Claude commands instead of duplicating workflow logic. 237 → 76 lines total. References/ unchanged.
 
 ### Added
 - Commands now declare agent dependencies via `<!-- requires: agent1, agent2 -->` on line 1. install.sh validates that required agents are installed and warns about missing dependencies.

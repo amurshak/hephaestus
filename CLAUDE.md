@@ -102,7 +102,7 @@ When modifying agents or commands:
 - Preserve the `$ARGUMENTS` placeholder in commands — it receives user input at invocation
 - Retry limits are defined in "Core Workflow Pattern" above — commands must reference them, not hardcode
 - Commands that delegate to subagents should specify which agent type to use and what structured output to expect
-- Codex skill `references/` docs mirror the logic in Claude commands — keep them in sync
+- Claude commands are the canonical workflow source. Codex skills point to them — don't duplicate workflow logic in SKILL.md files
 
 ## What Target Projects Must Provide
 
