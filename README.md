@@ -39,7 +39,7 @@ Hephaestus is built on three ideas: **simplicity** — one command to deliver, o
 nohup ./.hephaestus/loop.sh 30 autopilot.log &
 ```
 
-Update: `.hephaestus/update.sh`
+Update: `/update-hephaestus` or `.hephaestus/update.sh`
 
 ---
 
@@ -97,6 +97,7 @@ It doesn't stop and ask. It tries a different approach. If retries are exhausted
 | `/create-issue` | Codebase-informed issue creation with labels and acceptance criteria |
 | `/test-issue` | Run quality gates, verify acceptance criteria |
 | `/update-docs` | Sync CLAUDE.md, CHANGELOG, README with recent work |
+| `/update-hephaestus` | Pull latest, re-install, show what changed |
 | `/orient` | Cold-start: repo state, open issues, next action |
 
 ---
