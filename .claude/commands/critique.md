@@ -65,7 +65,7 @@ Use when evaluating strategy, plans, proposals, architectural decisions, product
 Verdicts are advisory — the calling command decides how to act on them:
 - **SOUND**: Proceed without changes.
 - **NEEDS REFINEMENT**: Refine and re-critique, or proceed with the weaknesses documented as "Known Limitations."
-- **RETHINK**: Strongly consider a different approach. If after 3 iterations the plan still gets RETHINK, the calling command should implement the most defensible subset and file follow-up issues for the rest — not block indefinitely.
+- **RETHINK**: Strongly consider a different approach. If after exhausting critique iterations (per CLAUDE.md retry limits) the plan still gets RETHINK, the calling command should implement the most defensible subset and file follow-up issues for the rest — not block indefinitely.
 
 ---
 
