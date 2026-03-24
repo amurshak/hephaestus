@@ -18,6 +18,10 @@
 
 - Provide concrete next actions.
 
+## Confidence
+
+- HIGH / MEDIUM / LOW with brief justification.
+
 ## Sources
 
 - Include authoritative URLs.

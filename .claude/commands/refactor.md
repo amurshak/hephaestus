@@ -3,10 +3,11 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 ## Process
 
 ### Phase 1: Analysis
-1. Read the target file(s) and all files that import/depend on them
-2. For large refactors spanning multiple modules, spawn parallel explorer subagents to investigate each module's dependencies and usage patterns simultaneously
-3. Measure current state: line count, function count, nesting depth, number of parameters
-4. Identify: repeated patterns, unused code, unnecessary abstractions, tight coupling
+1. **Detect repo**: Run `git remote get-url origin` to identify the target repo.
+2. Read the target file(s) and all files that import/depend on them
+3. For large refactors spanning multiple modules, spawn parallel explorer subagents to investigate each module's dependencies and usage patterns simultaneously
+4. Measure current state: line count, function count, nesting depth, number of parameters
+5. Identify: repeated patterns, unused code, unnecessary abstractions, tight coupling
 
 ### Phase 2: Plan
 1. Log the refactoring plan (what changes, what's preserved, expected impact) but proceed immediately to implementation — do not wait for approval.
@@ -16,14 +17,24 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 1. Make single, focused changes — one concern per commit
 2. For independent refactoring tasks across different files, use parallel coder subagents (in worktrees)
 3. Run tests after each change per the project's CLAUDE.md (test command, lint command)
-4. If tests fail after a change, fix and re-test before proceeding
+4. If tests fail after a change, fix and re-test before proceeding (max 2 test-fix cycles per change)
 
-### Phase 4: Ship
-1. Push the branch: `git push -u origin refactor/<short-description>`
-2. Create a PR via `gh pr create` with a body covering: summary of what changed, metrics (lines/complexity before/after), test results, API changes or risks
-3. Merge: `gh pr merge --squash --auto` (or leave open if auto-merge can't be enabled)
+### Phase 4: Pre-ship Critique
 
-### Phase 5: Report
+Launch reviewer subagent for code critique before shipping.
+
+- **FAIL**: Fix blocking issues, re-critique (max 3 iterations). If still FAIL after 3: commit progress, create draft PR with `[BLOCKED]` prefix, file follow-up issue.
+- **PASS WITH CHANGES**: Fix blocking issues, proceed.
+- **PASS**: Proceed.
+
+### Phase 5: Ship
+1. Update `CHANGELOG.md` with a summary of the refactoring changes
+2. Commit doc changes
+3. Push the branch: `git push -u origin refactor/<short-description>`
+4. Create a PR via `gh pr create --repo <detected-repo>` with a body covering: summary of what changed, metrics (lines/complexity before/after), test results, API changes or risks
+5. Merge: `gh pr merge --squash --auto` (or leave open if auto-merge can't be enabled)
+
+### Phase 6: Report
 Output:
 - **PR URL**: Link to the merged (or open) PR
 - **Summary**: What changed and why

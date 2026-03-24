@@ -24,5 +24,5 @@ Return:
 - **Key findings**: bulleted list of important facts
 - **Conflicting viewpoints**: where sources disagree and which position is stronger (or "None")
 - **Recommendations**: actionable next steps based on the findings (or "None" if purely informational)
-- **Sources**: URLs for the most authoritative references
 - **Confidence**: HIGH / MEDIUM / LOW with brief justification
+- **Sources**: URLs for the most authoritative references

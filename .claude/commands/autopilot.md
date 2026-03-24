@@ -84,7 +84,7 @@ If tests fail:
 
 ### Phase 8: Finish
 - Close the issue with reference to the PR
-- Delete merged branches (local only)
+- Delete merged branches (local and remote)
 - Print one-line summary: issue number, PR number, what shipped
 
 ### Phase 9: Update Docs

@@ -20,6 +20,8 @@ Start working on issue $ARGUMENTS. Run autonomously through the full plan-critiq
    - Choose the simplest interpretation that satisfies the acceptance criteria
    - Log each assumption as a bullet point for later inclusion in the PR body
 
+4. **Create feature branch**: `git checkout -b issue-<number>-<short-description>` where `<short-description>` is a kebab-case summary derived from the issue title.
+
 ## Phase 2: Plan-Critique Loop
 
 1. **Plan**: Break the issue into concrete steps with TodoWrite. Identify independent tasks for parallel coders.
