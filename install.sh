@@ -195,8 +195,13 @@ if [ "$AUDIT_MODE" = true ]; then
   echo ""
 else
   if [ -d ".hephaestus/.git" ] || grep -q '\.hephaestus' .gitmodules 2>/dev/null; then
-    echo "[skip] .hephaestus submodule already registered — running update"
-    git submodule update --init .hephaestus
+    echo "[skip] .hephaestus submodule already registered"
+    # Only initialize if not yet checked out (e.g., fresh clone without --recurse-submodules).
+    # Do NOT run `git submodule update` here — it resets to the committed pointer,
+    # undoing any `git submodule update --remote` the developer just did.
+    if [ ! -d ".hephaestus/.git" ]; then
+      git submodule update --init .hephaestus
+    fi
   else
     echo "[add]  Adding .hephaestus submodule"
     git submodule add "$HEPHAESTUS_REPO" .hephaestus
