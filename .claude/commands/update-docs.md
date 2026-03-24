@@ -1,5 +1,5 @@
 <!-- requires: none -->
-Update documentation to reflect recent work. Supersedes /document.
+Update documentation to reflect recent work.
 
 Steps:
 
