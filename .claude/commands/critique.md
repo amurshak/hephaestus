@@ -30,7 +30,7 @@ Use when there are code changes to review.
 If this critique is iteration 2+ in a retry loop and the verdict is still FAIL:
 - Clearly distinguish NEW blocking issues from PERSISTENT ones (same issue, different attempt)
 - For persistent blockers: suggest a fundamentally different approach, not just "fix this again"
-- If the same blocker has survived 3 attempts: classify it as either (a) fixable with a different strategy — describe it, or (b) a design-level problem — recommend proceeding with a documented limitation rather than infinite retry
+- If the same blocker has survived multiple attempts (per CLAUDE.md retry limits): classify it as either (a) fixable with a different strategy — describe it, or (b) a design-level problem — recommend proceeding with a documented limitation rather than infinite retry
 
 ---
 

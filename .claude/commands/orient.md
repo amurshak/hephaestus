@@ -14,7 +14,8 @@ Shared agents and slash commands that enable autonomous issue-to-ship workflows.
 - `CHANGELOG.md` — release history
 
 ## Development commands
-No build or test pipeline — all files are markdown. Quality gates: code review only (reviewer subagent).
+- **Tests**: `./tests/run.sh` — integration tests for shell scripts (install, update, uninstall)
+- **Quality gates**: code review (reviewer subagent) + test suite
 
 ## Find work
 ```

@@ -70,7 +70,7 @@ If critique iterations are exhausted:
 If tests fail:
 - Analyze failure root cause before retrying — don't repeat the same approach
 - **Go back to Phase 3** with failure context incorporated into the plan (per CLAUDE.md retry limits)
-- If still failing after 2 cycles:
+- If still failing after exhausting test-fix cycles (per CLAUDE.md retry limits):
   - Commit the current state on a branch
   - Create a draft PR with `[FAILING]` prefix and detailed failure analysis in the body
   - File a follow-up issue with the failure context and what was tried
