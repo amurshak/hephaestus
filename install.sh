@@ -401,12 +401,16 @@ if [ -f CLAUDE.md ]; then
     echo "       npm run lint      # lint"
     echo "       npm run build     # build"
     echo "       \`\`\`"
+    echo ""
+    echo "       Or append the full hephaestus snippet:"
+    echo "       cat .hephaestus/templates/CLAUDE.md.snippet >> CLAUDE.md"
   fi
 else
   echo ""
   echo "[warn] No CLAUDE.md found"
   echo "       Hephaestus reads CLAUDE.md to discover test/lint/build commands."
-  echo "       Create one with a \"Development Commands\" section."
+  echo "       Create one and append the hephaestus snippet:"
+  echo "       cat .hephaestus/templates/CLAUDE.md.snippet >> CLAUDE.md"
 fi
 echo ""
 
