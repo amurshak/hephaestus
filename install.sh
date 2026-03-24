@@ -41,6 +41,48 @@ echo ""
 # ── 1. Submodule ─────────────────────────────────────────────────────────────
 cd "$TARGET"
 
+# Normalize a git URL for comparison: convert SSH colon to slash, strip protocol/host, strip .git
+# Handles https://github.com/user/repo.git, git@github.com:user/repo.git, ssh://git@github.com/user/repo
+# Does NOT handle file:// or bare local paths — those pass through unchanged.
+normalize_url() {
+  echo "$1" \
+    | sed -E 's#^git@([^:]+):#git@\1/#' \
+    | sed -E 's#^(https?://|git@|ssh://)[^/]*/##; s#\.git$##'
+}
+
+HEPHAESTUS_NORMALIZED=$(normalize_url "$HEPHAESTUS_REPO")
+
+# Check if hephaestus is already registered as a submodule at a different path.
+# Accumulates path + url per block, checks when both are set or at next [submodule] header.
+if [ -f .gitmodules ]; then
+  EXISTING_PATH=""
+  EXISTING_URL=""
+
+  check_duplicate() {
+    if [ -n "$EXISTING_PATH" ] && [ -n "$EXISTING_URL" ] && [ "$EXISTING_PATH" != ".hephaestus" ]; then
+      if [ "$(normalize_url "$EXISTING_URL")" = "$HEPHAESTUS_NORMALIZED" ]; then
+        echo "[error] hephaestus already exists at ./$EXISTING_PATH (via .gitmodules)"
+        echo "        → To use it: ./$EXISTING_PATH/install.sh ."
+        echo "        → To relocate: git rm -f \"$EXISTING_PATH\" && re-run install.sh"
+        exit 1
+      fi
+    fi
+  }
+
+  while IFS= read -r line; do
+    case "$line" in
+      "["*"]")
+        check_duplicate
+        EXISTING_PATH=""
+        EXISTING_URL=""
+        ;;
+      *"path = "*)  EXISTING_PATH="$(echo "${line#*path = }" | sed 's/[[:space:]]*$//')" ;;
+      *"url = "*)   EXISTING_URL="$(echo "${line#*url = }" | sed 's/[[:space:]]*$//')" ;;
+    esac
+  done < .gitmodules
+  check_duplicate
+fi
+
 if [ -d ".hephaestus/.git" ] || grep -q '\.hephaestus' .gitmodules 2>/dev/null; then
   echo "[skip] .hephaestus submodule already registered — running update"
   git submodule update --init .hephaestus

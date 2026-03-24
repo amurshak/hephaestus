@@ -28,7 +28,7 @@ Hephaestus is built on three ideas: **simplicity** — one command to deliver, o
 ## Get started
 
 ```bash
-# Install (adds a .hephaestus submodule + symlinks — idempotent, safe to re-run)
+# From the hephaestus repo — this handles the submodule, don't git submodule add manually
 ./install.sh /path/to/your/project
 
 # Deliver an issue

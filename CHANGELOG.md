@@ -4,6 +4,7 @@
 
 ### Changed
 - Complete README rewrite — leads with value proposition and autonomous delivery pipeline instead of install-only content. Covers all 11 commands, 5 agents, 3 Codex skills, headless operation, failure recovery, and quality gates.
+- `install.sh` now detects if hephaestus is already registered as a submodule at a different path (e.g. `hephaestus/` vs `.hephaestus/`) and prints actionable guidance instead of creating a duplicate. Handles HTTPS/SSH URL comparison.
 
 ### Added
 - CLAUDE.md: "Core Principles" section — simplicity, self-improvement, and autonomy as the design axioms that guide every layer of the project.
