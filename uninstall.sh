@@ -6,7 +6,7 @@
 #   ./uninstall.sh <target_project>   (from the hephaestus repo)
 #
 # What it does:
-#   1. Removes symlinks in .claude/agents/, .claude/commands/, .codex/skills/ that point to .hephaestus/
+#   1. Removes symlinks in .claude/agents/, .claude/commands/ that point to .hephaestus/
 #   2. Removes the .hephaestus git submodule
 #   3. Does NOT remove project-specific files (orient.md, hooks, settings, CLAUDE.md)
 #
@@ -30,7 +30,6 @@ fi
 cd "$TARGET"
 
 REMOVED_LINKS=0
-REMOVED_DIRS=0
 
 echo "Uninstalling hephaestus from $TARGET"
 echo ""
@@ -57,20 +56,7 @@ echo "Removing hephaestus symlinks:"
 remove_hephaestus_links ".claude/agents"
 remove_hephaestus_links ".claude/commands"
 
-# Codex skills are directory symlinks (use * without trailing / to catch broken symlinks)
-if [ -d ".codex/skills" ]; then
-  for d in .codex/skills/*; do
-    [ -L "$d" ] || continue
-    local_target=$(readlink "$d")
-    if [[ "$local_target" == *".hephaestus/"* ]]; then
-      rm "$d"
-      echo "  [removed] $d"
-      REMOVED_DIRS=$((REMOVED_DIRS + 1))
-    fi
-  done
-fi
-
-if [ "$REMOVED_LINKS" -eq 0 ] && [ "$REMOVED_DIRS" -eq 0 ]; then
+if [ "$REMOVED_LINKS" -eq 0 ]; then
   echo "  (no hephaestus symlinks found)"
 fi
 echo ""
@@ -93,11 +79,10 @@ echo ""
 
 # ── 3. Summary ───────────────────────────────────────────────────────────────
 
-TOTAL=$((REMOVED_LINKS + REMOVED_DIRS))
 if [ "$SUBMODULE_REMOVED" = true ]; then
-  echo "Done. Removed $TOTAL symlink(s) and the .hephaestus submodule."
+  echo "Done. Removed $REMOVED_LINKS symlink(s) and the .hephaestus submodule."
 else
-  echo "Done. Removed $TOTAL symlink(s). No submodule was present."
+  echo "Done. Removed $REMOVED_LINKS symlink(s). No submodule was present."
 fi
 echo ""
 echo "Kept (project-specific):"

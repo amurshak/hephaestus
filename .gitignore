@@ -1,6 +1,5 @@
 # Project-specific config (each installed project owns its own)
 .claude/settings.local.json
-.codex/settings.local.json
 
 # Runtime files
 .claude/scheduled_tasks.lock

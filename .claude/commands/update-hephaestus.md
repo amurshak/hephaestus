@@ -11,5 +11,5 @@ Update the hephaestus submodule to the latest version.
 6. Print version transition and suggest commit:
    ```
    Updated hephaestus: <old_version> → <new_version>
-   Commit: git add .hephaestus .claude .codex && git commit -m "chore: update hephaestus to <new_version>"
+   Commit: git add .hephaestus .claude && git commit -m "chore: update hephaestus to <new_version>"
    ```

@@ -13,9 +13,8 @@
 #   1. Adds this repo as a git submodule at <target>/.hephaestus
 #   2. Symlinks shared agents into <target>/.claude/agents/
 #   3. Symlinks shared commands into <target>/.claude/commands/
-#   4. Symlinks shared codex skills into <target>/.codex/skills/
-#   5. Scaffolds orient.md template if missing
-#   6. Validates CLAUDE.md has development commands
+#   4. Scaffolds orient.md template if missing
+#   5. Validates CLAUDE.md has development commands
 #
 # Idempotent: safe to re-run. Never overwrites existing files (unless --force).
 
@@ -77,12 +76,11 @@ normalize_url() {
     | sed -E 's#^(https?://|git@|ssh://)[^/]*/##; s#\.git$##'
 }
 
-# Link or audit a single item. Usage: link_item <source_symlink_path> <dest> <name> <category>
+# Link or audit a single item. Usage: link_item <source_symlink_path> <source_abs> <dest> <name>
 # source_symlink_path: relative symlink target (e.g., ../../.hephaestus/.claude/agents/coder.md)
 # source_abs: absolute path to the hephaestus source file (for audit line counts)
 # dest: path in target project
 # name: display name
-# category: agents/commands/skills (for audit table)
 link_item() {
   local symlink_path="$1" source_abs="$2" dest="$3" name="$4"
 
@@ -258,42 +256,7 @@ for f in "$HEPH_SRC"/.claude/commands/*.md; do
 done
 echo ""
 
-# ── 4. Codex skills ──────────────────────────────────────────────────────────
-if [ "$AUDIT_MODE" != true ]; then
-  mkdir -p .codex/skills
-fi
-echo "Codex skills:"
-if [ "$AUDIT_MODE" = true ]; then
-  printf "  %-25s %-12s %s\n" "Name" "Status" "Details"
-  printf "  %-25s %-12s %s\n" "----" "------" "-------"
-fi
-for d in "$HEPH_SRC"/.codex/skills/*/; do
-  [ -d "$d" ] || continue
-  name=$(basename "$d")
-  dest=".codex/skills/$name"
-  if [ -e "$dest" ] || [ -L "$dest" ]; then
-    if [ "$AUDIT_MODE" = true ]; then
-      printf "  %-25s %-12s %s\n" "$name" "conflict" "directory already exists"
-    elif [ "$FORCE_MODE" = true ]; then
-      rm -rf "$dest"
-      ln -s "../../.hephaestus/.codex/skills/$name" "$dest"
-      echo "  [replace] $name"
-    else
-      echo "  [skip] $name (already exists)"
-      echo "         → replace: rm -rf $dest && re-run install.sh"
-    fi
-  else
-    if [ "$AUDIT_MODE" = true ]; then
-      printf "  %-25s %-12s %s\n" "$name" "new" "will symlink"
-    else
-      ln -s "../../.hephaestus/.codex/skills/$name" "$dest"
-      echo "  [link] $name"
-    fi
-  fi
-done
-echo ""
-
-# ── 5. Name collision check ─────────────────────────────────────────────────
+# ── 4. Name collision check ─────────────────────────────────────────────────
 COLLISIONS_FOUND=false
 for target_dir_label in ".claude/commands:commands" ".claude/agents:agents"; do
   target_dir="${target_dir_label%%:*}"
@@ -312,7 +275,7 @@ if [ "$COLLISIONS_FOUND" = true ]; then
   echo ""
 fi
 
-# ── 6. Stale symlink detection ────────────────────────────────────────────────
+# ── 5. Stale symlink detection ────────────────────────────────────────────────
 # Find symlinks pointing into .hephaestus/ whose target no longer exists (e.g., after upstream renames/removals)
 
 detect_stale_links() {
@@ -344,7 +307,6 @@ detect_stale_links() {
 STALE_FOUND=false
 detect_stale_links ".claude/agents"
 detect_stale_links ".claude/commands"
-detect_stale_links ".codex/skills"
 
 if [ "$STALE_FOUND" = true ]; then
   echo ""
@@ -358,7 +320,7 @@ elif [ "$CLEAN_MODE" = true ]; then
   echo ""
 fi
 
-# ── 7. Post-install validation ───────────────────────────────────────────────
+# ── 6. Post-install validation ───────────────────────────────────────────────
 
 if [ "$AUDIT_MODE" = true ]; then
   # In audit mode, just report orient.md and CLAUDE.md status
@@ -419,14 +381,14 @@ else
 fi
 echo ""
 
-# ── 8. Health check ──────────────────────────────────────────────────────────
+# ── 7. Health check ──────────────────────────────────────────────────────────
 echo ""
 echo "Health check:"
 
 # Validate symlinks
 VALID_LINKS=0
 BROKEN_LINKS=0
-for dir in .claude/agents .claude/commands .codex/skills; do
+for dir in .claude/agents .claude/commands; do
   [ -d "$dir" ] || continue
   for f in "$dir"/*; do
     [ -L "$f" ] || continue
@@ -497,8 +459,8 @@ echo ""
 echo "Done. Next steps:"
 echo "  1. Customize .claude/commands/orient.md for your project"
 echo "  2. Add project-specific .claude/hooks/ (lint-on-commit.sh, protect-files.sh)"
-echo "  3. Update AGENTS.md to list newly available skills"
-echo "  4. git add .gitmodules .hephaestus .claude .codex && git commit"
+echo "  3. Update AGENTS.md to list newly available agents"
+echo "  4. git add .gitmodules .hephaestus .claude && git commit"
 echo ""
 echo "Optional — headless autonomous loop (fresh session per run):"
 echo "  nohup ./.hephaestus/loop.sh 30 autopilot.log &"

@@ -6,14 +6,13 @@
 - `refactor.md` now enforces a plan-critique loop before implementation (was "proceed immediately"). Same pattern as start-issue.md.
 - Retry limits centralized in CLAUDE.md "Core Workflow Pattern" section. All commands now reference "per CLAUDE.md retry limits" instead of hardcoding numbers.
 - `finish.md` adds a retrospective step: captures what failed, what fixed it, and reusable insights as a comment on the closed issue. Skipped if pipeline ran cleanly.
-- Codex skills (orchestrator, critic, research-issue) rewritten as concise pointers to Claude commands instead of duplicating workflow logic. 237 → 76 lines total. References/ unchanged.
 - Agents now provide richer output on failure: coder suggests alternatives on BLOCKED, tester reports likely cause and suggested action on FAIL, reviewer classifies blocking issues as fixable vs architectural.
 - CLAUDE.md autonomy conventions: added git conflict detection and recovery pattern (rebase → wind down with `[CONFLICT]` prefix).
 
+### Removed
+- `.codex/skills/` — Codex skill layer removed entirely. No known consumers, historical sync drift with Claude commands (5+ past bugs). Claude commands are the canonical workflow source; maintaining a parallel Codex layer added maintenance cost for no clear benefit. Codex references removed from install.sh, update.sh, uninstall.sh, README, CLAUDE.md, and orient.md.
+
 ### Fixed
-- Orchestrator SKILL.md `update-docs` description was wrong (said orient.md/AGENTS.md, actually syncs CLAUDE.md/CHANGELOG/README)
-- Orchestrator SKILL.md frontmatter only routed 7 of 12 commands for Codex skill matching
-- workflow-map.md was missing 5 commands (refactor, critique, research, create-issue, update-hephaestus)
 - `ship.md` and `refactor.md` ran tests but didn't declare `tester` in `<!-- requires: -->`
 - 4 commands (`finish`, `update-docs`, `update-hephaestus`, `orient`) missing `<!-- requires: -->` declarations entirely — now use `<!-- requires: none -->`
 - `CLAUDE.md.snippet` template and `orient.md` command listing omitted `/update-hephaestus`

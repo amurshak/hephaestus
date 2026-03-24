@@ -16,14 +16,13 @@ These principles apply at every layer: the README's narrative, the agent definit
 
 ## What This Is
 
-Hephaestus is a portable AI workflow toolkit distributed as a git submodule. It provides shared agents, commands, and Codex skills that enable autonomous issue-to-ship development workflows across multiple projects. It is not a standalone application — it is installed into other projects via `./install.sh <target>`.
+Hephaestus is a portable AI workflow toolkit distributed as a git submodule. It provides shared agents and commands that enable autonomous issue-to-ship development workflows across multiple projects. It is not a standalone application — it is installed into other projects via `./install.sh <target>`.
 
 ## Repository Structure
 
 - `.claude/agents/` — Subagent definitions (coder, reviewer, tester, explorer, researcher) with tool permissions and structured output contracts
 - `.claude/commands/` — User-facing slash commands that orchestrate agents through quality-gated workflows
-- `.codex/skills/` — Codex skill equivalents (orchestrator, critic, research-issue) with reference docs in `references/` subdirectories
-- `install.sh` — Adds hephaestus as `.hephaestus` submodule in a target project, creates symlinks into `.claude/` and `.codex/`
+- `install.sh` — Adds hephaestus as `.hephaestus` submodule in a target project, creates symlinks into `.claude/`
 - `update.sh` — Pulls latest hephaestus into an already-installed project
 
 ## Core Workflow Pattern
@@ -50,7 +49,7 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 - **Repo detection** is done via `git remote get-url origin` — commands never hardcode repo references.
 - **orient.md is project-specific** — it is excluded from symlinking. If the target project doesn't have one, install.sh scaffolds a template from `templates/orient.md` that must be customized.
 - **install.sh is idempotent** — it never overwrites existing files; re-running is safe.
-- **Symlinks are relative** — agents link as `../../.hephaestus/.claude/agents/<name>`, commands as `../../.hephaestus/.claude/commands/<name>`, skills as `../../.hephaestus/.codex/skills/<name>`.
+- **Symlinks are relative** — agents link as `../../.hephaestus/.claude/agents/<name>`, commands as `../../.hephaestus/.claude/commands/<name>`.
 
 ## Agent Conventions
 
@@ -95,7 +94,7 @@ Natural stopping points (in order of preference):
 
 ## Improving the Workflow
 
-When the user gives feedback about how commands, agents, or workflows should behave, consider whether the improvement applies broadly across projects. If it does, persist it in the repo (CLAUDE.md, the relevant command/agent file, or Codex skill) — not just in local memory. Local memory is per-machine; repo changes propagate to every project using hephaestus.
+When the user gives feedback about how commands, agents, or workflows should behave, consider whether the improvement applies broadly across projects. If it does, persist it in the repo (CLAUDE.md or the relevant command/agent file) — not just in local memory. Local memory is per-machine; repo changes propagate to every project using hephaestus.
 
 ## Editing Guidelines
 
@@ -104,7 +103,7 @@ When modifying agents or commands:
 - Preserve the `$ARGUMENTS` placeholder in commands — it receives user input at invocation
 - Retry limits are defined in "Core Workflow Pattern" above — commands must reference them, not hardcode
 - Commands that delegate to subagents should specify which agent type to use and what structured output to expect
-- Claude commands are the canonical workflow source. Codex skills point to them — don't duplicate workflow logic in SKILL.md files
+- Claude commands are the canonical workflow source
 
 ## What Target Projects Must Provide
 
@@ -112,5 +111,5 @@ These are NOT in this repo — each installed project owns them:
 - `.claude/commands/orient.md` — project-specific context (scaffolded by install.sh, must be customized)
 - `.claude/hooks/` — lint/test hooks for the project's tech stack
 - `CLAUDE.md` with a "Development Commands" section (test, lint, build commands)
-- `AGENTS.md` — index of available local and shared skills
-- `.codex/settings.local.json` and `.claude/settings.local.json` — project-specific config
+- `AGENTS.md` — index of available local and shared agents
+- `.claude/settings.local.json` — project-specific config
