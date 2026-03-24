@@ -13,6 +13,7 @@
 - `.codex/skills/` — Codex skill layer removed entirely. No known consumers, historical sync drift with Claude commands (5+ past bugs). Claude commands are the canonical workflow source; maintaining a parallel Codex layer added maintenance cost for no clear benefit. Codex references removed from install.sh, update.sh, uninstall.sh, README, CLAUDE.md, and orient.md.
 
 ### Fixed
+- `loop.sh` lockfile used `basename "$(pwd)"`, causing collisions between identically-named directories under different parents. Now hashes the full absolute path via `shasum`/`sha1sum`.
 - `update-hephaestus.md` used `ORIG_HEAD` to show post-update changelog, but `git submodule update --remote` does not set `ORIG_HEAD`. Now captures HEAD before/after the update (matching `update.sh` pattern).
 - `orient.md` said "No build or test pipeline" despite `./tests/run.sh` existing with 113 assertions. Updated Development Commands section.
 - CHANGELOG 1.0.0 entry referenced "11 commands, 3 Codex skills" — corrected to "12 commands" (Codex removed).
@@ -26,6 +27,7 @@
 
 ### Added
 - Integration test suite for `install.sh`, `update.sh`, and `uninstall.sh` — 113 assertions across 28 test cases. Run via `./tests/run.sh`. Tests use isolated temp git repos (no network required).
+- Integration tests for `loop.sh` — 18 assertions covering input validation, `claude`-not-found guard, lockfile lifecycle (creation, PID, cleanup, concurrency), hash uniqueness, and default arguments.
 - Commands now declare agent dependencies via `<!-- requires: agent1, agent2 -->` on line 1. install.sh validates that required agents are installed and warns about missing dependencies.
 - README: "Forking and customization" section — which files are safe to modify, how to pull upstream updates.
 
