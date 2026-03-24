@@ -71,6 +71,8 @@ Commands are designed to run without human intervention. The escalation hierarch
 
 **Ambiguity resolution**: When requirements are unclear, infer intent from codebase context and existing patterns. Choose the simplest interpretation. Document all assumptions in the PR body under "Assumptions Made."
 
+**Git conflicts**: Before implementation, check for conflicts with the base branch. If conflicts exist, attempt rebase. If rebase fails, wind down cleanly — commit progress, create a draft PR with `[CONFLICT]` prefix, file a follow-up issue with the conflict details.
+
 **Retry exhaustion**: When retry limits are reached, do NOT stop and ask. Instead: commit progress on a branch, create a draft PR with a descriptive prefix (`[WIP]`, `[BLOCKED]`, `[FAILING]`), file a follow-up issue with context, and wind down.
 
 **Transition to next phase**: When work is complete and ready to ship, invoke `/ship` directly (or present it as a concrete option). Do not ask vague questions like "Want me to commit and ship this?" — the workflow has explicit commands for every transition. Use them.
