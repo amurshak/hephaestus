@@ -2,7 +2,7 @@
 
 **The machine that builds the machine.**
 
-A git submodule that gives [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://openai.com/index/introducing-codex/) a complete delivery workflow — from GitHub issue to merged PR, hands-off. It plans its own work, critiques its own plans, writes code in parallel, reviews what it wrote, runs your tests, and ships. When things break, it fixes them or winds down cleanly. When there's nothing to do, it finds work. Install it once, use it across every project.
+A git submodule that gives [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://openai.com/index/introducing-codex/) a complete delivery workflow — from GitHub issue to merged PR, hands-off. It plans its own work, critiques its own plans, writes code in parallel, reviews what it wrote, runs your tests, and ships. When things break, it retries with a different approach or winds down cleanly. When there's nothing to do, it finds work. When you improve the workflow, those improvements propagate to every project. Install it once, share it everywhere.
 
 ```
 /autopilot
@@ -19,9 +19,9 @@ That's the whole thing. One command. It figures out the rest.
 
 ## Why
 
-AI coding tools are interactive by default. You prompt, it asks, you approve, it writes, you check, repeat. That's fine for exploring, but it doesn't ship.
+AI coding tools are interactive by default. You prompt, it asks, you approve, it writes, you check, repeat. That works for exploring, but it doesn't ship.
 
-Hephaestus is the non-interactive mode. Point it at an issue, walk away, come back to a merged PR. Same workflow everywhere because it reads your project's `CLAUDE.md` to discover what to test, lint, and build — no per-project configuration.
+Hephaestus is built on three ideas: **simplicity** — one command to deliver, one file to configure; **self-improvement** — it critiques its own plans, reviews its own code, finds its own work when idle, and evolves as you use it; **autonomy** — it runs without intervention, recovers from failure, and only stops for irreversible risk. The result is a workflow you point at an issue and walk away from.
 
 ---
 
