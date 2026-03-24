@@ -6,6 +6,7 @@
 - Complete README rewrite — leads with value proposition and autonomous delivery pipeline instead of install-only content. Covers all 11 commands, 5 agents, 3 Codex skills, headless operation, failure recovery, and quality gates.
 
 ### Added
+- CLAUDE.md: "Core Principles" section — simplicity, self-improvement, and autonomy as the design axioms that guide every layer of the project.
 - CLAUDE.md: "Transition to next phase" convention — invoke `/ship` (or the relevant command) directly when work is ready, don't ask vague questions.
 - CLAUDE.md: "Improving the Workflow" section — workflow feedback that applies broadly should be persisted in the repo, not just local memory.
 

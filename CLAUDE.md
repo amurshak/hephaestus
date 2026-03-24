@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Core Principles
+
+Three ideas shape every design decision in hephaestus:
+
+1. **Simplicity** — One command to deliver an issue. One file (`CLAUDE.md`) to configure quality gates. One submodule to share across projects. Complexity is a bug. If something requires explanation, it should be made simpler instead.
+
+2. **Self-improvement** — The system critiques its own plans before implementing. It reviews its own code before shipping. When there's no work, it finds work. When users improve the workflow, those improvements propagate to every project. The toolkit gets better by using it.
+
+3. **Autonomy** — Commands run without human intervention. They resolve ambiguity, recover from failures, and wind down cleanly. Stopping to ask is a last resort reserved for irreversible risk. Every other situation has a default action.
+
+These principles apply at every layer: the README's narrative, the agent definitions, the command workflows, the critique system, the autopilot pipeline, and the failure handling. When in doubt about a design choice, pick the option that is simpler, more self-improving, or more autonomous.
+
 ## What This Is
 
 Hephaestus is a portable AI workflow toolkit distributed as a git submodule. It provides shared agents, commands, and Codex skills that enable autonomous issue-to-ship development workflows across multiple projects. It is not a standalone application — it is installed into other projects via `./install.sh <target>`.
