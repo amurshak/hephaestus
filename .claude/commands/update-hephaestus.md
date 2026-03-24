@@ -1,3 +1,4 @@
+<!-- requires: none -->
 Update the hephaestus submodule to the latest version.
 
 ## Steps

@@ -10,6 +10,14 @@
 - Agents now provide richer output on failure: coder suggests alternatives on BLOCKED, tester reports likely cause and suggested action on FAIL, reviewer classifies blocking issues as fixable vs architectural.
 - CLAUDE.md autonomy conventions: added git conflict detection and recovery pattern (rebase → wind down with `[CONFLICT]` prefix).
 
+### Fixed
+- Orchestrator SKILL.md `update-docs` description was wrong (said orient.md/AGENTS.md, actually syncs CLAUDE.md/CHANGELOG/README)
+- Orchestrator SKILL.md frontmatter only routed 7 of 12 commands for Codex skill matching
+- workflow-map.md was missing 5 commands (refactor, critique, research, create-issue, update-hephaestus)
+- `ship.md` and `refactor.md` ran tests but didn't declare `tester` in `<!-- requires: -->`
+- 4 commands (`finish`, `update-docs`, `update-hephaestus`, `orient`) missing `<!-- requires: -->` declarations entirely — now use `<!-- requires: none -->`
+- `CLAUDE.md.snippet` template and `orient.md` command listing omitted `/update-hephaestus`
+
 ### Added
 - Commands now declare agent dependencies via `<!-- requires: agent1, agent2 -->` on line 1. install.sh validates that required agents are installed and warns about missing dependencies.
 - README: "Forking and customization" section — which files are safe to modify, how to pull upstream updates.

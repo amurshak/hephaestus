@@ -1,4 +1,4 @@
-<!-- requires: reviewer -->
+<!-- requires: reviewer, tester -->
 Prepare, validate, and ship the current work. Issue number to close (optional): $ARGUMENTS
 
 PRs must be **merge-ready** — all gates pass before creation, auto-merge after.

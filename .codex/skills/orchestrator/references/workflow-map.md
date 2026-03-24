@@ -9,6 +9,11 @@
 - `ship`: critique gate -> quality gates -> changelog -> PR create -> auto-merge. Creates draft PRs with descriptive prefixes when gates can't fully pass.
 - `finish`: verify merge -> close issue -> branch cleanup -> file follow-up issues -> docs update -> session summary.
 - `update-docs`: refresh project guidance and changelog after shipped work.
+- `refactor`: analysis -> plan/critique loop -> implement with parallel coders -> review gate -> ship. Enforces characterization tests before refactoring untested code.
+- `critique`: auto-detects mode — Code Critique (delegates to reviewer subagent) for uncommitted changes, General Critique (SOUND/NEEDS REFINEMENT/RETHINK) for strategy/plans. Can run both simultaneously.
+- `research`: break question into facets, spawn parallel researcher subagents, synthesize findings with confidence rating and source URLs.
+- `create-issue`: explore relevant code via explorer subagent, draft issue with acceptance criteria and technical context, apply existing repo labels.
+- `update-hephaestus`: pull latest submodule, re-run install.sh --clean, show what changed.
 
 ## Retry Limits
 
