@@ -140,6 +140,30 @@ To remove hephaestus later: `.hephaestus/uninstall.sh` removes only hephaestus s
 
 ---
 
+## Forking and customization
+
+Fork hephaestus to customize commands for your org while still pulling upstream updates.
+
+**Safe to modify in a fork** — these won't cause merge conflicts with upstream:
+- `templates/` — customize the orient.md and CLAUDE.md scaffolds for your org's conventions
+- `VERSION` — your fork's version track
+
+**Will conflict if modified** — these are actively developed upstream:
+- `.claude/commands/` and `.claude/agents/` — the core workflow files
+- `install.sh`, `update.sh`, `uninstall.sh` — the install tooling
+
+**Pulling upstream updates into a fork:**
+
+```bash
+git remote add upstream https://github.com/amurshak/hephaestus.git
+git fetch upstream
+git merge upstream/master
+```
+
+install.sh works with any submodule URL — forks install identically to upstream.
+
+---
+
 ## Your project's setup
 
 Hephaestus reads your project. The only thing that matters is your `CLAUDE.md` — specifically the "Development Commands" section. That's where it learns what to test, lint, and build. Keep it current and everything works.
