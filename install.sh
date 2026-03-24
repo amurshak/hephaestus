@@ -414,6 +414,54 @@ else
 fi
 echo ""
 
+# ── 8. Health check ──────────────────────────────────────────────────────────
+echo ""
+echo "Health check:"
+
+# Validate symlinks
+VALID_LINKS=0
+BROKEN_LINKS=0
+for dir in .claude/agents .claude/commands .codex/skills; do
+  [ -d "$dir" ] || continue
+  for f in "$dir"/*; do
+    [ -L "$f" ] || continue
+    link_target=$(readlink "$f")
+    [[ "$link_target" == *".hephaestus/"* ]] || continue
+    if [ -e "$f" ]; then
+      VALID_LINKS=$((VALID_LINKS + 1))
+    else
+      BROKEN_LINKS=$((BROKEN_LINKS + 1))
+    fi
+  done
+done
+if [ "$BROKEN_LINKS" -eq 0 ]; then
+  echo "  ✓ $VALID_LINKS hephaestus symlinks valid"
+else
+  echo "  ✗ $BROKEN_LINKS broken symlink(s) — run with --clean to fix"
+fi
+
+# Check gh CLI
+if command -v gh >/dev/null 2>&1; then
+  echo "  ✓ gh CLI available"
+else
+  echo "  ✗ gh CLI not found — hephaestus commands use gh for issues and PRs"
+fi
+
+# orient.md
+if [ -e .claude/commands/orient.md ]; then
+  echo "  ✓ orient.md present"
+else
+  echo "  ✗ orient.md missing"
+fi
+
+# CLAUDE.md dev commands (already checked above, just summarize)
+if [ -f CLAUDE.md ] && grep -qiE '^#{2,} .*(development commands|test(s|ing)?|lint(ing)?|build)' CLAUDE.md; then
+  echo "  ✓ CLAUDE.md has development commands"
+else
+  echo "  ✗ CLAUDE.md missing development commands"
+fi
+echo ""
+
 echo "Done. Next steps:"
 echo "  1. Customize .claude/commands/orient.md for your project"
 echo "  2. Add project-specific .claude/hooks/ (lint-on-commit.sh, protect-files.sh)"
