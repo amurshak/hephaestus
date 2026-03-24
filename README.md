@@ -19,9 +19,7 @@ That's the whole thing. One command. It figures out the rest.
 
 ## Why
 
-AI coding tools are interactive by default. You prompt, it asks, you approve, it writes, you check, repeat. That works for exploring, but it doesn't ship.
-
-Hephaestus is built on three ideas: **simplicity** — one command to deliver, one file to configure; **self-improvement** — it critiques its own plans, reviews its own code, finds its own work when idle, and evolves as you use it; **autonomy** — it runs without intervention, recovers from failure, and only stops for irreversible risk. The result is a workflow you point at an issue and walk away from.
+Hephaestus is built on three ideas: **simplicity** — one command to deliver, one file to configure; **self-improvement** — it critiques its own plans, reviews its own code, finds its own work when idle, and evolves as you use it; **autonomy** — it runs without intervention, recovers from failure, and only stops for irreversible risk. Point it at an issue and walk away.
 
 ---
 
