@@ -8,6 +8,9 @@
 - README: added "Adopting in an existing project" section with audit workflow, migration pattern (project logic → CLAUDE.md), and uninstall guidance.
 
 ### Added
+- `/update-hephaestus` command — pulls latest submodule, re-runs install with `--clean`, shows changelog diff and version transition.
+- `VERSION` file for version tracking.
+- `update.sh` now shows version transition and changelog diff between old and new HEAD.
 - `uninstall.sh` — cleanly removes hephaestus symlinks and submodule from a target project. Only removes symlinks pointing to `.hephaestus/`, preserves project-specific files. Idempotent.
 - `install.sh --audit` flag: prints a conflict table showing what would change without modifying the filesystem.
 - `install.sh --force` flag: replaces existing files with hephaestus symlinks.
