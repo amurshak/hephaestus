@@ -4,19 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Core Principles
 
-Three ideas shape every design decision in hephaestus:
+Three ideas shape every design decision:
 
-1. **Simplicity** — One command to deliver an issue. One file (`CLAUDE.md`) to configure quality gates. One submodule to share across projects. Complexity is a bug. If something requires explanation, it should be made simpler instead.
+1. **Simplicity** — One command to deliver an issue. One file to configure quality gates. One submodule to share across projects. Complexity is a bug.
 
-2. **Self-improvement** — The system critiques its own plans before implementing. It reviews its own code before shipping. When there's no work, it finds work. When users improve the workflow, those improvements propagate to every project. The toolkit gets better by using it.
+2. **Self-improvement** — The system critiques its own plans before implementing, reviews its own code before shipping, and finds work when idle. Improvements propagate to every project via the submodule.
 
-3. **Autonomy** — Commands run without human intervention. They resolve ambiguity, recover from failures, and wind down cleanly. Stopping to ask is a last resort reserved for irreversible risk. Every other situation has a default action.
+3. **Autonomy** — Commands run without human intervention. They resolve ambiguity, recover from failures, and wind down cleanly. Stopping to ask is a last resort reserved for irreversible risk.
 
-These principles apply at every layer: the README's narrative, the agent definitions, the command workflows, the critique system, the autopilot pipeline, and the failure handling. When in doubt about a design choice, pick the option that is simpler, more self-improving, or more autonomous.
+When in doubt about a design choice, pick the option that is simpler, more self-improving, or more autonomous.
 
 ## What This Is
 
-Hephaestus is a portable AI workflow toolkit distributed as a git submodule. It provides shared agents and commands that enable autonomous issue-to-ship development workflows across multiple projects. It is not a standalone application — it is installed into other projects via `./install.sh <target>`.
+Hephaestus is an implementation of a generic software development workflow pattern in Claude Code. It encodes the observation that all delivery follows the same loop — orient, plan, critique, implement, review, test, ship, finish — and makes that loop executable, autonomous, and self-correcting. Distributed as a git submodule containing prose instructions that cause Claude Code to behave as a structured delivery system. Installed into other projects via `./install.sh <target>`.
 
 ## Repository Structure
 
@@ -27,14 +27,16 @@ Hephaestus is a portable AI workflow toolkit distributed as a git submodule. It 
 
 ## Core Workflow Pattern
 
-All delivery commands enforce a deterministic loop:
+All delivery commands enforce a deterministic eight-phase loop:
 
-1. **Plan** — Break work into steps via TodoWrite
-2. **Critique** — Adversarial evaluation (max 3 iterations until SOUND/PASS)
-3. **Implement** — Parallel coder subagents for independent tasks, sequential for dependencies
-4. **Test** — Quality gates per the target project's CLAUDE.md (test, lint, build commands)
-5. **Ship** — PR with quality-gate checklist, squash auto-merge
-6. **Finish** — Close issue, delete merged branches, update docs
+1. **Orient** — Read the issue, explore relevant code, understand what's needed
+2. **Plan** — Break work into steps via TodoWrite, identify parallelizable tasks
+3. **Critique** — Adversarial evaluation (max 3 iterations until SOUND/PASS)
+4. **Implement** — Parallel coder subagents in worktrees for independent tasks, sequential for dependencies
+5. **Review** — Pre-ship code critique (max 3 iterations)
+6. **Test** — Quality gates per the target project's CLAUDE.md (test, lint, build commands)
+7. **Ship** — PR with quality-gate checklist, squash auto-merge
+8. **Finish** — Close issue, delete merged branches, file follow-ups, update docs
 
 **Retry limits** (all commands reference these — do not hardcode separately):
 - Plan-critique loop: max **3** iterations
@@ -53,8 +55,9 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 
 ## Agent Conventions
 
-- Agents declare their allowed tools and isolation mode in YAML frontmatter
-- Coder agents run in `isolation: worktree` to enable safe parallel edits
+Five agent roles, stratified by least-privilege tool access. Coder is the only agent that can modify files (runs in `isolation: worktree` for safe parallel edits). Reviewer, tester, and explorer are read-only. Researcher has web access but no shell.
+
+- Agents declare allowed tools and isolation mode in YAML frontmatter
 - All agents return structured output (files changed, status, verdict) — never raw verbose logs
 - Reviewer verdicts: PASS / PASS WITH CHANGES / FAIL
 - General critique verdicts: SOUND / NEEDS REFINEMENT / RETHINK
