@@ -2,10 +2,10 @@
 # Orient — Hephaestus
 
 ## Repo
-`amurshak/hephaestus` — portable AI workflow toolkit distributed as a git submodule.
+`amurshak/hephaestus` — a generic software development workflow pattern, implemented in Claude Code.
 
 ## What it is
-Shared agents and slash commands that enable autonomous issue-to-ship workflows. Installed into other projects via `./install.sh <target>`. Not a standalone app.
+Eight-phase delivery loop (orient → plan → critique → implement → review → test → ship → finish) encoded as slash commands and agent definitions. Distributed as a git submodule installed into other projects via `./install.sh <target>`.
 
 ## Structure
 - `.claude/agents/` — coder, reviewer, tester, explorer, researcher

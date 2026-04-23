@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Changed
+- Docs reframed around the generic-workflow-pattern thesis: README leads with the 8-phase delivery loop as the core idea, adds sections for design choices, the critique system, OODA-loop correspondence, and memory-through-external-systems. CLAUDE.md principles tightened; orient.md description matches the new framing.
 - `refactor.md` now enforces a plan-critique loop before implementation (was "proceed immediately"). Same pattern as start-issue.md.
 - Retry limits centralized in CLAUDE.md "Core Workflow Pattern" section. All commands now reference "per CLAUDE.md retry limits" instead of hardcoding numbers.
 - `finish.md` adds a retrospective step: captures what failed, what fixed it, and reusable insights as a comment on the closed issue. Skipped if pipeline ran cleanly.
