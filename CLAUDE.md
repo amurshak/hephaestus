@@ -110,6 +110,12 @@ When modifying agents or commands:
 - Claude commands are the canonical workflow source
 - **No bloat**: Replacements must be at least as concise as the original. If the new text is longer without adding information, tighten it. Bloat and drift are the enemies of excellence.
 
+**Command headers** — every command declares its dependencies on line 1+:
+- `<!-- requires: agent1, agent2 -->` lists subagents the command launches directly. Use `<!-- requires: none -->` if it launches none. `install.sh` validates these at install time.
+- `<!-- chains: /cmd-a, /cmd-b -->` lists other commands this one invokes. Each command is the single source of truth for its concern; composite commands chain rather than inline. When you change a chained command's interface (added arg, removed step, etc.), update every caller declared in its `chains:` field.
+
+Composition rule: if you find yourself copying procedure from `/foo` into `/bar`, replace with a chain instead. Duplicate procedures drift.
+
 ## What Target Projects Must Provide
 
 These are NOT in this repo — each installed project owns them:

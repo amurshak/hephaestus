@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Changed
+- **Command composition refactor** (#80): commands are now single sources of truth for their concern, with composite commands chaining rather than inlining. `/autopilot` reduced from 9 inline phases to 4 (Phase 0 self-triage, Phase 1 orient, Phase 2 → `/start-issue`, Phase 3 → `/ship`, Phase 4 → `/finish`). `/start-issue` and `/refactor` drop their pre-ship critique (`/ship` owns that gate). `/ship`'s pre-push critique routes through `/critique`. `/finish` chains `/update-docs` as Step 7. New `<!-- chains: ... -->` header declares command-on-command composition; CLAUDE.md "Editing Guidelines" documents the convention. Net diff: −43 lines across 5 command files. Eliminates duplicate reviewer runs (autopilot pre-ship + ship pre-push were running the same critique twice). Follow-ups: #83 (verify autopilot end-to-end), #84 (README Composition section).
 - Docs reframed around the generic-workflow-pattern thesis: README leads with the 8-phase delivery loop as the core idea, adds sections for design choices, the critique system, OODA-loop correspondence, and memory-through-external-systems. CLAUDE.md principles tightened; orient.md description matches the new framing.
 - `refactor.md` now enforces a plan-critique loop before implementation (was "proceed immediately"). Same pattern as start-issue.md.
 - Retry limits centralized in CLAUDE.md "Core Workflow Pattern" section. All commands now reference "per CLAUDE.md retry limits" instead of hardcoding numbers.
