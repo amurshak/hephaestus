@@ -238,8 +238,9 @@ Fork hephaestus to customize commands for your org while still pulling upstream 
 - `VERSION` — your fork's version track
 
 **Will conflict if modified** — actively developed upstream:
-- `.claude/commands/` and `.claude/agents/` — the core workflow files
+- `commands/` and `agents/` — the core workflow files
 - `install.sh`, `update.sh`, `uninstall.sh` — the install tooling
+- `.claude-plugin/plugin.json` — the plugin manifest
 
 ```bash
 git remote add upstream https://github.com/amurshak/hephaestus.git

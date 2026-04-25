@@ -71,7 +71,7 @@ TARGET=$(create_target)
 bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 
 # Create a stale symlink
-ln -s "../../.hephaestus/.claude/agents/gone.md" "$TARGET/.claude/agents/gone.md"
+ln -s "../../.hephaestus/agents/gone.md" "$TARGET/.claude/agents/gone.md"
 
 output=$(cd "$TARGET" && bash .hephaestus/update.sh 2>&1)
 

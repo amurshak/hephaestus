@@ -1,0 +1,10 @@
+{
+  "name": "hephaestus",
+  "description": "Generic software development workflow pattern — orient → plan → critique → implement → review → test → ship → finish, with bounded retries at every gate. One command (/autopilot), eight phases, five subagents.",
+  "author": {
+    "name": "Alex Murshak"
+  },
+  "homepage": "https://github.com/amurshak/hephaestus",
+  "repository": "https://github.com/amurshak/hephaestus",
+  "license": "MIT"
+}
