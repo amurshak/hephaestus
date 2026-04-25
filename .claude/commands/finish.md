@@ -41,7 +41,7 @@ Steps:
    - Add as a comment on the closed issue: `gh issue comment <#> --repo <detected-repo> --body "<retrospective>"`
    - Keep it short — 2-4 sentences. Skip if the pipeline ran cleanly with no failures.
 
-7. **Update docs** — sync CLAUDE.md, CHANGELOG, and README with what just shipped: run `/update-docs`. Mandatory, not optional — every merge potentially shifts the docs surface, and skipping lets drift accumulate.
+7. **Update docs** — sync CLAUDE.md, CHANGELOG, and README with what just shipped: run `/update-docs`. Default: run it. Skip only when the PR commit *already* updated CHANGELOG plus any other docs files the change required (CLAUDE.md for new patterns, README for public-facing changes). Logged skips are fine; silent skips let drift accumulate — note `skipped /update-docs: docs updated in PR #N` in the session summary.
 
 8. **Print session summary** (CHANGELOG is updated by `/ship` and re-checked by `/update-docs` — do not update it again here):
    - One-line: what shipped (feature/fix name, PR number, issue number)
