@@ -17,6 +17,12 @@ Eight-phase delivery loop (orient → plan → critique → implement → review
 - **Tests**: `./tests/run.sh` — integration tests for shell scripts (install, update, uninstall)
 - **Quality gates**: code review (reviewer subagent) + test suite
 
+## Sync state
+First, sync with remote and prune stale tracking refs (branches GitHub deleted on merge but git still has):
+```
+git fetch --prune origin
+```
+
 ## Find work
 ```
 gh issue list --state open --repo amurshak/hephaestus
