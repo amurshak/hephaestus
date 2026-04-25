@@ -1,4 +1,5 @@
-<!-- requires: reviewer, tester -->
+<!-- requires: tester -->
+<!-- chains: /critique -->
 Prepare, validate, and ship the current work. Issue number to close (optional): $ARGUMENTS
 
 PRs must be **merge-ready** — all gates pass before creation, auto-merge after.
@@ -8,9 +9,11 @@ PRs must be **merge-ready** — all gates pass before creation, auto-merge after
 ### 1. Detect repo
 Run `git remote get-url origin` to identify the target repo.
 
-### 2. Pre-push critique gate
-Launch reviewer subagent for code critique. This is the last quality check before the code goes out.
-- **FAIL**: Fix blocking issues, re-critique (per CLAUDE.md retry limits). If still FAIL:
+### 2. Pre-push critique gate → `/critique`
+
+Run `/critique` (Code Critique mode auto-detects on uncommitted/staged changes; the reviewer subagent absorbs the verbose diff context). This is the last quality check before the code goes out.
+
+- **FAIL**: Fix blocking issues, re-run `/critique` (per CLAUDE.md retry limits). If still FAIL:
   - Separate fixable issues from fundamental design problems
   - If fixable: attempt one more targeted fix cycle
   - If fundamental: create a draft PR (`--draft`) with `[BLOCKED]` prefix, list unresolved issues in the body, file a follow-up issue, and proceed to wind-down

@@ -1,4 +1,5 @@
-<!-- requires: coder, reviewer, tester, explorer -->
+<!-- requires: explorer -->
+<!-- chains: /start-issue, /ship, /finish -->
 Run the full autonomous pipeline for issue $ARGUMENTS. No human intervention required.
 
 If no issue number is provided, pick the highest-priority open issue from `gh issue list --state open --repo <detected-repo>` (prefer bugs over enhancements, older over newer). If no open issues exist, run **Self-Triage** (Phase 0) to generate work.
@@ -13,6 +14,8 @@ If no issue number is provided, pick the highest-priority open issue from `gh is
 ---
 
 ## Pipeline
+
+`/autopilot` is a thin orchestrator. It chains the dedicated commands (`/start-issue`, `/ship`, `/finish`) end-to-end and adds the pre-flight orient + self-triage that those individual commands don't do. Each chained command preserves its own retry semantics, gates, and wind-down behavior.
 
 ### Phase 0: Self-Triage (only when no issues exist)
 
@@ -33,65 +36,23 @@ If no open issues are found:
   - Stash changes: `git stash push -m "autopilot-pre-<issue-number>"`
   - Continue (do NOT stop to ask)
 
-### Phase 2: Start
-- Read the issue (`gh issue view`)
-- Explore relevant codebase (explorer subagent(s) in parallel)
-- Create feature branch: `git checkout -b issue-<number>-<short-description>`
+### Phase 2: Start the issue → `/start-issue <#>`
 
-### Phase 3: Plan-Critique Loop
-1. **Plan**: Break the issue into concrete implementation steps with TodoWrite. Identify independent tasks for parallel coders.
-2. **Critique the plan** (general critique mode): Evaluate logic, assumptions, completeness, trade-offs, risks.
-3. **Refine**: Update the plan to address criticisms.
-4. **Re-critique**: Evaluate the refined plan.
-5. **Repeat** until verdict reaches **SOUND** (per CLAUDE.md retry limits).
+Run `/start-issue <#>`. It handles plan-critique loop, parallel coder subagents, implementation, and the test gate, and ends ready for `/ship`.
 
-If critique iterations are exhausted:
-- **NEEDS REFINEMENT**: Proceed with the best version. Document the unresolved concerns as "Known Limitations" in the PR body.
-- **RETHINK**: The plan has fundamental issues. Commit any useful exploration as a draft PR with `[WIP]` prefix, file a follow-up issue describing the conceptual blockers, then wind down cleanly (see Session Wind-Down).
+If `/start-issue` winds down early (`[WIP]`, `[BLOCKED]`, `[FAILING]` prefix on the draft PR it created), respect that wind-down — the breadcrumbs are filed; do not try to push past them.
 
-### Phase 4: Implement
-- Execute the plan using parallel coder subagents for independent tasks
-- Sequential implementation for dependent changes
-- Commit each logical unit of work separately
-- If a coder subagent is blocked: attempt a different approach. If still blocked after one retry, skip that task, log it as a TODO comment in the code, and continue with remaining tasks.
+### Phase 3: Ship → `/ship <#>`
 
-### Phase 5: Pre-ship Critique Gate
-- Launch reviewer subagent(s) for code critique
-- **FAIL**: Fix blocking issues, re-critique (per CLAUDE.md retry limits). If still FAIL:
-  - Determine if blockers are fixable with a different approach — try once
-  - If still blocked: commit progress, create a draft PR with `[BLOCKED]` prefix listing the unresolved issues, file a follow-up issue, wind down
-- **PASS WITH CHANGES**: Fix blocking issues, proceed
-- **PASS**: Proceed
+Run `/ship <#>`. It runs the pre-push critique gate, runs all quality gates in parallel, updates CHANGELOG, pushes the branch, creates the PR, and auto-merges.
 
-### Phase 6: Test
-- Launch tester subagent(s) for all quality gates per project CLAUDE.md
-- Verify acceptance criteria from the issue
+If `/ship` cannot auto-merge (branch protection, required reviewers): the PR is left open, the work is preserved, and `/ship` notes that manual merge is needed. Skip Phase 4 in that case — `/finish` requires a merged PR.
 
-If tests fail:
-- Analyze failure root cause before retrying — don't repeat the same approach
-- **Go back to Phase 3** with failure context incorporated into the plan (per CLAUDE.md retry limits)
-- If still failing after all retries (per CLAUDE.md):
-  - Commit the current state on a branch
-  - Create a draft PR with `[FAILING]` prefix and detailed failure analysis in the body
-  - File a follow-up issue with the failure context and what was tried
-  - Wind down cleanly
+### Phase 4: Finish → `/finish <#>`
 
-### Phase 7: Ship
-- Update CHANGELOG.md
-- Commit docs
-- Push and create merge-ready PR (`gh pr create`)
-- Merge the PR (`gh pr merge --squash --auto`)
-- If auto-merge fails (e.g., branch protection, required reviews): leave the PR open and note in summary that manual merge is needed. Do NOT retry or force-push.
+Run `/finish <#>`. It closes the issue, deletes branches, files follow-ups, runs `/update-docs` to sync CLAUDE.md / CHANGELOG / README, captures a retrospective, and prints the session summary.
 
-### Phase 8: Finish
-- Close the issue with reference to the PR
-- Delete merged branches (local and remote)
-- Print one-line summary: issue number, PR number, what shipped
-
-### Phase 9: Update Docs
-- Update CLAUDE.md if architecture changed
-- Commit doc updates
-- If there are additional open issues suitable for immediate work and the session is still productive, loop back to Phase 1 with the next issue. Otherwise, wind down.
+If there are additional open issues suitable for immediate work and the session is still productive, loop back to Phase 1 with the next issue. Otherwise, wind down.
 
 ---
 

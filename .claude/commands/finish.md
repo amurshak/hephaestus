@@ -1,4 +1,5 @@
 <!-- requires: none -->
+<!-- chains: /update-docs -->
 Finish and close issue $ARGUMENTS. Run autonomously.
 
 Steps:
@@ -35,7 +36,9 @@ Steps:
    - Add as a comment on the closed issue: `gh issue comment <#> --repo <detected-repo> --body "<retrospective>"`
    - Keep it short — 2-4 sentences. Skip if the pipeline ran cleanly with no failures.
 
-7. **Print session summary** (CHANGELOG is updated by `/ship` — do not update it again here):
+7. **Update docs** — sync CLAUDE.md, CHANGELOG, and README with what just shipped: run `/update-docs`. Mandatory, not optional — every merge potentially shifts the docs surface, and skipping lets drift accumulate.
+
+8. **Print session summary** (CHANGELOG is updated by `/ship` and re-checked by `/update-docs` — do not update it again here):
    - One-line: what shipped (feature/fix name, PR number, issue number)
    - Follow-up issues created (if any, with links)
    - Manual actions needed (if any, e.g., "PR awaiting manual merge")
