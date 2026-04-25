@@ -1,4 +1,5 @@
-<!-- requires: coder, reviewer, tester, explorer -->
+<!-- requires: coder, explorer -->
+<!-- chains: /test-issue -->
 Start working on issue $ARGUMENTS. Run autonomously through the full plan-critique-implement cycle.
 
 ## Autonomy Rules
@@ -42,23 +43,16 @@ If critique iterations are exhausted:
 - Commit each logical unit separately
 - If a task is blocked: try one alternative approach. If still blocked, skip it with a TODO comment and continue.
 
-## Phase 4: Pre-ship critique
+## Phase 4: Test → `/test-issue <#>`
 
-Launch reviewer subagent for code critique before running tests.
+Run `/test-issue <#>` to execute project quality gates and verify acceptance criteria. The pre-ship code critique is `/ship`'s job — running it here would just duplicate the gate.
 
-- **FAIL**: Fix blocking issues, re-critique (per CLAUDE.md retry limits). If still FAIL: commit progress, create draft PR with `[BLOCKED]` prefix, file follow-up issue.
-- **PASS WITH CHANGES**: Fix blocking issues, proceed.
-- **PASS**: Proceed.
+If tests fail:
+- Analyze the root cause — don't blindly retry
+- Go back to Phase 2 with failure context (per CLAUDE.md retry limits)
+- If still failing after all retries (per CLAUDE.md): commit progress on the branch, create a draft PR (`--draft`) with `[FAILING]` prefix and failure analysis in the body, file a follow-up issue
 
-## Phase 5: Test
-
-1. **Test** (tester subagent): Run full test suite per project CLAUDE.md
-2. If tests fail:
-   - Analyze the root cause — don't blindly retry
-   - Go back to Phase 2 with failure context (per CLAUDE.md retry limits)
-   - If still failing after all retries (per CLAUDE.md): commit progress on the branch, create a draft PR (`--draft`) with `[FAILING]` prefix and failure analysis in the body, file a follow-up issue
-
-Report completion: files changed, test results, critique verdict, any assumptions made. Ready for `/ship`.
+Report completion: files changed, test results from `/test-issue`, any assumptions made. Ready for `/ship`.
 
 Key constraints:
 - If the project has multiple sub-repos (e.g., backend + frontend), treat each as a separate git repo and commit in the right one

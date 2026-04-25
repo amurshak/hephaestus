@@ -1,4 +1,5 @@
-<!-- requires: coder, reviewer, tester, explorer -->
+<!-- requires: coder, explorer -->
+<!-- chains: /ship, /finish -->
 Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause for plan approval.
 
 ## Process
@@ -23,23 +24,18 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 3. Run tests after each change per the project's CLAUDE.md (test command, lint command)
 4. If tests fail after a change, fix and re-test before proceeding (per CLAUDE.md retry limits)
 
-### Phase 4: Pre-ship Critique
+### Phase 4: Ship → `/ship`
 
-Launch reviewer subagent for code critique before shipping.
+Run `/ship`. It runs the pre-push critique gate, all quality gates, updates CHANGELOG, pushes the branch, creates the PR, and auto-merges.
 
-- **FAIL**: Fix blocking issues, re-critique (per CLAUDE.md retry limits). If still FAIL: commit progress, create draft PR with `[BLOCKED]` prefix, file follow-up issue.
-- **PASS WITH CHANGES**: Fix blocking issues, proceed.
-- **PASS**: Proceed.
+When `/ship` builds the PR body, populate the Summary bullets with the refactoring metrics (lines/complexity before/after), API changes (if any) under Known Limitations, and downstream risks.
 
-### Phase 5: Ship
-1. Update `CHANGELOG.md` with a summary of the refactoring changes
-2. Commit doc changes
-3. Push the branch: `git push -u origin refactor/<short-description>`
-4. Create a PR via `gh pr create --repo <detected-repo>` with a body covering: summary of what changed, metrics (lines/complexity before/after), test results, API changes or risks
-5. Merge: `gh pr merge --squash --auto` (or leave open if auto-merge can't be enabled)
+### Phase 5: Finish → `/finish`
+
+Run `/finish` (no issue number — refactors typically don't map to a tracked issue, and `/finish` handles the no-issue case by skipping the close step). It deletes branches, runs `/update-docs` to sync docs, captures a retrospective, and prints the session summary.
 
 ### Phase 6: Report
-Output:
+Output as the final session line:
 - **PR URL**: Link to the merged (or open) PR
 - **Summary**: What changed and why
 - **Metrics**: Lines of code before/after, complexity before/after
