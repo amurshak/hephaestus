@@ -9,7 +9,7 @@
   },
   "plugins": [
     {
-      "name": "hephaestus",
+      "name": "heph",
       "source": "./",
       "description": "One command (/autopilot), eight phases, five subagents. Hand it an issue, get a merged PR.",
       "homepage": "https://github.com/amurshak/hephaestus",

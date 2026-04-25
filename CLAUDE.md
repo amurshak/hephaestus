@@ -20,9 +20,9 @@ Hephaestus is an implementation of a generic software development workflow patte
 
 ## Repository Structure
 
-- `agents/` — Subagent definitions (coder, reviewer, tester, explorer, researcher) with tool permissions and structured output contracts
-- `commands/` — User-facing slash commands that orchestrate agents through quality-gated workflows
-- `.claude-plugin/plugin.json` — Plugin manifest for Claude Code marketplace install
+- `.claude/agents/` — Subagent definitions (coder, reviewer, tester, explorer, researcher) with tool permissions and structured output contracts
+- `.claude/commands/` — User-facing slash commands that orchestrate agents through quality-gated workflows
+- `.claude-plugin/plugin.json` — Plugin manifest for Claude Code marketplace install (declares `commands` and `agents` paths so the plugin loader finds them under `.claude/`)
 - `install.sh` — Adds hephaestus as `.hephaestus` submodule in a target project, creates symlinks into `.claude/`
 - `update.sh` — Pulls latest hephaestus into an already-installed project
 
@@ -52,7 +52,7 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 - **Repo detection** is done via `git remote get-url origin` — commands never hardcode repo references.
 - **orient.md is project-specific** — it is excluded from symlinking. If the target project doesn't have one, install.sh scaffolds a template from `templates/orient.md` that must be customized.
 - **install.sh is idempotent** — it never overwrites existing files; re-running is safe.
-- **Symlinks are relative** — agents link as `../../.hephaestus/agents/<name>`, commands as `../../.hephaestus/commands/<name>`.
+- **Symlinks are relative** — agents link as `../../.hephaestus/.claude/agents/<name>`, commands as `../../.hephaestus/.claude/commands/<name>`.
 
 ## Agent Conventions
 
