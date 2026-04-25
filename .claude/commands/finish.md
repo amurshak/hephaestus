@@ -17,7 +17,7 @@ Steps:
 
 4. **Clean up branches** — sweep aggressively; GitHub's auto-delete only catches branches merged *after* the setting was enabled, so debt accumulates without an active sweep:
    - Switch off the merged branch (squash-merged branches can't be deleted while checked out): `BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo master); git checkout "$BASE"`
-   - Delete the PR's local branch: `BR=$(gh pr view <pr-number> --repo <detected-repo> --json headRefName -q '.headRefName'); git branch -D "$BR"` (use `-D` — squash merges leave the tip unreachable, so `-d` refuses)
+   - Delete the PR's local branch (idempotent — `/finish` may re-run): `BR=$(gh pr view <pr-number> --repo <detected-repo> --json headRefName -q '.headRefName'); git show-ref --verify --quiet "refs/heads/$BR" && git branch -D "$BR"` (use `-D` — squash merges leave the tip unreachable, so `-d` refuses)
    - Delete remote branches for *all* merged PRs (handles this PR plus any stranded by prior runs, auto-merge timing, or pre-setting merges):
      ```
      merged=$(gh pr list --state merged --limit 200 --repo <detected-repo> --json headRefName --jq '.[].headRefName' | sort -u)
@@ -25,7 +25,7 @@ Steps:
      stale=$(comm -12 <(echo "$merged") <(echo "$remote"))
      [ -n "$stale" ] && git push origin --delete $stale
      ```
-     Surface any push failure — do **not** swallow with `|| true`. Silent failure is exactly what let dozens of branches accumulate before this sweep existed.
+     Safe because the intersection requires a remote branch *and* a merged PR with that headRef — but if branch names get reused (rare), live work could match. Raise `--limit 200` if your unswept debt is older than the last 200 PRs. On push failure: print the error and continue to step 5; do **not** swallow with `|| true`, and do **not** abort the finish flow.
    - Prune local refs and pop session stash: `git fetch --prune origin; git stash list | grep -q "autopilot-pre" && git stash pop || true`
 
 5. **Create breadcrumbs for remaining work**:
