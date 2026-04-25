@@ -180,7 +180,7 @@ Slack, Notion, and other documentation systems extend the principle — addition
 
 ```bash
 /plugin marketplace add amurshak/hephaestus
-/plugin install hephaestus@hephaestus
+/plugin install heph@hephaestus
 ```
 
 **Submodule** — full project bootstrap (scaffolds `orient.md`, validates `CLAUDE.md`, runs a health check). Recommended when adopting hephaestus as the primary workflow for a repo, or for forks:
@@ -244,7 +244,7 @@ Fork hephaestus to customize commands for your org while still pulling upstream 
 - `VERSION` — your fork's version track
 
 **Will conflict if modified** — actively developed upstream:
-- `commands/` and `agents/` — the core workflow files
+- `.claude/commands/` and `.claude/agents/` — the core workflow files
 - `install.sh`, `update.sh`, `uninstall.sh` — the install tooling
 - `.claude-plugin/plugin.json` — the plugin manifest
 

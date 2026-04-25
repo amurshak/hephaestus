@@ -224,10 +224,10 @@ if [ "$AUDIT_MODE" = true ]; then
   printf "  %-25s %-12s %s\n" "Name" "Status" "Details"
   printf "  %-25s %-12s %s\n" "----" "------" "-------"
 fi
-for f in "$HEPH_SRC"/agents/*.md; do
+for f in "$HEPH_SRC"/.claude/agents/*.md; do
   [ -e "$f" ] || continue
   name=$(basename "$f")
-  link_item "../../.hephaestus/agents/$name" "$f" ".claude/agents/$name" "$name"
+  link_item "../../.hephaestus/.claude/agents/$name" "$f" ".claude/agents/$name" "$name"
 done
 echo ""
 
@@ -241,7 +241,7 @@ if [ "$AUDIT_MODE" = true ]; then
   printf "  %-25s %-12s %s\n" "Name" "Status" "Details"
   printf "  %-25s %-12s %s\n" "----" "------" "-------"
 fi
-for f in "$HEPH_SRC"/commands/*.md; do
+for f in "$HEPH_SRC"/.claude/commands/*.md; do
   [ -e "$f" ] || continue
   name=$(basename "$f")
   if echo "$SKIP_COMMANDS" | grep -qw "$name"; then
@@ -252,7 +252,7 @@ for f in "$HEPH_SRC"/commands/*.md; do
     fi
     continue
   fi
-  link_item "../../.hephaestus/commands/$name" "$f" ".claude/commands/$name" "$name"
+  link_item "../../.hephaestus/.claude/commands/$name" "$f" ".claude/commands/$name" "$name"
 done
 echo ""
 
@@ -261,7 +261,7 @@ COLLISIONS_FOUND=false
 for target_dir_label in ".claude/commands:commands" ".claude/agents:agents"; do
   target_dir="${target_dir_label%%:*}"
   label="${target_dir_label##*:}"
-  heph_dir="$HEPH_SRC/$label"
+  heph_dir="$HEPH_SRC/.claude/$label"
   result=$(check_name_collisions "$target_dir" "$heph_dir" "$label" 2>/dev/null || true)
   if [ -n "$result" ]; then
     if [ "$COLLISIONS_FOUND" = false ]; then
