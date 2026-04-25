@@ -3,3 +3,6 @@
 
 # Runtime files
 .claude/scheduled_tasks.lock
+
+# macOS
+.DS_Store
