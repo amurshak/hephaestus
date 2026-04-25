@@ -14,6 +14,7 @@
 - `.codex/skills/` — Codex skill layer removed entirely. No known consumers, historical sync drift with Claude commands (5+ past bugs). Claude commands are the canonical workflow source; maintaining a parallel Codex layer added maintenance cost for no clear benefit. Codex references removed from install.sh, update.sh, uninstall.sh, README, CLAUDE.md, and orient.md.
 
 ### Fixed
+- `finish.md` step 4 now sweeps *all* stranded remote branches (intersection of merged PRs and current remote heads), not just the current PR's branch — previous version mentioned remote-delete only as a "Note:", silenced errors with `2>/dev/null || true`, and never cleaned debt left by GitHub auto-delete misses or auto-merge timing, so dozens of merged-but-undeleted branches accumulated. Local-branch delete is now idempotent (guarded by `git show-ref`) so re-runs don't error. Push failures on the sweep are surfaced and the flow continues — never aborted, never swallowed.
 - `loop.sh` lockfile used `basename "$(pwd)"`, causing collisions between identically-named directories under different parents. Now hashes the full absolute path via `shasum`/`sha1sum`.
 - `update-hephaestus.md` used `ORIG_HEAD` to show post-update changelog, but `git submodule update --remote` does not set `ORIG_HEAD`. Now captures HEAD before/after the update (matching `update.sh` pattern).
 - `orient.md` said "No build or test pipeline" despite `./tests/run.sh` existing with 113 assertions. Updated Development Commands section.
