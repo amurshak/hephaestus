@@ -183,6 +183,8 @@ Slack, Notion, and other documentation systems extend the principle — addition
 /plugin install heph@hephaestus
 ```
 
+Plugin install namespaces commands: `/heph:autopilot`, `/heph:ship`, etc. The submodule install below uses the bare names (`/autopilot`).
+
 **Submodule** — full project bootstrap (scaffolds `orient.md`, validates `CLAUDE.md`, runs a health check). Recommended when adopting hephaestus as the primary workflow for a repo, or for forks:
 
 ```bash
@@ -201,7 +203,14 @@ cat .hephaestus/templates/CLAUDE.md.snippet >> CLAUDE.md
 nohup ./.hephaestus/loop.sh 30 autopilot.log &
 ```
 
-**Manage the install:**
+**Manage the plugin install:**
+
+| | |
+|---|---|
+| `/plugin marketplace update`   | Pull latest from marketplace |
+| `/plugin uninstall heph`       | Remove the plugin |
+
+**Manage the submodule install:**
 
 | | |
 |---|---|
@@ -215,7 +224,7 @@ nohup ./.hephaestus/loop.sh 30 autopilot.log &
 
 ## Adopting in an existing project
 
-If your project already has `.claude/commands/` or agents, run the audit first:
+Plugin install doesn't touch your repo, so there's nothing to merge or audit. For submodule install, if your project already has `.claude/commands/` or agents, run the audit first:
 
 ```bash
 ./install.sh --audit /path/to/your/project
@@ -231,7 +240,7 @@ To remove hephaestus later: `.hephaestus/uninstall.sh` removes only hephaestus s
 
 ## Headless mode
 
-`loop.sh` runs `/autopilot` in a fresh session every N minutes. Clean context each time — no bloat. Project-scoped lockfile prevents overlap. Survives crashes. Runs with `--dangerously-skip-permissions` — scope what's allowed in your `settings.local.json`.
+`loop.sh` (submodule install only) runs `/autopilot` in a fresh session every N minutes. Clean context each time — no bloat. Project-scoped lockfile prevents overlap. Survives crashes. Runs with `--dangerously-skip-permissions` — scope what's allowed in your `settings.local.json`.
 
 ---
 
@@ -264,7 +273,7 @@ Hephaestus reads your project's `CLAUDE.md` — specifically the "Development Co
 cat .hephaestus/templates/CLAUDE.md.snippet >> CLAUDE.md
 ```
 
-Then replace the placeholder commands with your actual test/lint/build commands. install.sh scaffolds `orient.md` automatically — customize it with your project's repos, structure, and priorities.
+Then replace the placeholder commands with your actual test/lint/build commands. install.sh scaffolds `orient.md` automatically (plugin users: copy `templates/orient.md` from the plugin or repo) — customize it with your project's repos, structure, and priorities.
 
 Optional but recommended:
 
