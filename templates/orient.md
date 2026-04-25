@@ -21,6 +21,12 @@ npm run build      # or: go build ./..., cargo build, etc.
 ```
 <!-- These MUST match the "Development Commands" section in your CLAUDE.md -->
 
+## Sync state
+First, sync with remote and prune stale tracking refs (branches GitHub deleted on merge but git still has):
+```
+git fetch --prune origin
+```
+
 ## Find work
 ```
 gh issue list --state open --repo owner/repo
