@@ -176,12 +176,18 @@ Slack, Notion, and other documentation systems extend the principle — addition
 
 ## Get started
 
+**Claude Code plugin** — get the commands and agents available in any project:
+
 ```bash
-# Install — handles the submodule, don't git submodule add manually
-./install.sh /path/to/your/project
+/plugin marketplace add amurshak/hephaestus
+/plugin install hephaestus@hephaestus
 ```
 
-This adds the `.hephaestus` submodule, symlinks commands and agents, scaffolds an `orient.md` template, validates your `CLAUDE.md`, and runs a health check. Safe to re-run.
+**Submodule** — full project bootstrap (scaffolds `orient.md`, validates `CLAUDE.md`, runs a health check). Recommended when adopting hephaestus as the primary workflow for a repo, or for forks:
+
+```bash
+./install.sh /path/to/your/project
+```
 
 ```bash
 # Append hephaestus sections to your CLAUDE.md (dev commands, command reference, agents)
