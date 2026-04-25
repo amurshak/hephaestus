@@ -58,7 +58,7 @@ If there are additional open issues suitable for immediate work and the session 
 
 ## Session Wind-Down Protocol
 
-When the pipeline reaches a natural stopping point (after Phase 9) or is forced to stop early:
+When the pipeline reaches a natural stopping point (after Phase 4) or is forced to stop early:
 
 1. **Commit all work** — never leave uncommitted changes. Use descriptive commit messages.
 2. **Push the branch** — even for incomplete work, push so progress is preserved remotely.
