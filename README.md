@@ -2,29 +2,43 @@
 
 **A generic software development workflow pattern, implemented in Claude Code.**
 
-Software delivery follows the same loop in every project. Hephaestus encodes it as eight commands and five subagents, with bounded retries at every gate. Hand it an issue, get a merged PR.
+Software delivery follows the same loop in every project: understand the problem, plan the work, validate the plan, execute, verify, ship, clean up.
+Hephaestus is an opinionated instantiation of this loop as an agentic software development workflow pattern that answers the question:
+
+**what is the minimum composable workflow that can deliver arbitrary software changes through an AI coding assistant?** 
+
+```
+/orient → /create-issue → /start-issue → ⟨implementation⟩ → /ship → /finish
+```
+
+Or run the whole loop as one command:
 
 ```
 /autopilot
 ```
 
-```
-orient → plan → critique → implement → review → test → ship → finish
-```
+Hephaestus is an OODA loop — observe, orient, decide, act — for software. Boyd designed OODA for fighter pilots: cycle faster than the opponent and you win. Software has the opposite problem. Shipping too fast costs more than slowing down. So this loop puts most of its weight on Orient. Plans face adversarial review before code begins. Code faces adversarial review before it ships. Retries are bounded so nothing spirals.
 
-`/autopilot` is the top-level command. It picks the highest-priority open issue and runs the full eight-phase pipeline end to end — orient, plan, critique, implement, review, test, ship, finish — without intervention. The remaining commands (`/start-issue`, `/ship`, `/finish`, `/critique`, `/refactor`, and others) expose individual phases or sub-pipelines, so you can start mid-stream, ship work that's already implemented, run a single phase in isolation, or kick off a variant like a refactor instead of a feature.
+The core of Hephaestus is composed of five commands spread across eight internal phases. These are the fundamental process primitives of the development workflow. The system has five agent roles. Its memory lives in places that already exist: git history, GitHub issues, PRs, project management tools, project documentation. No opaque internal state. When retries exhaust, the system degrades into artifacts (draft PRs, follow-up issues, commits) the next session or a human can resume from.
 
-The deeper claim is that software delivery is a structured instance of John Boyd's OODA loop — observe, orient, decide, act. Boyd argued that quality of orientation determines everything downstream; an entity with a superior mental model wins regardless of tempo. Hephaestus inverts the tempo-first framing of military OODA — premature action in software costs more than slow correctness — and fortifies the Orient phase with mandatory adversarial review. The plan must survive critique before code is written. The code must survive critique before it ships. Every retry loop is bounded, so the system can't spiral.
+---
 
-What turns this from a prompt collection into autonomous infrastructure is the absence of opaque internal state. Memory lives in git history, GitHub issues, PRs, and the project's own documentation — places that already exist and that humans can read. When retries exhaust, the system degrades into artifacts (draft PRs, follow-up issues, commits) the next session or a human can resume from. Nothing is lost; nothing is locked away.
+## Contents
+
+- [The pattern](#the-pattern)
+- [OODA loop analysis](#ooda-loop-analysis)
+- [Design choices](#design-choices)
+- [The critique system](#the-critique-system)
+- [Memory through external systems](#memory-through-external-systems)
+- [Get started](#get-started)
+- [Adopting in an existing project](#adopting-in-an-existing-project)
+- [Headless mode](#headless-mode)
+- [Forking and customization](#forking-and-customization)
+- [Your project's setup](#your-projects-setup)
 
 ---
 
 ## The pattern
-
-The thesis: **what is the minimum composable workflow that can deliver arbitrary software changes through an AI coding assistant?**
-
-Eight phases. Five agent roles. Bounded retries at every gate. Deterministic failure degradation. External systems as the only persistence layer.
 
 ### Phases
 
