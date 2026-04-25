@@ -126,7 +126,7 @@ The pipeline maps onto Boyd's OODA loop (Observe → Orient → Decide → Act) 
 | **Decide** | Critique verdict + task decomposition | The commitment to a course of action |
 | **Act** | Implement → review → test → ship | Execution with feedback loops that can trigger re-orientation |
 
-The critique gate is the most interesting correspondence. Boyd argued that Orient is the critical phase — where prior experience and new information synthesize into situational understanding. Quality of orientation determines everything downstream. Hephaestus embeds this by making plan-critique the most heavily gated phase.
+The critique gate is the most interesting correspondence. Boyd argued Orient is the critical phase — quality of orientation determines everything downstream. Hephaestus fortifies it with mandatory adversarial review: the reviewer agent attacks the plan before code is written, then attacks the code before it ships. Two passes exist solely to break orientation.
 
 ### Where they diverge
 
@@ -134,7 +134,7 @@ The critique gate is the most interesting correspondence. Boyd argued that Orien
 
 **OODA has implicit feedback; hephaestus has explicit retry loops.** Each OODA cycle incorporates results of the previous one naturally. Hephaestus makes feedback loops explicit and bounded (3 plan-critique, 3 code-review, 2 test-fix). Without bounds, an autonomous system could loop forever. The retry limits are a tempo governor that forces graceful degradation.
 
-**OODA optimizes for tempo; hephaestus optimizes for correctness.** Boyd's insight was that faster OODA cycles create advantage by acting while the opponent is still orienting. Hephaestus inverts this — it deliberately slows down at critique gates. The "opponent" in software delivery is complexity and entropy, not a human adversary. The cost of a fast wrong action (shipping a bug) exceeds the cost of a slow correct one.
+**OODA optimizes for tempo; hephaestus optimizes for correctness.** Boyd's insight was that faster cycles create advantage while the opponent is still orienting. Hephaestus inverts it: the "opponent" is complexity and entropy, and each `act` is a discrete artifact (a PR), not a continuous decision stream. Slow critique gates are affordable when each output is durable. Shipping a bug costs more than waiting.
 
 **OODA has no wind-down state.** Boyd's loop assumes continuous operation. Hephaestus adds a failure-mode state machine: when retries exhaust, the system transitions to clean shutdown that preserves progress and creates breadcrumbs. AI sessions have finite context and finite reliability — the system must stop gracefully at any point.
 
