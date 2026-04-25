@@ -2,7 +2,7 @@
 
 **A generic software development workflow pattern, implemented in Claude Code.**
 
-All software delivery — regardless of language, framework, or domain — follows the same loop: understand the problem, plan the work, validate the plan, execute, verify, ship, clean up. Hephaestus makes that loop executable, autonomous, and self-correcting. It is distributed as a git submodule containing prose instructions that, when loaded into Claude Code's context, cause the model to behave as a structured delivery system rather than an interactive assistant.
+Software delivery follows the same loop in every project. Hephaestus encodes it as eight commands and five subagents, with bounded retries at every gate. Hand it an issue, get a merged PR.
 
 ```
 /autopilot
@@ -18,9 +18,9 @@ One command. Eight phases. It figures out the rest.
 
 ## The pattern
 
-The core question behind hephaestus: **what is the minimum set of composable, autonomous workflow phases that can deliver arbitrary software changes through an AI coding assistant?**
+The thesis: **what is the minimum composable workflow that can deliver arbitrary software changes through an AI coding assistant?**
 
-The answer is eight phases, five agent roles, bounded retry loops at every gate, deterministic failure degradation, and external systems as the sole persistence layer.
+Eight phases. Five agent roles. Bounded retries at every gate. Deterministic failure degradation. External systems as the only persistence layer.
 
 ### Phases
 
@@ -47,7 +47,7 @@ Five roles, stratified by capability through least-privilege tool access:
 | **explorer** | No | No | Yes (read-only) | none |
 | **researcher** | No | Yes | No | none |
 
-The coder is the only agent that can modify files, and it runs in an isolated git worktree so parallel coders can't interfere with each other. The reviewer, tester, and explorer can read code and run commands but can't edit. The researcher can access the web but can't run shell commands. The blast radius of any single agent misbehaving is bounded by its tool permissions.
+The coder is the only agent that can modify files; it runs in an isolated git worktree so parallel coders don't interfere. The reviewer, tester, and explorer can read code and run commands but can't edit. The researcher can access the web but can't run shell commands. The blast radius of any single agent misbehaving is bounded by its tool permissions.
 
 Every agent returns structured output — typed fields and verdicts, not prose. This turns agent invocations into function calls the orchestrating command can branch on.
 
@@ -87,7 +87,7 @@ Hephaestus owns the workflow — what order things happen, when to retry, when t
 
 ### Parallelization at two levels
 
-**Within a session**: multiple coder agents work in parallel worktrees for independent tasks; multiple explorer and researcher agents fan out across subsystems simultaneously. **Across sessions**: `loop.sh` runs `/autopilot` in fresh Claude sessions on a timer, each picking up the next issue. The system parallelizes both within a unit of work and across units of work.
+**Within a session**: multiple coder agents work in parallel worktrees for independent tasks; multiple explorer and researcher agents fan out across subsystems simultaneously. **Across sessions**: `loop.sh` runs `/autopilot` in fresh sessions on a timer, each picking up the next issue. The system parallelizes both within a unit of work and across units of work.
 
 ### Deterministic failure modes
 
@@ -136,13 +136,13 @@ The critique gate is the most interesting correspondence. Boyd argued Orient is 
 
 **OODA optimizes for tempo; hephaestus optimizes for correctness.** Boyd's insight was that faster cycles create advantage while the opponent is still orienting. Hephaestus inverts it: the "opponent" is complexity and entropy, and each `act` is a discrete artifact (a PR), not a continuous decision stream. Slow critique gates are affordable when each output is durable. Shipping a bug costs more than waiting.
 
-**OODA has no wind-down state.** Boyd's loop assumes continuous operation. Hephaestus adds a failure-mode state machine: when retries exhaust, the system transitions to clean shutdown that preserves progress and creates breadcrumbs. AI sessions have finite context and finite reliability — the system must stop gracefully at any point.
+**OODA has no wind-down state.** Boyd's loop assumes continuous operation. Hephaestus adds a failure-mode state machine: when retries exhaust, the system transitions to clean shutdown that preserves progress and creates breadcrumbs. Sessions have finite context and finite reliability — the system must stop gracefully at any point.
 
 **Nested loops.** Hephaestus nests OODA-like cycles within the larger pipeline. The test-fix cycle is its own observe-orient-decide-act loop. The pre-ship critique is another. This fractal structure — loops within loops, each with termination conditions — is more complex than Boyd's single-level model.
 
 ### The deeper correspondence
 
-Boyd argued that speed of the OODA loop matters less than quality of orientation. An entity with a superior mental model makes better decisions even at lower tempo. Hephaestus embodies this: explorer agents fan out in parallel to build context, the critique gate stress-tests the plan across seven plan dimensions (logic, assumptions, completeness, trade-offs, evidence, second-order effects, timing), and persistent failures trigger RETHINK — forcing the system to rebuild orientation from scratch rather than iterating on a flawed one. Designed to be right before fast.
+Boyd argued that speed of the OODA loop matters less than quality of orientation. An entity with a superior mental model makes better decisions even at lower tempo. Hephaestus embodies this: explorer agents fan out in parallel to build context, the critique gate stress-tests the plan across seven dimensions (logic, assumptions, completeness, trade-offs, evidence, second-order effects, timing), and persistent failures trigger RETHINK — forcing the system to rebuild orientation from scratch rather than iterating on a flawed one. Designed to be right before fast.
 
 ---
 
@@ -160,13 +160,13 @@ Hephaestus doesn't build its own memory. It uses existing systems as read/write 
 | **Draft PRs with prefixes** | Failure breadcrumbs (`[WIP]`, `[BLOCKED]`, `[FAILING]`) | Retry exhaustion handlers |
 | **Follow-up issues** | Deferred work, unresolved problems | `finish`, retry exhaustion |
 
-Each `loop.sh` invocation starts a fresh Claude session with no memory of previous runs. The only way information persists between sessions is through these external artifacts. This is a feature: the system's state is always inspectable through standard developer tools (GitHub UI, git log, file contents), never locked in opaque internal state.
+Each `loop.sh` invocation starts a fresh session with no memory of previous runs. Information persists between sessions only through these external artifacts. The system's state is always inspectable through standard developer tools (GitHub UI, git log, file contents), never locked in opaque internal state.
 
 **The repo is the memory.** Git history records what was done and why. Issues record what needs to be done. PRs record work in flight. CLAUDE.md records how the project works. The system reads these on every run to reconstruct its orientation — stateless architecture where the "database" is the development environment itself.
 
 **Failure state is encoded as artifacts.** When the system can't complete work, it creates a draft PR encoding the failure mode and a follow-up issue with context. The next run picks these up through the same issue-reading pipeline that handles human-created issues. Error recovery uses the same codepath as normal work intake.
 
-When the target project uses Slack, Notion, or other documentation systems, the same principle applies — those systems become additional memory surfaces that feed context into future sessions through the project's `orient.md` and `CLAUDE.md`.
+Slack, Notion, and other documentation systems extend the principle — additional memory surfaces fed into future sessions through `orient.md` and `CLAUDE.md`.
 
 ---
 
@@ -221,7 +221,7 @@ To remove hephaestus later: `.hephaestus/uninstall.sh` removes only hephaestus s
 
 ## Headless mode
 
-`loop.sh` runs `/autopilot` in a fresh Claude session every N minutes. Clean context each time — no bloat. Project-scoped lockfile prevents overlap. Survives crashes. Runs with `--dangerously-skip-permissions` — scope what's allowed in your `settings.local.json`.
+`loop.sh` runs `/autopilot` in a fresh session every N minutes. Clean context each time — no bloat. Project-scoped lockfile prevents overlap. Survives crashes. Runs with `--dangerously-skip-permissions` — scope what's allowed in your `settings.local.json`.
 
 ---
 
