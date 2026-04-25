@@ -1,0 +1,21 @@
+{
+  "name": "hephaestus",
+  "owner": {
+    "name": "Alex Murshak",
+    "email": "amurshak@gmail.com"
+  },
+  "metadata": {
+    "description": "Generic software delivery workflow pattern — orient → plan → critique → implement → review → test → ship → finish, with bounded retries at every gate."
+  },
+  "plugins": [
+    {
+      "name": "hephaestus",
+      "source": "./",
+      "description": "One command (/autopilot), eight phases, five subagents. Hand it an issue, get a merged PR.",
+      "homepage": "https://github.com/amurshak/hephaestus",
+      "repository": "https://github.com/amurshak/hephaestus",
+      "license": "MIT",
+      "keywords": ["workflow", "autopilot", "agent", "subagents", "delivery", "ooda"]
+    }
+  ]
+}
