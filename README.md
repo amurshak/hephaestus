@@ -28,13 +28,12 @@ The core of Hephaestus is composed of five commands spread across eight internal
 - [The pattern](#the-pattern)
 - [OODA loop analysis](#ooda-loop-analysis)
 - [Design choices](#design-choices)
+- [Composition](#composition)
 - [The critique system](#the-critique-system)
 - [Memory through external systems](#memory-through-external-systems)
 - [Get started](#get-started)
-- [Adopting in an existing project](#adopting-in-an-existing-project)
-- [Headless mode](#headless-mode)
-- [Forking and customization](#forking-and-customization)
 - [Your project's setup](#your-projects-setup)
+- [Submodule install](#submodule-install-for-headless-mode-and-forking)
 
 ---
 
@@ -146,6 +145,30 @@ Every command specifies what happens when things go wrong — not as afterthough
 
 ---
 
+## Composition
+
+Each command file declares what it directly uses (`requires:` for agents) and what it chains (`chains:` for other commands). `/autopilot` is the most composed:
+
+```
+/autopilot                          (requires: explorer)
+├── Phase 0  self-triage (inline)
+├── Phase 1  orient (inline)
+├── Phase 2  /start-issue           (requires: coder, explorer)
+│            └── /test-issue        (requires: tester)
+├── Phase 3  /ship                  (requires: tester)
+│            └── /critique          (requires: reviewer)
+└── Phase 4  /finish                (requires: none)
+             └── /update-docs       (requires: none)
+```
+
+`/refactor` follows a parallel structure for refactoring work — same `/ship` + `/finish` chain after its analysis and plan-critique phases.
+
+**Why explicit composition.** Single source of truth: change `/critique`'s retry semantics once, and every command that chains `/critique` (currently `/ship`) inherits the change. Eliminates the duplicate gates earlier inline structures created — pre-ship critique used to run twice on `/autopilot` (once in autopilot itself, once again inside its inlined ship procedure).
+
+**Subagents preserve main-context growth.** Verbose work — diff reads, file scans, intermediate reasoning — stays inside subagent context. Only structured output (verdicts, file lists) returns to the orchestrator. Chaining commands costs ~80 lines of prompt prose per chained command in main context; trivial vs. the duplication eliminated.
+
+---
+
 ## The critique system
 
 The critique system is the most heavily gated part of the pipeline. It operates at three levels:
@@ -190,79 +213,99 @@ Slack, Notion, and other documentation systems extend the principle — addition
 
 ## Get started
 
-**Claude Code plugin** — get the commands and agents available in any project:
-
 ```bash
 /plugin marketplace add amurshak/hephaestus
 /plugin install heph@hephaestus
 ```
 
-Plugin install namespaces commands: `/heph:autopilot`, `/heph:ship`, etc. The submodule install below uses the bare names (`/autopilot`).
+Commands install under the `/heph:` namespace: `/heph:autopilot`, `/heph:ship`, `/heph:finish`, etc.
 
-**Submodule** — full project bootstrap (scaffolds `orient.md`, validates `CLAUDE.md`, runs a health check). Recommended when adopting hephaestus as the primary workflow for a repo, or for forks:
+```bash
+/heph:autopilot              # pick highest-priority issue, run end-to-end
+/heph:start-issue 42         # work a specific issue
+```
+
+**Manage the install:**
+
+| | |
+|---|---|
+| `/plugin marketplace update` | Pull the latest hephaestus |
+| `/plugin uninstall heph`     | Remove the plugin |
+
+---
+
+## Your project's setup
+
+Hephaestus reads your project's `CLAUDE.md` — specifically the "Development Commands" section. That's where it learns what to test, lint, and build. Pull the snippet:
+
+```bash
+curl -s https://raw.githubusercontent.com/amurshak/hephaestus/master/templates/CLAUDE.md.snippet >> CLAUDE.md
+```
+
+Then replace the placeholder commands with your actual test/lint/build commands.
+
+Hephaestus also reads `.claude/commands/orient.md` to understand the project's repos, structure, and priorities. Pull the template and customize it:
+
+```bash
+mkdir -p .claude/commands
+curl -s https://raw.githubusercontent.com/amurshak/hephaestus/master/templates/orient.md > .claude/commands/orient.md
+```
+
+Optional but recommended:
+
+| | |
+|---|---|
+| `.claude/hooks/lint-on-commit.sh` | Your lint command, before every commit |
+| `.claude/hooks/protect-files.sh` | Block edits to `.env`, lock files, secrets |
+| `AGENTS.md` | Index of local + shared agents |
+| `.claude/settings.local.json` | Permissions and hook paths |
+
+---
+
+## Submodule install (for headless mode and forking)
+
+Plugin install is the recommended path. Submodule install is the alternative when you need:
+
+- **Headless mode** — `loop.sh` runs `/autopilot` on a timer in a fresh session each time. The plugin can't do this since plugins run *inside* Claude Code; `loop.sh` runs Claude Code as a subprocess.
+- **Forking and upstream sync** — clone the repo, modify commands, `git merge upstream/master` for upstream changes.
+
+### Install
 
 ```bash
 ./install.sh /path/to/your/project
 ```
 
-```bash
-# Append hephaestus sections to your CLAUDE.md (dev commands, command reference, agents)
-cat .hephaestus/templates/CLAUDE.md.snippet >> CLAUDE.md
+This adds `.hephaestus` as a submodule, symlinks commands and agents into `<project>/.claude/`, scaffolds an `orient.md` template, validates `CLAUDE.md`, and runs a health check. Safe to re-run. Commands install under bare names (`/autopilot`, `/ship`, etc.) — no plugin namespace, since they live directly in the project's `.claude/commands/`.
 
-# Deliver an issue
-/autopilot                 # picks highest-priority issue, does everything
-/start-issue 42            # work a specific issue
-
-# Run unattended on a loop
-nohup ./.hephaestus/loop.sh 30 autopilot.log &
-```
-
-**Manage the plugin install:**
-
-| | |
-|---|---|
-| `/plugin marketplace update`   | Pull latest from marketplace |
-| `/plugin uninstall heph`       | Remove the plugin |
-
-**Manage the submodule install:**
-
-| | |
-|---|---|
-| `install.sh --audit` | Preview what would change without modifying anything |
-| `install.sh --force` | Replace existing files with hephaestus versions |
-| `install.sh --clean` | Remove dangling symlinks after upstream renames |
-| `/update-hephaestus` | Pull latest, re-install, show what changed |
-| `.hephaestus/uninstall.sh` | Clean removal — only removes hephaestus symlinks |
-
----
-
-## Adopting in an existing project
-
-Plugin install doesn't touch your repo, so there's nothing to merge or audit. For submodule install, if your project already has `.claude/commands/` or agents, run the audit first:
+If your project already has `.claude/commands/` or agents, audit first to surface conflicts:
 
 ```bash
 ./install.sh --audit /path/to/your/project
 ```
 
-This shows what would change — new symlinks, conflicts with your existing files, and name collisions — without modifying anything.
+### Manage the install
 
-The key idea: **hephaestus handles orchestration, your `CLAUDE.md` handles project-specific configuration.** Move test/lint/build commands and project constraints into `CLAUDE.md`, then let hephaestus commands take over the workflow.
+| | |
+|---|---|
+| `install.sh --audit`         | Preview what would change without modifying anything |
+| `install.sh --force`         | Replace existing files with hephaestus versions |
+| `install.sh --clean`         | Remove dangling symlinks after upstream renames |
+| `/update-hephaestus`         | Pull latest, re-install, show what changed |
+| `.hephaestus/uninstall.sh`   | Clean removal — only hephaestus symlinks |
 
-To remove hephaestus later: `.hephaestus/uninstall.sh` removes only hephaestus symlinks and the submodule, keeps your project-specific files.
+### Headless mode
 
----
+```bash
+nohup ./.hephaestus/loop.sh 30 autopilot.log &
+```
 
-## Headless mode
+`loop.sh` runs `/autopilot` in a fresh session every N minutes. Clean context each time — no bloat. Project-scoped lockfile prevents overlap. Survives crashes. Runs with `--dangerously-skip-permissions` — scope what's allowed in your `settings.local.json`.
 
-`loop.sh` (submodule install only) runs `/autopilot` in a fresh session every N minutes. Clean context each time — no bloat. Project-scoped lockfile prevents overlap. Survives crashes. Runs with `--dangerously-skip-permissions` — scope what's allowed in your `settings.local.json`.
-
----
-
-## Forking and customization
+### Forking
 
 Fork hephaestus to customize commands for your org while still pulling upstream updates.
 
-**Safe to modify** — won't cause merge conflicts with upstream:
+**Safe to modify** — won't conflict on `git merge upstream/master`:
 - `templates/` — customize scaffolds for your org's conventions
 - `VERSION` — your fork's version track
 
@@ -276,24 +319,3 @@ git remote add upstream https://github.com/amurshak/hephaestus.git
 git fetch upstream
 git merge upstream/master
 ```
-
----
-
-## Your project's setup
-
-Hephaestus reads your project's `CLAUDE.md` — specifically the "Development Commands" section. That's where it learns what to test, lint, and build:
-
-```bash
-cat .hephaestus/templates/CLAUDE.md.snippet >> CLAUDE.md
-```
-
-Then replace the placeholder commands with your actual test/lint/build commands. install.sh scaffolds `orient.md` automatically (plugin users: copy `templates/orient.md` from the plugin or repo) — customize it with your project's repos, structure, and priorities.
-
-Optional but recommended:
-
-| | |
-|---|---|
-| `.claude/hooks/lint-on-commit.sh` | Your lint command, before every commit |
-| `.claude/hooks/protect-files.sh` | Block edits to `.env`, lock files, secrets |
-| `AGENTS.md` | Index of local + shared agents |
-| `.claude/settings.local.json` | Permissions and hook paths |
