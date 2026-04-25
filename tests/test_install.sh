@@ -91,7 +91,7 @@ TARGET=$(create_target)
 bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 
 # Create a stale symlink (points to a .hephaestus/ path that doesn't exist)
-ln -s "../../.hephaestus/.claude/agents/deleted-agent.md" "$TARGET/.claude/agents/deleted-agent.md"
+ln -s "../../.hephaestus/agents/deleted-agent.md" "$TARGET/.claude/agents/deleted-agent.md"
 
 output=$(bash "$SOURCE_REPO/install.sh" --clean "$TARGET" 2>&1)
 
@@ -106,7 +106,7 @@ setup_fixture
 TARGET=$(create_target)
 bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 
-ln -s "../../.hephaestus/.claude/agents/deleted-agent.md" "$TARGET/.claude/agents/deleted-agent.md"
+ln -s "../../.hephaestus/agents/deleted-agent.md" "$TARGET/.claude/agents/deleted-agent.md"
 
 output=$(bash "$SOURCE_REPO/install.sh" "$TARGET" 2>&1)
 
@@ -275,10 +275,10 @@ bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 
 # Verify the exact relative path format
 agent_target=$(readlink "$TARGET/.claude/agents/coder.md")
-assert_eq "agent symlink path" "../../.hephaestus/.claude/agents/coder.md" "$agent_target"
+assert_eq "agent symlink path" "../../.hephaestus/agents/coder.md" "$agent_target"
 
 cmd_target=$(readlink "$TARGET/.claude/commands/autopilot.md")
-assert_eq "command symlink path" "../../.hephaestus/.claude/commands/autopilot.md" "$cmd_target"
+assert_eq "command symlink path" "../../.hephaestus/commands/autopilot.md" "$cmd_target"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
