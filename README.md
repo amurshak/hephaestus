@@ -14,6 +14,10 @@ orient → plan → critique → implement → review → test → ship → fini
 
 One command. Eight phases. It figures out the rest.
 
+The deeper claim is that software delivery is a structured instance of John Boyd's OODA loop — observe, orient, decide, act. Boyd argued that quality of orientation determines everything downstream; an entity with a superior mental model wins regardless of tempo. Hephaestus inverts the tempo-first framing of military OODA — premature action in software costs more than slow correctness — and fortifies the Orient phase with mandatory adversarial review. The plan must survive critique before code is written. The code must survive critique before it ships. Every retry loop is bounded, so the system can't spiral.
+
+What turns this from a prompt collection into autonomous infrastructure is the absence of opaque internal state. Memory lives in git history, GitHub issues, PRs, and the project's own documentation — places that already exist and that humans can read. When retries exhaust, the system degrades into artifacts (draft PRs, follow-up issues, commits) the next session or a human can resume from. Nothing is lost; nothing is locked away. The repo itself is the database.
+
 ---
 
 ## The pattern
@@ -50,6 +54,39 @@ Five roles, stratified by capability through least-privilege tool access:
 The coder is the only agent that can modify files; it runs in an isolated git worktree so parallel coders don't interfere. The reviewer, tester, and explorer can read code and run commands but can't edit. The researcher can access the web but can't run shell commands. The blast radius of any single agent misbehaving is bounded by its tool permissions.
 
 Every agent returns structured output — typed fields and verdicts, not prose. This turns agent invocations into function calls the orchestrating command can branch on.
+
+---
+
+## OODA loop analysis
+
+The pipeline maps onto Boyd's OODA loop (Observe → Orient → Decide → Act) with structural parallels and deliberate divergences.
+
+### Where they align
+
+| OODA | Hephaestus | Correspondence |
+|------|------------|----------------|
+| **Observe** | Orient phase — read issue, explore codebase, git status | Gathering raw information about the environment |
+| **Orient** | Plan + critique loop | Synthesizing observations into a mental model; the critique tests whether the orientation is sound |
+| **Decide** | Critique verdict + task decomposition | The commitment to a course of action |
+| **Act** | Implement → review → test → ship | Execution with feedback loops that can trigger re-orientation |
+
+The critique gate is the most interesting correspondence. Boyd argued Orient is the critical phase — quality of orientation determines everything downstream. Hephaestus fortifies it with mandatory adversarial review: the reviewer agent attacks the plan before code is written, then attacks the code before it ships. Two passes exist solely to break orientation.
+
+### Where they diverge
+
+**OODA is continuous; hephaestus is phased.** Boyd's loop has no discrete boundaries. Hephaestus imposes explicit phase gates — you don't implement until critique passes, you don't ship until tests pass. In software delivery, premature action has outsized downside. The phased structure sacrifices tempo for correctness.
+
+**OODA has implicit feedback; hephaestus has explicit retry loops.** Each OODA cycle incorporates results of the previous one naturally. Hephaestus makes feedback loops explicit and bounded (3 plan-critique, 3 code-review, 2 test-fix). Without bounds, an autonomous system could loop forever. The retry limits are a tempo governor that forces graceful degradation.
+
+**OODA optimizes for tempo; hephaestus optimizes for correctness.** Boyd's insight was that faster cycles create advantage while the opponent is still orienting. Hephaestus inverts it: the "opponent" is complexity and entropy, and each `act` is a discrete artifact (a PR), not a continuous decision stream. Slow critique gates are affordable when each output is durable. Shipping a bug costs more than waiting.
+
+**OODA has no wind-down state.** Boyd's loop assumes continuous operation. Hephaestus adds a failure-mode state machine: when retries exhaust, the system transitions to clean shutdown that preserves progress and creates breadcrumbs. Sessions have finite context and finite reliability — the system must stop gracefully at any point.
+
+**Nested loops.** Hephaestus nests OODA-like cycles within the larger pipeline. The test-fix cycle is its own observe-orient-decide-act loop. The pre-ship critique is another. This fractal structure — loops within loops, each with termination conditions — is more complex than Boyd's single-level model.
+
+### The deeper correspondence
+
+Boyd argued that speed of the OODA loop matters less than quality of orientation. An entity with a superior mental model makes better decisions even at lower tempo. Hephaestus embodies this: explorer agents fan out in parallel to build context, the critique gate stress-tests the plan across seven dimensions (logic, assumptions, completeness, trade-offs, evidence, second-order effects, timing), and persistent failures trigger RETHINK — forcing the system to rebuild orientation from scratch rather than iterating on a flawed one. Designed to be right before fast.
 
 ---
 
@@ -110,39 +147,6 @@ The critique system is the most heavily gated part of the pipeline. It operates 
 On iteration 2+, the system distinguishes NEW blockers from PERSISTENT ones, and for persistent blockers asks whether the issue is fixable-with-a-different-strategy or a design-level-problem. Three rounds is the limit — if adversarial review hasn't resolved it by then, the problem requires human judgment or a fundamentally different approach, not more iteration.
 
 The design reflects a core belief: the model's first plan is usually wrong in some way, and adversarial self-review catches errors that optimistic forward passes miss. The system spends its error budget on getting orientation right rather than recovering from poor execution.
-
----
-
-## OODA loop analysis
-
-The pipeline maps onto Boyd's OODA loop (Observe → Orient → Decide → Act) with structural parallels and deliberate divergences.
-
-### Where they align
-
-| OODA | Hephaestus | Correspondence |
-|------|------------|----------------|
-| **Observe** | Orient phase — read issue, explore codebase, git status | Gathering raw information about the environment |
-| **Orient** | Plan + critique loop | Synthesizing observations into a mental model; the critique tests whether the orientation is sound |
-| **Decide** | Critique verdict + task decomposition | The commitment to a course of action |
-| **Act** | Implement → review → test → ship | Execution with feedback loops that can trigger re-orientation |
-
-The critique gate is the most interesting correspondence. Boyd argued Orient is the critical phase — quality of orientation determines everything downstream. Hephaestus fortifies it with mandatory adversarial review: the reviewer agent attacks the plan before code is written, then attacks the code before it ships. Two passes exist solely to break orientation.
-
-### Where they diverge
-
-**OODA is continuous; hephaestus is phased.** Boyd's loop has no discrete boundaries. Hephaestus imposes explicit phase gates — you don't implement until critique passes, you don't ship until tests pass. In software delivery, premature action has outsized downside. The phased structure sacrifices tempo for correctness.
-
-**OODA has implicit feedback; hephaestus has explicit retry loops.** Each OODA cycle incorporates results of the previous one naturally. Hephaestus makes feedback loops explicit and bounded (3 plan-critique, 3 code-review, 2 test-fix). Without bounds, an autonomous system could loop forever. The retry limits are a tempo governor that forces graceful degradation.
-
-**OODA optimizes for tempo; hephaestus optimizes for correctness.** Boyd's insight was that faster cycles create advantage while the opponent is still orienting. Hephaestus inverts it: the "opponent" is complexity and entropy, and each `act` is a discrete artifact (a PR), not a continuous decision stream. Slow critique gates are affordable when each output is durable. Shipping a bug costs more than waiting.
-
-**OODA has no wind-down state.** Boyd's loop assumes continuous operation. Hephaestus adds a failure-mode state machine: when retries exhaust, the system transitions to clean shutdown that preserves progress and creates breadcrumbs. Sessions have finite context and finite reliability — the system must stop gracefully at any point.
-
-**Nested loops.** Hephaestus nests OODA-like cycles within the larger pipeline. The test-fix cycle is its own observe-orient-decide-act loop. The pre-ship critique is another. This fractal structure — loops within loops, each with termination conditions — is more complex than Boyd's single-level model.
-
-### The deeper correspondence
-
-Boyd argued that speed of the OODA loop matters less than quality of orientation. An entity with a superior mental model makes better decisions even at lower tempo. Hephaestus embodies this: explorer agents fan out in parallel to build context, the critique gate stress-tests the plan across seven dimensions (logic, assumptions, completeness, trade-offs, evidence, second-order effects, timing), and persistent failures trigger RETHINK — forcing the system to rebuild orientation from scratch rather than iterating on a flawed one. Designed to be right before fast.
 
 ---
 
