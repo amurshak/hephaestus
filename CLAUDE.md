@@ -91,7 +91,7 @@ Every session must end at a clean checkpoint:
 5. **Session summary** — print what was completed, what was created, what remains
 
 Natural stopping points (in order of preference):
-- After finishing an issue (Phase 8-9 of autopilot)
+- After finishing an issue (Phase 4 of autopilot, post-/finish)
 - After shipping a PR (even if not yet merged)
 - After committing progress and filing follow-up issues
 - Never mid-implementation with uncommitted changes
