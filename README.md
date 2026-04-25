@@ -12,11 +12,11 @@ Software delivery follows the same loop in every project. Hephaestus encodes it 
 orient → plan → critique → implement → review → test → ship → finish
 ```
 
-One command. Eight phases. It figures out the rest.
+`/autopilot` is the top-level command. It picks the highest-priority open issue and runs the full eight-phase pipeline end to end — orient, plan, critique, implement, review, test, ship, finish — without intervention. The remaining commands (`/start-issue`, `/ship`, `/finish`, `/critique`, `/refactor`, and others) expose individual phases or sub-pipelines, so you can start mid-stream, ship work that's already implemented, run a single phase in isolation, or kick off a variant like a refactor instead of a feature.
 
 The deeper claim is that software delivery is a structured instance of John Boyd's OODA loop — observe, orient, decide, act. Boyd argued that quality of orientation determines everything downstream; an entity with a superior mental model wins regardless of tempo. Hephaestus inverts the tempo-first framing of military OODA — premature action in software costs more than slow correctness — and fortifies the Orient phase with mandatory adversarial review. The plan must survive critique before code is written. The code must survive critique before it ships. Every retry loop is bounded, so the system can't spiral.
 
-What turns this from a prompt collection into autonomous infrastructure is the absence of opaque internal state. Memory lives in git history, GitHub issues, PRs, and the project's own documentation — places that already exist and that humans can read. When retries exhaust, the system degrades into artifacts (draft PRs, follow-up issues, commits) the next session or a human can resume from. Nothing is lost; nothing is locked away. The repo itself is the database.
+What turns this from a prompt collection into autonomous infrastructure is the absence of opaque internal state. Memory lives in git history, GitHub issues, PRs, and the project's own documentation — places that already exist and that humans can read. When retries exhaust, the system degrades into artifacts (draft PRs, follow-up issues, commits) the next session or a human can resume from. Nothing is lost; nothing is locked away.
 
 ---
 
