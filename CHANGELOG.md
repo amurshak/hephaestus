@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **README Composition tree drift detection** (#87): new `tests/check_composition.sh` parses `<!-- requires: -->` and `<!-- chains: -->` headers from each command file and runs a bidirectional check — every `(requires: …)` annotation in the README's `## Composition` section must match the file metadata, AND every parent→child edge in the README tree must equal the parent's `chains:` list (catches edges removed from a file but kept in README, plus phantom children added to README that no file declares). Covered by `tests/test_composition.sh` with two negative cases (mutated requires:, dropped chain edge) verified against fixtures. `/update-docs` step 5 invokes the verifier; drift exits non-zero with a per-line report. The strengthened verifier surfaced one real drift on first run: `/refactor` declares `chains: /ship, /finish` but had no Composition tree — only a prose mention. README now renders both `/autopilot` and `/refactor` trees. Closes the #84(b) gap left when #85 added the section without enforcement.
+
 ### Changed
 - **`finish.md` step 7 permits a logged `/update-docs` skip** when the PR commit already updated the docs surface (CHANGELOG plus any other files the change required). Default remains "run it"; silent skips are still drift, but logged skips are explicitly auditable in the session summary. Tightens a procedure that previously forced redundant no-op runs.
 - **README demote submodule, add Composition section** (#85): plugin install becomes the mainline narrative throughout the README. The submodule path consolidates from three sections (Adopting in an existing project, Headless mode, Forking and customization) into a single "Submodule install (for headless mode and forking)" section. New `## Composition` section after Design choices shows the `/autopilot` chain as a tree, with each command's `requires:` declared inline — built directly from the `chains:` metadata introduced in #80.

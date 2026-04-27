@@ -22,7 +22,9 @@ Steps:
 
 4. **Update README.md** only if a public-facing feature or API changed (new endpoint, new CLI command, changed env var).
 
-5. **Commit the doc changes**:
+5. **Verify the README Composition tree** is in sync with command metadata: `bash "$(git rev-parse --show-toplevel)/tests/check_composition.sh"`. If it reports drift, fix the README's `## Composition` section (or the affected command's `<!-- requires:/chains: -->` headers) per the verifier's output, then re-run.
+
+6. **Commit the doc changes**:
    ```
    git add CLAUDE.md CHANGELOG.md README.md
    git commit -m "docs: update CLAUDE.md and CHANGELOG for <feature>"
