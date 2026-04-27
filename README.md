@@ -161,7 +161,18 @@ Each command file declares what it directly uses (`requires:` for agents) and wh
              └── /update-docs       (requires: none)
 ```
 
-`/refactor` follows a parallel structure for refactoring work — same `/ship` + `/finish` chain after its analysis and plan-critique phases.
+`/refactor` follows a parallel structure for refactoring work:
+
+```
+/refactor                           (requires: coder, explorer)
+├── Phase 1  analysis (inline)
+├── Phase 2  plan-critique (inline)
+├── Phase 3  implement (inline)
+├── Phase 4  /ship                  (requires: tester)
+│            └── /critique          (requires: reviewer)
+└── Phase 5  /finish                (requires: none)
+             └── /update-docs       (requires: none)
+```
 
 **Why explicit composition.** Single source of truth: change `/critique`'s retry semantics once, and every command that chains `/critique` (currently `/ship`) inherits the change. Eliminates the duplicate gates earlier inline structures created — pre-ship critique used to run twice on `/autopilot` (once in autopilot itself, once again inside its inlined ship procedure).
 
