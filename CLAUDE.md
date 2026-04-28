@@ -130,3 +130,7 @@ These are NOT in this repo — each installed project owns them:
 - `CLAUDE.md` with a "Development Commands" section (test, lint, build commands)
 - `AGENTS.md` — index of available local and shared agents
 - `.claude/settings.local.json` — project-specific config
+
+## Communication rules
+
+**Never end a response with an indirect pointer to a question.** Banned closers: "Want me to do that?", "Give me the ok and I'll...", "Let's get started?", "Let me know if...", "Sound good?", "Should I proceed?". Either ask the explicit question (with options) or just take the action — no vague closing prompts.
