@@ -50,7 +50,7 @@ The core of Hephaestus is composed of five commands spread across eight internal
 | 5 | **Review** | Security, architecture, test coverage, convention compliance (up to 3 rounds) |
 | 6 | **Test** | Quality gates from the project's `CLAUDE.md` (up to 2 full retry cycles) |
 | 7 | **Ship** | CHANGELOG, PR with quality checklist, squash auto-merge |
-| 8 | **Finish** | Close issue, delete branches, file follow-ups for anything unresolved |
+| 8 | **Finish** | Close issue, delete branches, file follow-ups, and run or skip docs sync by a deterministic PR-diff rule |
 
 ### Agents
 
@@ -207,7 +207,7 @@ Hephaestus doesn't build its own memory. It uses existing systems as read/write 
 | **GitHub Issues** | Work queue, context, acceptance criteria | `create-issue`, `finish` (follow-ups), retry exhaustion |
 | **Git history** | Implementation decisions, change rationale | Commits from every delivery command |
 | **GitHub PRs** | Review state, quality gate results, in-flight work | `ship`, retry exhaustion (draft PRs) |
-| **CLAUDE.md** | Project configuration, quality gates, constraints | `update-docs` |
+| **CLAUDE.md** | Project configuration, quality gates, constraints | `update-docs`, `finish` docs check |
 | **CHANGELOG.md** | Release history | `ship`, `update-docs` |
 | **Draft PRs with prefixes** | Failure breadcrumbs (`[WIP]`, `[BLOCKED]`, `[FAILING]`) | Retry exhaustion handlers |
 | **Follow-up issues** | Deferred work, unresolved problems | `finish`, retry exhaustion |
