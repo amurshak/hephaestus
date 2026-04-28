@@ -1,7 +1,8 @@
-<!-- requires: none -->
-<!-- chains: none -->
-<!-- generated from .ai/workflows/update-docs.md; do not edit directly -->
-
+---
+name: update-docs
+requires: none
+chains: none
+---
 Update documentation to reflect recent work.
 
 Steps:

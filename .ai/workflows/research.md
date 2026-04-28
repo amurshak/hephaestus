@@ -1,7 +1,8 @@
-<!-- requires: researcher, explorer -->
-<!-- chains: none -->
-<!-- generated from .ai/workflows/research.md; do not edit directly -->
-
+---
+name: research
+requires: researcher, explorer
+chains: none
+---
 Conduct thorough research on: $ARGUMENTS
 
 **Always delegate to subagent(s)** — web search results are bulky and should not fill the main context window.

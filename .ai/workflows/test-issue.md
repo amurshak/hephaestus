@@ -1,7 +1,8 @@
-<!-- requires: tester -->
-<!-- chains: none -->
-<!-- generated from .ai/workflows/test-issue.md; do not edit directly -->
-
+---
+name: test-issue
+requires: tester
+chains: none
+---
 Test the current implementation. Issue number (optional): $ARGUMENTS
 
 **Always delegate to subagent(s)** — test output is verbose and should not pollute the main context window.

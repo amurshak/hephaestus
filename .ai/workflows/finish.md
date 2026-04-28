@@ -1,7 +1,8 @@
-<!-- requires: none -->
-<!-- chains: /update-docs -->
-<!-- generated from .ai/workflows/finish.md; do not edit directly -->
-
+---
+name: finish
+requires: none
+chains: /update-docs
+---
 Finish and close issue $ARGUMENTS. Run autonomously.
 
 Steps:

@@ -16,13 +16,15 @@ When in doubt about a design choice, pick the option that is simpler, more self-
 
 ## What This Is
 
-Hephaestus is an implementation of a generic software development workflow pattern in Claude Code. It encodes the observation that all delivery follows the same loop — orient, plan, critique, implement, review, test, ship, finish — and makes that loop executable, autonomous, and self-correcting. Distributed as a git submodule containing prose instructions that cause Claude Code to behave as a structured delivery system. Installed into other projects via `./install.sh <target>`.
+Hephaestus is an implementation of a generic software development workflow pattern for AI coding agents. It encodes the observation that all delivery follows the same loop — orient, plan, critique, implement, review, test, ship, finish — and makes that loop executable, autonomous, and self-correcting. Distributed as a git submodule containing prose workflows plus tool adapters that cause an AI coding agent to behave as a structured delivery system. Installed into other projects via `./install.sh <target>`.
 
 ## Repository Structure
 
 - `.claude/agents/` — Subagent definitions (coder, reviewer, tester, explorer, researcher) with tool permissions and structured output contracts
-- `.claude/commands/` — User-facing slash commands that orchestrate agents through quality-gated workflows
+- `.ai/workflows/` — canonical, tool-neutral workflow specs with `name`, `requires`, and `chains` frontmatter
+- `.claude/commands/` — generated Claude slash-command adapters for the canonical workflows
 - `.claude-plugin/plugin.json` — Plugin manifest for Claude Code marketplace install (declares `commands` and `agents` paths so the plugin loader finds them under `.claude/`)
+- `scripts/sync-agent-adapters.sh` — generates/checks tool-specific adapters from `.ai/workflows/`
 - `install.sh` — Adds hephaestus as `.hephaestus` submodule in a target project, creates symlinks into `.claude/`
 - `update.sh` — Pulls latest hephaestus into an already-installed project
 
@@ -48,6 +50,7 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 
 ## Key Design Constraints
 
+- **Workflows live in `.ai/workflows/`** as the canonical source. `.claude/commands/` files are generated adapters; run `./scripts/sync-agent-adapters.sh` after workflow edits and `./scripts/sync-agent-adapters.sh --check` in quality gates.
 - **Commands read the target project's CLAUDE.md** to discover test/lint/build commands. The "Development Commands" section in each installed project drives all quality gates.
 - **`/finish` branches on explicit PR state** before cleanup. Merged PRs complete the full close/cleanup/docs flow; auto-merge-pending and manual-merge-needed PRs preserve the issue and PR branch; closed-unmerged PRs abort finish cleanly.
 - **`/finish` decides docs sync mechanically** from the PR diff: every PR requires CHANGELOG.md; command or installer changes also require README.md; command or agent changes also require CLAUDE.md. If any required doc is missing, `/finish` runs `/update-docs` and logs the missing files.
@@ -106,15 +109,16 @@ When the user gives feedback about how commands, agents, or workflows should beh
 
 When modifying agents or commands:
 - Preserve the YAML frontmatter format in agent files (name, description, tools, isolation)
-- Preserve the `$ARGUMENTS` placeholder in commands — it receives user input at invocation
+- Edit canonical workflow specs in `.ai/workflows/`, not generated `.claude/commands/` adapters.
+- Preserve the `$ARGUMENTS` placeholder in workflows that receive user input at invocation.
 - Retry limits are defined in "Core Workflow Pattern" above — commands must reference them, not hardcode
 - Commands that delegate to subagents should specify which agent type to use and what structured output to expect
-- Claude commands are the canonical workflow source
+- Run `./scripts/sync-agent-adapters.sh --check` before shipping adapter changes
 - **No bloat**: Replacements must be at least as concise as the original. If the new text is longer without adding information, tighten it. Bloat and drift are the enemies of excellence.
 
-**Command headers** — every command declares its dependencies on line 1+:
-- `<!-- requires: agent1, agent2 -->` lists subagents the command launches directly. Use `<!-- requires: none -->` if it launches none. `install.sh` validates these at install time.
-- `<!-- chains: /cmd-a, /cmd-b -->` lists other commands this one invokes. Each command is the single source of truth for its concern; composite commands chain rather than inline. When you change a chained command's interface (added arg, removed step, etc.), update every caller declared in its `chains:` field.
+**Workflow metadata** — every `.ai/workflows/*.md` declares its dependencies in frontmatter:
+- `requires: agent1, agent2` lists subagents the workflow launches directly. Use `requires: none` if it launches none.
+- `chains: /cmd-a, /cmd-b` lists other workflows it invokes. Use `chains: none` if it chains none. Generated Claude adapters render this as `<!-- requires: -->` and `<!-- chains: -->` headers.
 
 Composition rule: if you find yourself copying procedure from `/foo` into `/bar`, replace with a chain instead. Duplicate procedures drift.
 

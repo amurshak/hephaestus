@@ -1,7 +1,8 @@
-<!-- requires: tester -->
-<!-- chains: /critique -->
-<!-- generated from .ai/workflows/ship.md; do not edit directly -->
-
+---
+name: ship
+requires: tester
+chains: /critique
+---
 Prepare, validate, and ship the current work. Issue number to close (optional): $ARGUMENTS
 
 PRs must be **merge-ready** — all gates pass before creation, auto-merge after.

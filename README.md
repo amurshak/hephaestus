@@ -133,7 +133,7 @@ Twelve commands, but only five form the delivery spine: `orient`, `start-issue`,
 
 ### Separation of orchestration from configuration
 
-Hephaestus owns the workflow — what order things happen, when to retry, when to stop. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific file hephaestus ever creates is a scaffold for `orient.md`, which it then refuses to overwrite.
+Hephaestus owns the workflow — what order things happen, when to retry, when to stop. Canonical workflows live in `.ai/workflows/` with frontmatter for `name`, `requires`, and `chains`; `.claude/commands/` are generated adapters checked by `scripts/sync-agent-adapters.sh --check`. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific file hephaestus ever creates is a scaffold for `orient.md`, which it then refuses to overwrite.
 
 ### Parallelization at two levels
 
@@ -147,7 +147,7 @@ Every command specifies what happens when things go wrong — not as afterthough
 
 ## Composition
 
-Each command file declares what it directly uses (`requires:` for agents) and what it chains (`chains:` for other commands). `/autopilot` is the most composed:
+Each canonical workflow declares what it directly uses (`requires:` for agents) and what it chains (`chains:` for other workflows). The generated Claude adapters expose the same metadata as command headers. `/autopilot` is the most composed:
 
 ```
 /autopilot                          (requires: explorer)
@@ -321,7 +321,8 @@ Fork hephaestus to customize commands for your org while still pulling upstream 
 - `VERSION` — your fork's version track
 
 **Will conflict if modified** — actively developed upstream:
-- `.claude/commands/` and `.claude/agents/` — the core workflow files
+- `.ai/workflows/` and `.claude/agents/` — the core workflow and agent files
+- `.claude/commands/` — generated Claude adapters; update via `scripts/sync-agent-adapters.sh`
 - `install.sh`, `update.sh`, `uninstall.sh` — the install tooling
 - `.claude-plugin/plugin.json` — the plugin manifest
 
