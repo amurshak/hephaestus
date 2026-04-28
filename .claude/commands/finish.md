@@ -41,7 +41,15 @@ Steps:
    - Add as a comment on the closed issue: `gh issue comment <#> --repo <detected-repo> --body "<retrospective>"`
    - Keep it short — 2-4 sentences. Skip if the pipeline ran cleanly with no failures.
 
-7. **Update docs** — sync CLAUDE.md, CHANGELOG, and README with what just shipped: run `/update-docs`. Default: run it. Skip only when the PR commit *already* updated CHANGELOG plus any other docs files the change required (CLAUDE.md for new patterns, README for public-facing changes). Logged skips are fine; silent skips let drift accumulate — note `skipped /update-docs: docs updated in PR #N` in the session summary.
+7. **Update docs** — decide mechanically from the PR diff; do not use model judgment.
+   - Determine the changed files: `BASE_SHA=$(gh pr view <pr-number> --repo <detected-repo> --json baseRefOid -q '.baseRefOid'); HEAD_SHA=$(gh pr view <pr-number> --repo <detected-repo> --json headRefOid -q '.headRefOid'); git diff "$BASE_SHA..$HEAD_SHA" --name-only`
+   - Build the required docs set from the changed files:
+     - `CHANGELOG.md` is required for every PR, no exceptions.
+     - `README.md` is required when the PR touches `install.sh`, `update.sh`, `uninstall.sh`, or any `.claude/commands/*.md` file.
+     - `CLAUDE.md` is required when the PR touches any `.claude/agents/*.md` or `.claude/commands/*.md` file.
+   - If every required doc file is present in the PR diff, skip `/update-docs` and log `skipped /update-docs: docs updated in PR #N (auto-detected)` in the session summary.
+   - If any required doc file is missing, run `/update-docs` and log `ran /update-docs: missing <files> in PR #N (auto-detected)` in the session summary.
+   - The skip/run decision must be deterministic from `git diff "$BASE_SHA..$HEAD_SHA" --name-only`; no prose assessment like "docs surface covered" is sufficient.
 
 8. **Print session summary** (CHANGELOG is updated by `/ship` and re-checked by `/update-docs` — do not update it again here):
    - One-line: what shipped (feature/fix name, PR number, issue number)
