@@ -1,7 +1,8 @@
-<!-- requires: none -->
-<!-- chains: none -->
-<!-- generated from .ai/workflows/orient.md; do not edit directly -->
-
+---
+name: orient
+requires: none
+chains: none
+---
 # Orient — Hephaestus
 
 ## Repo

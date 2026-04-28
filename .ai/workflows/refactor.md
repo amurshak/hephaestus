@@ -1,7 +1,8 @@
-<!-- requires: coder, explorer -->
-<!-- chains: /ship, /finish -->
-<!-- generated from .ai/workflows/refactor.md; do not edit directly -->
-
+---
+name: refactor
+requires: coder, explorer
+chains: /ship, /finish
+---
 Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause for plan approval.
 
 ## Process

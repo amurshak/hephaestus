@@ -1,7 +1,8 @@
-<!-- requires: none -->
-<!-- chains: none -->
-<!-- generated from .ai/workflows/update-hephaestus.md; do not edit directly -->
-
+---
+name: update-hephaestus
+requires: none
+chains: none
+---
 Update the hephaestus submodule to the latest version.
 
 ## Steps

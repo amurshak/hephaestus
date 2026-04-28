@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- **Tool-neutral workflow core and adapter drift check**: canonical workflow specs now live in `.ai/workflows/*.md` with `name`, `requires`, and `chains` frontmatter. `.claude/commands/*.md` are generated Claude adapters from those specs via `scripts/sync-agent-adapters.sh`; `--check` detects wrapper drift. Added `tests/test_agent_adapters.sh` to verify adapter sync, drift detection, and metadata completeness.
 - **README Composition tree drift detection** (#87): new `tests/check_composition.sh` parses `<!-- requires: -->` and `<!-- chains: -->` headers from each command file and runs a bidirectional check — every `(requires: …)` annotation in the README's `## Composition` section must match the file metadata, AND every parent→child edge in the README tree must equal the parent's `chains:` list (catches edges removed from a file but kept in README, plus phantom children added to README that no file declares). Covered by `tests/test_composition.sh` with two negative cases (mutated requires:, dropped chain edge) verified against fixtures. `/update-docs` step 5 invokes the verifier; drift exits non-zero with a per-line report. The strengthened verifier surfaced one real drift on first run: `/refactor` declares `chains: /ship, /finish` but had no Composition tree — only a prose mention. README now renders both `/autopilot` and `/refactor` trees. Closes the #84(b) gap left when #85 added the section without enforcement.
 
 ### Changed

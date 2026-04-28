@@ -1,7 +1,8 @@
-<!-- requires: coder, explorer -->
-<!-- chains: /test-issue -->
-<!-- generated from .ai/workflows/start-issue.md; do not edit directly -->
-
+---
+name: start-issue
+requires: coder, explorer
+chains: /test-issue
+---
 Start working on issue $ARGUMENTS. Run autonomously through the full plan-critique-implement cycle.
 
 ## Autonomy Rules

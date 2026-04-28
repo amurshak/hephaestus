@@ -1,7 +1,8 @@
-<!-- requires: explorer -->
-<!-- chains: none -->
-<!-- generated from .ai/workflows/create-issue.md; do not edit directly -->
-
+---
+name: create-issue
+requires: explorer
+chains: none
+---
 Create a GitHub issue for: $ARGUMENTS
 
 Follow these steps:
