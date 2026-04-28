@@ -6,19 +6,29 @@ Steps:
 
 1. **Detect repo**: Run `git remote get-url origin` from current directory.
 
-2. **Verify the PR is merged**:
-   - Run `gh pr list --state merged --repo <detected-repo>` and look for the relevant PR
-   - If not merged yet but PR exists: check if auto-merge is enabled. If yes, note it in the summary and proceed with cleanup. If no, note that manual merge is needed and proceed with what can be done.
-   - If no PR exists at all: this is unexpected — create one via `/ship` flow first, then continue.
+2. **Load PR state once, then branch deterministically**:
+   - Find the PR for the issue (or use the explicit PR number if provided). If no PR exists, stop finish and run `/ship <#>` first.
+   - Read one state payload before cleanup: `gh pr view <pr-number> --repo <detected-repo> --json state,mergedAt,mergeStateStatus,autoMergeRequest,headRefName,headRefOid,baseRefOid,closingIssuesReferences`
+   - Branch from that payload:
+     - `state=MERGED` and `mergedAt != null` → proceed with issue close, branch cleanup, breadcrumbs, retrospective, docs check, and summary.
+     - `state=OPEN`, `mergeStateStatus=CLEAN`, and `autoMergeRequest != null` → log `auto-merge pending for PR #N`; proceed with cleanup-as-far-as-possible, but do not close the issue and do not delete or sweep this PR's branch.
+     - `state=OPEN` and `autoMergeRequest = null` → log `manual merge needed for PR #N`; proceed with cleanup-as-far-as-possible, but do not close the issue and do not delete or sweep this PR's branch.
+     - `state=CLOSED` and `mergedAt = null` → abort finish with `PR #N closed without merge`; do not close the issue, delete branches, run `/update-docs`, or file a shipped retrospective.
+   - If cleanup later needs `headRefName`, re-read the same PR field immediately before deletion and use the latest value. If it changed since the first payload, log `PR #N head branch changed during finish: <old> -> <new>` and use the latest value.
 
 3. **Close the issue**:
-   ```
-   gh issue close <#> --repo <detected-repo> --comment "Shipped in PR #<pr-number>."
-   ```
+   - Derive the shipped issue from `closingIssuesReferences`; if it disagrees with `$ARGUMENTS`, use the PR's closing issue and log `using PR closing issue #M instead of requested #N`.
+   - Check issue state first: `gh issue view <resolved-issue> --repo <detected-repo> --json state`.
+   - If already closed, log `issue #N already closed by PR #M` and continue.
+   - If open and PR state is merged, close it:
+     ```
+     gh issue close <resolved-issue> --repo <detected-repo> --comment "Shipped in PR #<pr-number>."
+     ```
+   - If PR state is not merged, skip issue close and include the pending/manual-merge reason in the session summary.
 
 4. **Clean up branches** — sweep aggressively; GitHub's auto-delete only catches branches merged *after* the setting was enabled, so debt accumulates without an active sweep:
    - Switch off the merged branch (squash-merged branches can't be deleted while checked out): `BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo master); git checkout "$BASE"`
-   - Delete the PR's local branch (idempotent — `/finish` may re-run): `BR=$(gh pr view <pr-number> --repo <detected-repo> --json headRefName -q '.headRefName'); git show-ref --verify --quiet "refs/heads/$BR" && git branch -D "$BR"` (use `-D` — squash merges leave the tip unreachable, so `-d` refuses)
+   - Delete the PR's local branch only when PR state is merged (idempotent — `/finish` may re-run): `BR=$(gh pr view <pr-number> --repo <detected-repo> --json headRefName -q '.headRefName'); git show-ref --verify --quiet "refs/heads/$BR" && git branch -D "$BR"` (use `-D` — squash merges leave the tip unreachable, so `-d` refuses)
    - Delete remote branches for *all* merged PRs (handles this PR plus any stranded by prior runs, auto-merge timing, or pre-setting merges):
      ```
      merged=$(gh pr list --state merged --limit 200 --repo <detected-repo> --json headRefName --jq '.[].headRefName' | sort -u)
@@ -26,7 +36,7 @@ Steps:
      stale=$(comm -12 <(echo "$merged") <(echo "$remote"))
      [ -n "$stale" ] && git push origin --delete $stale
      ```
-     Safe because the intersection requires a remote branch *and* a merged PR with that headRef — but if branch names get reused (rare), live work could match. Raise `--limit 200` if your unswept debt is older than the last 200 PRs. On push failure: print the error and continue to step 5; do **not** swallow with `|| true`, and do **not** abort the finish flow.
+     Safe because the intersection requires a remote branch *and* a merged PR with that headRef — but if branch names get reused (rare), live work could match. For an open PR state, exclude the current PR's `headRefName` from `stale` before pushing deletes. Raise `--limit 200` if your unswept debt is older than the last 200 PRs. On push failure: print the error and continue to step 5; do **not** swallow with `|| true`, and do **not** abort the finish flow.
    - Prune local refs and pop session stash: `git fetch --prune origin; git stash list | grep -q "autopilot-pre" && git stash pop || true`
 
 5. **Create breadcrumbs for remaining work**:
