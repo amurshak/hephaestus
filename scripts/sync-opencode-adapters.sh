@@ -86,7 +86,7 @@ render_permission() {
   fi
 
   if [[ "$tools" == *"Bash"* ]]; then
-    echo "  bash: ask"
+    echo "  bash: allow"
   else
     echo "  bash: deny"
   fi
