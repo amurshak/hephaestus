@@ -24,6 +24,8 @@ assert_file_not_exists "coder.md removed"     "$TARGET/.claude/agents/coder.md"
 assert_file_not_exists "reviewer.md removed"  "$TARGET/.claude/agents/reviewer.md"
 assert_file_not_exists "autopilot.md removed" "$TARGET/.claude/commands/autopilot.md"
 assert_file_not_exists "ship.md removed"      "$TARGET/.claude/commands/ship.md"
+assert_file_not_exists "OpenCode coder.md removed"     "$TARGET/.opencode/agent/coder.md"
+assert_file_not_exists "OpenCode autopilot.md removed" "$TARGET/.opencode/commands/autopilot.md"
 
 # .hephaestus submodule should be removed
 assert_file_not_exists ".hephaestus removed" "$TARGET/.hephaestus"
@@ -40,6 +42,7 @@ bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 
 # orient.md was scaffolded — it should survive uninstall
 echo "my orient" > "$TARGET/.claude/commands/orient.md"
+echo "my opencode orient" > "$TARGET/.opencode/commands/orient.md"
 # Create a project-specific CLAUDE.md
 echo "# Project" > "$TARGET/CLAUDE.md"
 
@@ -48,6 +51,9 @@ bash "$SOURCE_REPO/uninstall.sh" "$TARGET" >/dev/null 2>&1
 assert_file_exists "orient.md preserved" "$TARGET/.claude/commands/orient.md"
 content=$(cat "$TARGET/.claude/commands/orient.md")
 assert_eq "orient.md content intact" "my orient" "$content"
+assert_file_exists "OpenCode orient.md preserved" "$TARGET/.opencode/commands/orient.md"
+opencode_content=$(cat "$TARGET/.opencode/commands/orient.md")
+assert_eq "OpenCode orient.md content intact" "my opencode orient" "$opencode_content"
 assert_file_exists "CLAUDE.md preserved" "$TARGET/CLAUDE.md"
 teardown_fixture
 
@@ -114,15 +120,19 @@ TARGET=$(create_target)
 # Install
 bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 assert_symlink "after install: coder.md linked" "$TARGET/.claude/agents/coder.md"
+assert_symlink "after install: OpenCode coder.md linked" "$TARGET/.opencode/agent/coder.md"
 
 # Uninstall
 bash "$SOURCE_REPO/uninstall.sh" "$TARGET" >/dev/null 2>&1
 assert_file_not_exists "after uninstall: coder.md gone" "$TARGET/.claude/agents/coder.md"
+assert_file_not_exists "after uninstall: OpenCode coder.md gone" "$TARGET/.opencode/agent/coder.md"
 
 # Reinstall
 bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 assert_symlink       "after reinstall: coder.md linked again" "$TARGET/.claude/agents/coder.md"
 assert_symlink_valid "after reinstall: coder.md resolves"     "$TARGET/.claude/agents/coder.md"
+assert_symlink       "after reinstall: OpenCode coder.md linked again" "$TARGET/.opencode/agent/coder.md"
+assert_symlink_valid "after reinstall: OpenCode coder.md resolves"     "$TARGET/.opencode/agent/coder.md"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────

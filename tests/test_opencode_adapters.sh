@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# test_opencode_adapters.sh — Verify OpenCode adapters stay in sync with canonical sources.
+
+set -uo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/helpers.sh"
+
+begin_test "OpenCode adapters match workflows and Claude agents"
+
+if output=$(bash "$HEPHAESTUS_ROOT/scripts/sync-opencode-adapters.sh" --check 2>&1); then
+  pass "sync-opencode-adapters.sh --check exits 0"
+else
+  fail "sync-opencode-adapters.sh --check exits non-zero" "$output"
+fi
+
+begin_test "OpenCode adapter check detects command drift"
+
+FIXTURE=$(mktemp -d "${TMPDIR:-/tmp}/heph-opencode-XXXXXX")
+trap 'rm -rf "$FIXTURE"' EXIT
+
+cp -R "$HEPHAESTUS_ROOT/.ai" "$FIXTURE/.ai"
+cp -R "$HEPHAESTUS_ROOT/.claude" "$FIXTURE/.claude"
+cp -R "$HEPHAESTUS_ROOT/.opencode" "$FIXTURE/.opencode"
+mkdir -p "$FIXTURE/scripts"
+cp "$HEPHAESTUS_ROOT/scripts/sync-opencode-adapters.sh" "$FIXTURE/scripts/sync-opencode-adapters.sh"
+
+sed -i.bak 's/Run the full autonomous pipeline/Run the drifted autonomous pipeline/' \
+  "$FIXTURE/.opencode/commands/autopilot.md"
+rm -f "$FIXTURE/.opencode/commands/autopilot.md.bak"
+
+if drift_output=$(bash "$FIXTURE/scripts/sync-opencode-adapters.sh" --check 2>&1); then
+  fail "OpenCode adapter check should detect command drift" "exited 0, output: $drift_output"
+else
+  if echo "$drift_output" | grep -q "OpenCode adapter drift for /autopilot"; then
+    pass "OpenCode adapter check reports /autopilot drift"
+  else
+    fail "OpenCode adapter check failed without naming /autopilot" "$drift_output"
+  fi
+fi
+
+begin_test "OpenCode agent adapters enforce edit permissions"
+
+coder="$HEPHAESTUS_ROOT/.opencode/agent/coder.md"
+reviewer="$HEPHAESTUS_ROOT/.opencode/agent/reviewer.md"
+researcher="$HEPHAESTUS_ROOT/.opencode/agent/researcher.md"
+
+assert_contains "coder can edit" "$(cat "$coder")" "  edit: allow"
+assert_contains "reviewer cannot edit" "$(cat "$reviewer")" "  edit: deny"
+assert_contains "researcher cannot run bash" "$(cat "$researcher")" "  bash: deny"
+assert_contains "researcher can websearch" "$(cat "$researcher")" "  websearch: allow"
+
+begin_test "opencode.json loads repo instructions"
+
+opencode_json=$(cat "$HEPHAESTUS_ROOT/opencode.json")
+assert_contains "schema declared" "$opencode_json" '"$schema": "https://opencode.ai/config.json"'
+assert_contains "CLAUDE.md included" "$opencode_json" '"CLAUDE.md"'
+assert_contains "AGENTS.md included" "$opencode_json" '"AGENTS.md"'
+
+print_summary

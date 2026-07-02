@@ -7,6 +7,7 @@
 #
 # What it does:
 #   1. Removes symlinks in .claude/agents/, .claude/commands/ that point to .hephaestus/
+#      and matching OpenCode symlinks in .opencode/agent/, .opencode/commands/
 #   2. Removes the .hephaestus git submodule
 #   3. Does NOT remove project-specific files (orient.md, hooks, settings, CLAUDE.md)
 #
@@ -55,6 +56,8 @@ remove_hephaestus_links() {
 echo "Removing hephaestus symlinks:"
 remove_hephaestus_links ".claude/agents"
 remove_hephaestus_links ".claude/commands"
+remove_hephaestus_links ".opencode/agent"
+remove_hephaestus_links ".opencode/commands"
 
 if [ "$REMOVED_LINKS" -eq 0 ]; then
   echo "  (no hephaestus symlinks found)"
@@ -87,6 +90,7 @@ fi
 echo ""
 echo "Kept (project-specific):"
 echo "  - .claude/commands/orient.md (if present)"
+echo "  - .opencode/commands/orient.md (if present)"
 echo "  - .claude/hooks/ (if present)"
 echo "  - .claude/settings.local.json (if present)"
 echo "  - CLAUDE.md"

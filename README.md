@@ -133,7 +133,7 @@ Twelve commands, but only five form the delivery spine: `orient`, `start-issue`,
 
 ### Separation of orchestration from configuration
 
-Hephaestus owns the workflow — what order things happen, when to retry, when to stop. Canonical workflows live in `.ai/workflows/` with frontmatter for `name`, `requires`, and `chains`; `.claude/commands/` are generated adapters checked by `scripts/sync-agent-adapters.sh --check`. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific file hephaestus ever creates is a scaffold for `orient.md`, which it then refuses to overwrite.
+Hephaestus owns the workflow — what order things happen, when to retry, when to stop. Canonical workflows live in `.ai/workflows/` with frontmatter for `name`, `requires`, and `chains`; `.claude/commands/` and `.opencode/commands/` are generated adapters checked by `scripts/sync-agent-adapters.sh --check` and `scripts/sync-opencode-adapters.sh --check`. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific command hephaestus ever creates is a scaffold for `orient.md`, which it then refuses to overwrite.
 
 ### Parallelization at two levels
 
@@ -286,7 +286,7 @@ Plugin install is the recommended path. Submodule install is the alternative whe
 ./install.sh /path/to/your/project
 ```
 
-This adds `.hephaestus` as a submodule, symlinks commands and agents into `<project>/.claude/`, scaffolds an `orient.md` template, validates `CLAUDE.md`, and runs a health check. Safe to re-run. Commands install under bare names (`/autopilot`, `/ship`, etc.) — no plugin namespace, since they live directly in the project's `.claude/commands/`.
+This adds `.hephaestus` as a submodule, symlinks commands and agents into `<project>/.claude/` and `<project>/.opencode/`, scaffolds `orient.md` templates, validates `CLAUDE.md`, and runs a health check. Safe to re-run. Commands install under bare names (`/autopilot`, `/ship`, etc.) — no plugin namespace, since they live directly in the project's command directories.
 
 If your project already has `.claude/commands/` or agents, audit first to surface conflicts:
 
@@ -299,7 +299,7 @@ If your project already has `.claude/commands/` or agents, audit first to surfac
 | | |
 |---|---|
 | `install.sh --audit`         | Preview what would change without modifying anything |
-| `install.sh --force`         | Replace existing files with hephaestus versions |
+| `install.sh --force`         | Replace existing shared adapter files with hephaestus versions; project `orient.md` files stay protected |
 | `install.sh --clean`         | Remove dangling symlinks after upstream renames |
 | `/update-hephaestus`         | Pull latest, re-install, show what changed |
 | `.hephaestus/uninstall.sh`   | Clean removal — only hephaestus symlinks |
@@ -323,6 +323,7 @@ Fork hephaestus to customize commands for your org while still pulling upstream 
 **Will conflict if modified** — actively developed upstream:
 - `.ai/workflows/` and `.claude/agents/` — the core workflow and agent files
 - `.claude/commands/` — generated Claude adapters; update via `scripts/sync-agent-adapters.sh`
+- `.opencode/commands/` and `.opencode/agent/` — generated OpenCode adapters; update via `scripts/sync-opencode-adapters.sh`
 - `install.sh`, `update.sh`, `uninstall.sh` — the install tooling
 - `.claude-plugin/plugin.json` — the plugin manifest
 
