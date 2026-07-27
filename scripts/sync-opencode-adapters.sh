@@ -146,7 +146,32 @@ check_or_write() {
   fi
 }
 
+# Stale adapters: generated files whose source was renamed or deleted.
+check_stale() {
+  local dir=$1 expected=$2 source_dir=$3
+  local adapter base rc=0
+  for adapter in "$dir"/*.md; do
+    [ -e "$adapter" ] || continue
+    base=$(basename "$adapter")
+    case " $expected " in
+      *" $base "*) ;;
+      *)
+        if [ "$MODE" = "--check" ]; then
+          echo "ERR: stale OpenCode adapter $adapter (no matching source in $source_dir)" >&2
+          rc=1
+        else
+          rm -f "$adapter"
+          echo "✗ removed stale OpenCode adapter $adapter"
+        fi
+        ;;
+    esac
+  done
+  return "$rc"
+}
+
 drift=0
+expected_commands=""
+expected_agents=""
 
 for workflow in "$WORKFLOWS_DIR"/*.md; do
   [ -e "$workflow" ] || continue
@@ -156,6 +181,7 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
     drift=1
     continue
   fi
+  expected_commands="$expected_commands ${name}.md"
   target="$OPENCODE_COMMANDS_DIR/${name}.md"
   tmp=$(mktemp "${TMPDIR:-/tmp}/heph-opencode-command-XXXXXX")
   render_opencode_command "$workflow" > "$tmp" || { drift=1; rm -f "$tmp"; continue; }
@@ -171,12 +197,16 @@ for agent in "$CLAUDE_AGENTS_DIR"/*.md; do
     drift=1
     continue
   fi
+  expected_agents="$expected_agents ${name}.md"
   target="$OPENCODE_AGENTS_DIR/${name}.md"
   tmp=$(mktemp "${TMPDIR:-/tmp}/heph-opencode-agent-XXXXXX")
   render_opencode_agent "$agent" > "$tmp" || { drift=1; rm -f "$tmp"; continue; }
   check_or_write "$target" "$tmp" "@$name" || drift=1
   rm -f "$tmp"
 done
+
+check_stale "$OPENCODE_COMMANDS_DIR" "$expected_commands" "$WORKFLOWS_DIR" || drift=1
+check_stale "$OPENCODE_AGENTS_DIR" "$expected_agents" "$CLAUDE_AGENTS_DIR" || drift=1
 
 if [ "$MODE" = "--check" ]; then
   [ "$drift" -eq 0 ] && echo "✓ OpenCode adapters in sync"

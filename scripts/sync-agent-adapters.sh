@@ -53,6 +53,7 @@ render_claude_wrapper() {
 }
 
 drift=0
+expected=""
 for workflow in "$WORKFLOWS_DIR"/*.md; do
   [ -e "$workflow" ] || continue
   name=$(field "$workflow" "name")
@@ -61,6 +62,7 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
     drift=1
     continue
   fi
+  expected="$expected ${name}.md"
 
   target="$CLAUDE_COMMANDS_DIR/${name}.md"
   if [ "$MODE" = "--check" ]; then
@@ -80,6 +82,24 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
   else
     render_claude_wrapper "$workflow" > "$target" || drift=1
   fi
+done
+
+# Stale adapters: generated files whose source workflow was renamed or deleted.
+for adapter in "$CLAUDE_COMMANDS_DIR"/*.md; do
+  [ -e "$adapter" ] || continue
+  base=$(basename "$adapter")
+  case " $expected " in
+    *" $base "*) ;;
+    *)
+      if [ "$MODE" = "--check" ]; then
+        echo "ERR: stale Claude adapter $adapter (no matching workflow in $WORKFLOWS_DIR)" >&2
+        drift=1
+      else
+        rm -f "$adapter"
+        echo "✗ removed stale Claude adapter $adapter"
+      fi
+      ;;
+  esac
 done
 
 if [ "$MODE" = "--check" ]; then

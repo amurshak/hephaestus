@@ -38,6 +38,32 @@ else
   fi
 fi
 
+begin_test "OpenCode adapter check detects stale adapters after source deletion"
+
+FIXTURE2=$(mktemp -d "${TMPDIR:-/tmp}/heph-opencode-XXXXXX")
+trap 'rm -rf "$FIXTURE" "$FIXTURE2"' EXIT
+
+cp -R "$HEPHAESTUS_ROOT/.ai" "$FIXTURE2/.ai"
+cp -R "$HEPHAESTUS_ROOT/.claude" "$FIXTURE2/.claude"
+cp -R "$HEPHAESTUS_ROOT/.opencode" "$FIXTURE2/.opencode"
+mkdir -p "$FIXTURE2/scripts"
+cp "$HEPHAESTUS_ROOT/scripts/sync-opencode-adapters.sh" "$FIXTURE2/scripts/sync-opencode-adapters.sh"
+
+rm "$FIXTURE2/.ai/workflows/research.md"
+rm "$FIXTURE2/.claude/agents/tester.md"
+
+if stale_output=$(bash "$FIXTURE2/scripts/sync-opencode-adapters.sh" --check 2>&1); then
+  fail "OpenCode check should detect orphaned adapters" "exited 0, output: $stale_output"
+else
+  assert_contains "check names stale command adapter" "$stale_output" ".opencode/commands/research.md"
+  assert_contains "check names stale agent adapter" "$stale_output" ".opencode/agent/tester.md"
+fi
+
+sync_output=$(bash "$FIXTURE2/scripts/sync-opencode-adapters.sh" 2>&1)
+assert_contains "sync reports stale adapter removal" "$sync_output" "removed stale OpenCode adapter"
+assert_file_not_exists "sync removes orphaned command adapter" "$FIXTURE2/.opencode/commands/research.md"
+assert_file_not_exists "sync removes orphaned agent adapter" "$FIXTURE2/.opencode/agent/tester.md"
+
 begin_test "OpenCode agent adapters enforce edit permissions"
 
 coder="$HEPHAESTUS_ROOT/.opencode/agent/coder.md"
