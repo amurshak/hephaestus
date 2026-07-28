@@ -76,7 +76,7 @@ reviewer="$HEPHAESTUS_ROOT/.opencode/agent/reviewer.md"
 researcher="$HEPHAESTUS_ROOT/.opencode/agent/researcher.md"
 
 assert_contains "coder can edit" "$(cat "$coder")" "  edit: allow"
-assert_contains "coder description warns orchestrator about isolation" "$(cat "$coder")" "serialize file-modifying tasks."
+assert_contains "coder description warns orchestrator about isolation" "$(grep '^description:' "$coder")" "NOTE: OpenCode has no worktree isolation"
 assert_contains "coder body warns about missing worktree isolation" "$(cat "$coder")" "> **No worktree isolation.**"
 assert_not_contains "reviewer has no isolation warning" "$(cat "$reviewer")" "No worktree isolation"
 assert_contains "reviewer cannot edit" "$(cat "$reviewer")" "  edit: deny"
