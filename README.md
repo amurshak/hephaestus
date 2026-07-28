@@ -19,7 +19,7 @@ Or run the whole loop as one command:
 /autopilot
 ```
 
-The core is a set of harness-neutral workflow specs (`.ai/workflows/`) and agent definitions — plain markdown files. Per-harness support is *generated adapters* from those specs: Claude Code, [OpenCode](https://opencode.ai), and Codex adapters ship today; new harnesses are a ~200-line generator script away.
+The core is a set of harness-neutral workflow specs (`.ai/workflows/`) and agent definitions — plain markdown files. Per-harness support is *generated adapters* from those specs: Claude Code, [OpenCode](https://opencode.ai), Codex, and [Hermes](https://github.com/NousResearch/hermes-agent) adapters ship today; new harnesses are a ~200-line generator script away.
 
 ## Install
 
@@ -30,9 +30,9 @@ In Claude Code:
 /plugin install heph@hephaestus
 ```
 
-That's it — commands appear under `/heph:` (`/heph:autopilot`, `/heph:ship`, …). For OpenCode, Codex, manual copy/symlink, or the git-submodule install (headless mode, forking), see [Get started](#get-started).
+That's it — commands appear under `/heph:` (`/heph:autopilot`, `/heph:ship`, …). For OpenCode, Codex, Hermes, manual copy/symlink, or the git-submodule install (headless mode, forking), see [Get started](#get-started).
 
-**Requirements:** [Claude Code](https://claude.com/claude-code), [OpenCode](https://opencode.ai), or [Codex](https://openai.com/codex) · [`gh` CLI](https://cli.github.com) authenticated (workflows drive GitHub issues and PRs) · git.
+**Requirements:** [Claude Code](https://claude.com/claude-code), [OpenCode](https://opencode.ai), [Codex](https://openai.com/codex), or [Hermes](https://github.com/NousResearch/hermes-agent) · [`gh` CLI](https://cli.github.com) authenticated (workflows drive GitHub issues and PRs) · git.
 
 Hephaestus is an OODA loop — observe, orient, decide, act — for software. Boyd designed OODA for fighter pilots: cycle faster than the opponent and you win. Software has the opposite problem. Shipping too fast costs more than slowing down. So this loop puts most of its weight on Orient. Plans face adversarial review before code begins. Code faces adversarial review before it ships. Retries are bounded so nothing spirals.
 
@@ -96,6 +96,7 @@ Roles differ in what it costs to get them wrong, so they run on different models
 | Claude Code | the tier name, natively |
 | OpenCode | `model: <provider>/<model-id>` |
 | Codex | `model_reasoning_effort` (a pinnable `model` if you want one) |
+| Hermes | `model: <provider>/<model-id>`, advisory — Hermes applies one global `delegation.model` |
 
 To run the roles on another provider, repoint the mapping — not the tiers. Drop a `~/.hephaestus/models.conf` to change it for every project, or point `$HEPHAESTUS_MODELS` at a file for one run; layers merge per key, so naming a single tier leaves the rest at their shipped defaults. Generator `--check` reads the shipped file alone, so a personal override never turns the drift gate red for everyone else.
 
@@ -165,7 +166,7 @@ Thirteen commands, but the delivery spine is `/autopilot` and the three commands
 
 ### Separation of orchestration from configuration
 
-Hephaestus owns the workflow — what order things happen, when to retry, when to stop. Canonical workflows live in `.ai/workflows/` with frontmatter for `name`, `requires`, and `chains`; `.claude/commands/`, `.opencode/commands/`, and `.agents/skills/*/SKILL.md` are generated adapters checked by `scripts/sync-agent-adapters.sh --check`, `scripts/sync-opencode-adapters.sh --check`, and `scripts/sync-codex-adapters.sh --check`. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific command hephaestus ever creates is a scaffold for `orient`, which it then refuses to overwrite.
+Hephaestus owns the workflow — what order things happen, when to retry, when to stop. Canonical workflows live in `.ai/workflows/` with frontmatter for `name`, `requires`, and `chains`; `.claude/commands/`, `.opencode/commands/`, `.agents/skills/*/SKILL.md`, and `.hermes/skills/hephaestus/*/SKILL.md` are generated adapters checked by the matching `scripts/sync-*-adapters.sh --check`. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific command hephaestus ever creates is a scaffold for `orient`, which it then refuses to overwrite.
 
 ### Parallelization at three levels
 
@@ -294,6 +295,9 @@ cp hephaestus/opencode.json your-project/   # loads AGENTS.md + CLAUDE.md
 mkdir -p your-project/.agents your-project/.codex
 cp -R hephaestus/.agents/skills your-project/.agents/
 cp -R hephaestus/.codex/agents your-project/.codex/
+# Hermes:
+mkdir -p your-project/.hermes
+cp -R hephaestus/.hermes/skills hephaestus/.hermes/agents your-project/.hermes/
 ```
 
 Commands run under bare names (`/autopilot`). No update story — re-copy when you want the latest. Symlink instead of copy if you keep a local clone and want updates via `git pull`.
@@ -306,6 +310,24 @@ Commands run under bare names (`/autopilot`). No update story — re-copy when y
 4. Verify load: `opencode debug config` or `bash scripts/verify-opencode-load.sh` (from hephaestus root or after install).
 5. Nested steps say “run `/ship`” — invoke the slash command so the full template loads; do not paraphrase. Role work uses the Task tool or `@coder` / `@reviewer` / … (no worktree isolation — serialize file-writing `@coder` tasks).
 
+### Hermes usage (a skill package, wired once)
+
+Hermes is not a command-file harness. Its extension surface is a skills system, so hephaestus ships as a **skill package**: thirteen skills under the `hephaestus` category plus five delegate briefs.
+
+1. Install adapters into the project (copy or `./install.sh`) — this creates `.hermes/skills/hephaestus/` and `.hermes/agents/`.
+2. **Wire discovery once.** Hermes reads `~/.hermes/skills` plus whatever `skills.external_dirs` names; it has no project-local discovery. Add to `~/.hermes/config.yaml` under the top-level `skills:` key:
+   ```yaml
+   skills:
+     external_dirs:
+       - /path/to/your-project/.hermes/skills
+   ```
+   Or start Hermes with `HERMES_HOME=/path/to/your-project/.hermes` for a fully project-scoped profile.
+3. Verify: `bash scripts/verify-hermes-load.sh` — it checks the wiring, then confirms the skills appear in `hermes skills list`.
+4. Invoke as `/autopilot`, `/ship`, `/finish`, … External dirs are read-only to Hermes, so its self-improving skill writes land in `~/.hermes/skills` and can never mutate a generated adapter out of sync.
+5. Role work uses `delegate_task`. Each brief in `.hermes/agents/` gives the `toolsets` to pass (`["terminal", "file"]` for coder, `["file", "web"]` for researcher) and the prompt to send as `context`. Two Hermes specifics: a delegate inherits **none** of the parent conversation, so everything it needs goes in `context`; and there is no worktree isolation, so parallel coder delegates share one working tree — serialize file-modifying work.
+
+**Two doctrines to keep straight.** Hermes's persistent memory (`~/.hermes/memories/`) is profile-scoped, capped, and frozen into the system prompt at session start — it is not repo state. Hephaestus keeps the repo canonical: issues, PRs, and git history are the memory that survives a machine change. Use Hermes memory for durable preferences, not for what a workflow decided. Likewise the kanban toolset is a local board with no GitHub issue sync, so GitHub issues remain the work queue; kanban is optional scratch space for a single session's fan-out.
+
 ### 3. Submodule (updatable vendoring, headless mode, forking)
 
 ```bash
@@ -313,7 +335,7 @@ git clone https://github.com/amurshak/hephaestus.git && cd hephaestus
 ./install.sh /path/to/your/project
 ```
 
-One shared copy, relative symlinks into `.claude/`, `.opencode/`, `.agents/`, and `.codex/`, plus `opencode.json` scaffold; `update.sh` for updates. Required for [headless mode](#headless-mode) (`loop.sh` runs Claude or OpenCode as a subprocess). Details in [Submodule install](#submodule-install-for-headless-mode-and-forking).
+One shared copy, relative symlinks into `.claude/`, `.opencode/`, `.agents/`, `.codex/`, and `.hermes/`, plus `opencode.json` scaffold; `update.sh` for updates. Required for [headless mode](#headless-mode) (`loop.sh` runs Claude or OpenCode as a subprocess). Details in [Submodule install](#submodule-install-for-headless-mode-and-forking).
 
 ---
 
@@ -369,7 +391,7 @@ For most Claude Code users the plugin is the least-friction path. The submodule 
 ./install.sh /path/to/your/project
 ```
 
-This adds `.hephaestus` as a submodule, symlinks commands and agents into `<project>/.claude/`, `<project>/.opencode/`, `<project>/.agents/skills/`, and `<project>/.codex/agents/`, scaffolds project-specific orient files, `AGENTS.md`, and `opencode.json`, validates `CLAUDE.md`, and runs a health check. Safe to re-run. Commands install under bare names (`/autopilot`, `/ship`, etc.) — no plugin namespace, since they live directly in the project's command directories.
+This adds `.hephaestus` as a submodule, symlinks commands and agents into `<project>/.claude/`, `<project>/.opencode/`, `<project>/.agents/skills/`, `<project>/.codex/agents/`, and `<project>/.hermes/`, scaffolds project-specific orient files, `AGENTS.md`, and `opencode.json`, validates `CLAUDE.md`, and runs a health check. Safe to re-run. Commands install under bare names (`/autopilot`, `/ship`, etc.) — no plugin namespace, since they live directly in the project's command directories.
 
 If your project already has `.claude/commands/` or agents, audit first to surface conflicts:
 
@@ -409,6 +431,7 @@ Fork hephaestus to customize commands for your org while still pulling upstream 
 - `.claude/commands/` — generated Claude adapters; update via `scripts/sync-agent-adapters.sh`
 - `.opencode/commands/` and `.opencode/agents/` — generated OpenCode adapters; update via `scripts/sync-opencode-adapters.sh`
 - `.agents/skills/` and `.codex/agents/` — generated Codex adapters; update via `scripts/sync-codex-adapters.sh`
+- `.hermes/skills/` and `.hermes/agents/` — generated Hermes adapters; update via `scripts/sync-hermes-adapters.sh`
 - `install.sh`, `update.sh`, `uninstall.sh` — the install tooling
 - `.claude-plugin/plugin.json` — the plugin manifest
 
@@ -422,7 +445,7 @@ git merge upstream/master
 
 ## Contributing
 
-PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the gates and conventions. The short version: edit canonical sources (`.ai/workflows/`, `.claude/agents/`), never generated adapters; run `./tests/run.sh` and the Claude/OpenCode/Codex `--check` scripts. Adapter generators for new harnesses are especially welcome — see `scripts/sync-opencode-adapters.sh` / `scripts/sync-codex-adapters.sh` for the pattern.
+PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the gates and conventions. The short version: edit canonical sources (`.ai/workflows/`, `.claude/agents/`), never generated adapters; run `./tests/run.sh` and every `scripts/sync-*-adapters.sh --check`. Adapter generators for new harnesses are especially welcome — see `scripts/sync-opencode-adapters.sh` / `scripts/sync-codex-adapters.sh` / `scripts/sync-hermes-adapters.sh` for the pattern.
 
 ## License
 
