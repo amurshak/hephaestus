@@ -1,6 +1,6 @@
 ---
 # generated from .claude/agents/coder.md; do not edit directly
-description: "Implement a focused coding task in isolation. Spawn multiple coders in parallel for independent changes across different files or modules."
+description: "Implement a focused coding task in isolation. Spawn multiple coders in parallel for independent changes across different files or modules. NOTE: OpenCode has no worktree isolation — parallel coder agents share one working tree; serialize file-modifying tasks."
 mode: subagent
 permission:
   read: allow
@@ -10,6 +10,8 @@ permission:
   edit: allow
   bash: allow
 ---
+
+> **No worktree isolation.** The Claude version of this agent runs in an isolated git worktree; OpenCode has no equivalent. Parallel coder agents edit the same working tree — serialize file-modifying tasks.
 
 
 Implement the specific task described in your prompt.

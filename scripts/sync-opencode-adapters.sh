@@ -101,11 +101,12 @@ render_permission() {
 
 render_opencode_agent() {
   local agent=$1
-  local name description tools start
+  local name description tools isolation start
 
   name=$(field "$agent" "name")
   description=$(field "$agent" "description")
   tools=$(field "$agent" "tools")
+  isolation=$(field "$agent" "isolation")
   start=$(body_start_line "$agent")
 
   if [ -z "$name" ] || [ -z "$description" ] || [ -z "$tools" ] || [ -z "$start" ]; then
@@ -113,6 +114,11 @@ render_opencode_agent() {
     return 1
   fi
 
+  # OpenCode has no worktree isolation; surface that where the orchestrator
+  # decides to parallelize (description) and where the agent runs (body).
+  if [ "$isolation" = "worktree" ]; then
+    description="$description NOTE: OpenCode has no worktree isolation — parallel ${name} agents share one working tree; serialize file-modifying tasks."
+  fi
   description=$(yaml_quote "$description")
 
   {
@@ -123,6 +129,10 @@ render_opencode_agent() {
     render_permission "$tools"
     echo "---"
     echo ""
+    if [ "$isolation" = "worktree" ]; then
+      echo "> **No worktree isolation.** The Claude version of this agent runs in an isolated git worktree; OpenCode has no equivalent. Parallel ${name} agents edit the same working tree — serialize file-modifying tasks."
+      echo ""
+    fi
     sed -n "${start},\$p" "$agent"
   }
 }
