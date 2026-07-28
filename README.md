@@ -315,7 +315,7 @@ Optional but recommended:
 |---|---|
 | `.claude/hooks/lint-on-commit.sh` | Your lint command, before every commit |
 | `.claude/hooks/protect-files.sh` | Block edits to `.env`, lock files, secrets |
-| `AGENTS.md` | Index of local + shared agents |
+| `AGENTS.md` | Index of local + shared agents (submodule installs scaffold this from a template) |
 | `.claude/settings.local.json` | Permissions and hook paths |
 
 Both hooks ship as ready-to-use templates — deterministic backstops for the prose gates (`protect-files.sh` works as-is; set `LINT_CMD` in `lint-on-commit.sh`):
@@ -344,7 +344,7 @@ For most Claude Code users the plugin is the least-friction path. The submodule 
 ./install.sh /path/to/your/project
 ```
 
-This adds `.hephaestus` as a submodule, symlinks commands and agents into `<project>/.claude/` and `<project>/.opencode/`, scaffolds `orient.md` templates, validates `CLAUDE.md`, and runs a health check. Safe to re-run. Commands install under bare names (`/autopilot`, `/ship`, etc.) — no plugin namespace, since they live directly in the project's command directories.
+This adds `.hephaestus` as a submodule, symlinks commands and agents into `<project>/.claude/` and `<project>/.opencode/`, scaffolds `orient.md` and `AGENTS.md` templates, validates `CLAUDE.md`, and runs a health check. Safe to re-run. Commands install under bare names (`/autopilot`, `/ship`, etc.) — no plugin namespace, since they live directly in the project's command directories.
 
 If your project already has `.claude/commands/` or agents, audit first to surface conflicts:
 

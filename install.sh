@@ -377,6 +377,11 @@ if [ "$AUDIT_MODE" = true ]; then
   else
     printf "  %-25s %-12s %s\n" "opencode orient.md" "missing" "will scaffold from template"
   fi
+  if [ -e AGENTS.md ] || [ -L AGENTS.md ]; then
+    printf "  %-25s %-12s %s\n" "AGENTS.md" "exists" "project-specific (will keep yours)"
+  else
+    printf "  %-25s %-12s %s\n" "AGENTS.md" "missing" "will scaffold from template"
+  fi
   echo ""
   if [ -f CLAUDE.md ]; then
     if grep -qiE '^#{2,} .*(development commands|test(s|ing)?|lint(ing)?|build)' CLAUDE.md; then
@@ -405,6 +410,14 @@ if [ ! -e .opencode/commands/orient.md ] && [ ! -L .opencode/commands/orient.md 
   echo "[scaffold] OpenCode orient.md (created template — customize for your project)"
 else
   echo "[skip] OpenCode orient.md (already exists)"
+fi
+
+# Scaffold AGENTS.md if the target project doesn't have one (same pattern as orient)
+if [ ! -e AGENTS.md ] && [ ! -L AGENTS.md ]; then
+  cp "$HEPH_SRC/templates/AGENTS.md" AGENTS.md
+  echo "[scaffold] AGENTS.md (created agent index — customize the Local section)"
+else
+  echo "[skip] AGENTS.md (already exists)"
 fi
 
 # Check CLAUDE.md for Development Commands section
@@ -473,6 +486,13 @@ if [ -e .claude/commands/orient.md ]; then
   echo "  ✓ orient.md present"
 else
   echo "  ✗ orient.md missing"
+fi
+
+# AGENTS.md
+if [ -e AGENTS.md ]; then
+  echo "  ✓ AGENTS.md present"
+else
+  echo "  ✗ AGENTS.md missing"
 fi
 
 # CLAUDE.md dev commands (already checked above, just summarize)

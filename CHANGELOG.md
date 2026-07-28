@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **`templates/AGENTS.md`** (#104): install.sh now scaffolds an AGENTS.md agent index (Local + Shared sections) when the target project lacks one — same never-overwrite pattern as the orient scaffold. Closes the loop on install.sh's own "Update AGENTS.md" closing hint, which previously pointed at a file nothing helped create.
+
 ## 2.1.0 — 2026-07-28
 
 Adoptions from a cross-check against sibling implementations of the same workflow pattern (one public — [claude-code-core-workflow](https://github.com/amurshak/claude-code-core-workflow) — and several private production lineages). Where multiple lineages independently evolved the same mechanism, that convergence drove adoption.

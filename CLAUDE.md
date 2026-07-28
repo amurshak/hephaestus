@@ -142,7 +142,7 @@ These are NOT in this repo — each installed project owns them:
 - `.opencode/commands/orient.md` — OpenCode project-specific context (scaffolded by install.sh, must be customized if using OpenCode)
 - `.claude/hooks/` — lint/test hooks for the project's tech stack
 - `CLAUDE.md` with a "Development Commands" section (test, lint, build commands)
-- `AGENTS.md` — index of available local and shared agents
+- `AGENTS.md` — index of available local and shared agents (scaffolded by install.sh from `templates/AGENTS.md`)
 - `.claude/settings.local.json` — project-specific config
 
 ## Communication rules
