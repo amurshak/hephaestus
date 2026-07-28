@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **Dangling "per CLAUDE.md retry limits" reference on plugin/manual installs** (#111): distributed workflows reference retry limits that lived only in hephaestus's own CLAUDE.md, which plugin and manual-copy users never receive (plugin-level CLAUDE.md doesn't enter session context). `/orient`'s bootstrap now writes a compact "Workflow Rules" block (limits + wind-down convention) into the target CLAUDE.md, and `templates/CLAUDE.md.snippet` carries the same block. Found by cross-checking a sibling implementation of this workflow pattern.
+
 ## 2.0.2 — 2026-07-28
 
 ### Changed
