@@ -1,0 +1,27 @@
+# Contributing
+
+## Ground rules
+
+- **Edit canonical sources, never generated adapters.** Workflows live in `.ai/workflows/`, agents in `.claude/agents/`. Everything in `.claude/commands/` and `.opencode/` is generated — regenerate with:
+  ```bash
+  ./scripts/sync-agent-adapters.sh
+  ./scripts/sync-opencode-adapters.sh
+  ```
+- **Run the gates before submitting:**
+  ```bash
+  ./tests/run.sh                               # integration suite
+  ./scripts/sync-agent-adapters.sh --check     # Claude adapter drift
+  ./scripts/sync-opencode-adapters.sh --check  # OpenCode adapter drift
+  bash tests/check_composition.sh              # README composition drift
+  ```
+- **Bash 3.2 compatibility** — scripts must run on stock macOS bash: no associative arrays, no `mapfile`, portable `sed -i.bak`.
+- **No bloat** — replacements must be at least as concise as the original. Retry limits are defined once in CLAUDE.md; commands reference them, never hardcode.
+- Every PR updates `CHANGELOG.md` under `## Unreleased`.
+
+## What we most want
+
+**Adapter generators for new harnesses.** The pattern is `scripts/sync-opencode-adapters.sh`: a generator that emits your harness's format from the canonical specs, with sync + `--check` modes, stale-adapter detection, and tests mirroring `tests/test_opencode_adapters.sh`. Open roadmap issues track Codex, Cursor, and Hermes.
+
+## Conduct
+
+Be direct, cite evidence, assume good faith. Critique the work, not the person — the reviewer agent's standard applies to humans too: findings need evidence or they're questions.

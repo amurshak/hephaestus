@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- **Community files**: `CONTRIBUTING.md` (gates, canonical-source rule, bash-3.2 constraint, adapter-generator call-to-action), issue templates (bug report, adapter request), and a PR template whose checklist mirrors the ship evidence gate — check only what you actually ran.
 - **`templates/AGENTS.md`** (#104): install.sh now scaffolds an AGENTS.md agent index (Local + Shared sections) when the target project lacks one — same never-overwrite pattern as the orient scaffold. Closes the loop on install.sh's own "Update AGENTS.md" closing hint, which previously pointed at a file nothing helped create.
 
 ## 2.1.0 — 2026-07-28

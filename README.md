@@ -395,15 +395,7 @@ git merge upstream/master
 
 ## Contributing
 
-PRs welcome. Before submitting:
-
-```bash
-./tests/run.sh                            # integration suite
-./scripts/sync-agent-adapters.sh --check  # Claude adapter drift
-./scripts/sync-opencode-adapters.sh --check  # OpenCode adapter drift
-```
-
-Edit canonical sources (`.ai/workflows/`, `.claude/agents/`), never generated adapters (`.claude/commands/`, `.opencode/`); regenerate with the sync scripts. Adapter generators for new harnesses are especially welcome — see `scripts/sync-opencode-adapters.sh` for the pattern.
+PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the gates and conventions. The short version: edit canonical sources (`.ai/workflows/`, `.claude/agents/`), never generated adapters; run `./tests/run.sh` and both `--check` scripts. Adapter generators for new harnesses are especially welcome — see `scripts/sync-opencode-adapters.sh` for the pattern.
 
 ## License
 
