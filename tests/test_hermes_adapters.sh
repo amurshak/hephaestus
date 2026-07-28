@@ -230,6 +230,11 @@ ln -s "$HEPHAESTUS_ROOT" "$PROJ/.hephaestus"
 for a in coder explorer reviewer tester researcher; do
   cp "$AGENTS/$a.md" "$PROJ/.hermes/agents/$a.md"
 done
+# The verifier checks the identifier `/worktrees` spawns with
+# (`hermes chat -s hephaestus/start-issue`), so the fixture carries the skill
+# at that path exactly as an install would.
+mkdir -p "$PROJ/.hermes/skills/hephaestus/start-issue"
+cp "$SKILLS/start-issue/SKILL.md" "$PROJ/.hermes/skills/hephaestus/start-issue/SKILL.md"
 
 # Stub `hermes` so the check runs without a real install. `config path` points at
 # a config wired to the PROJECT skills dir — what install.sh tells the user to add.
