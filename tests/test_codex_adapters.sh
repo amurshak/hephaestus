@@ -159,4 +159,26 @@ leaks=$(grep -rnF -e "Claude Code" -e "&& claude " -e "claude -" -e "--permissio
   "$HEPHAESTUS_ROOT/.agents/skills/" "$HEPHAESTUS_ROOT/.codex/agents/" 2>/dev/null || true)
 assert_eq "no Claude-product leak in any Codex adapter" "" "$leaks"
 
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "hand-written files in .codex/agents survive the stale sweep"
+
+FIXTURE_OWN=$(mktemp -d "${TMPDIR:-/tmp}/heph-codex-XXXXXX")
+copy_fixture "$FIXTURE_OWN"
+
+# No generated-from marker, so the sweep must report it rather than delete it.
+echo 'name = "my-own"' > "$FIXTURE_OWN/.codex/agents/my-own.toml"
+
+if own_check=$(bash "$FIXTURE_OWN/scripts/sync-codex-adapters.sh" --check 2>&1); then
+  fail "check should flag the unexpected file" "exited 0: $own_check"
+else
+  assert_contains "check names the file"     "$own_check" "my-own.toml"
+  assert_contains "check says non-generated" "$own_check" "unexpected non-generated file"
+fi
+
+bash "$FIXTURE_OWN/scripts/sync-codex-adapters.sh" >/dev/null 2>&1
+assert_exit_code   "sync exits non-zero" 1 "$?"
+assert_file_exists "hand-written role survives sync" "$FIXTURE_OWN/.codex/agents/my-own.toml"
+rm -rf "$FIXTURE_OWN"
+
 print_summary
