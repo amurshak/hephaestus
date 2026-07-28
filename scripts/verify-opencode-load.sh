@@ -39,15 +39,21 @@ fi
 
 fail=0
 for cmd in autopilot ship finish start-issue critique; do
-  if ! printf '%s' "$cfg" | grep -q "\"$cmd\""; then
+  case "$cfg" in
+    *\"$cmd\"*) ;;
+    *)
     echo "ERR: OpenCode config missing command $cmd" >&2
     fail=1
-  fi
+    ;;
+  esac
 done
 
 for agent in coder explorer reviewer tester researcher; do
-  if ! printf '%s' "$cfg" | grep -q "\"$agent\""; then
-    echo "ERR: OpenCode config missing agent $agent" >&2
+  if [ ! -f ".opencode/agents/$agent.md" ]; then
+    echo "ERR: missing OpenCode agent adapter .opencode/agents/$agent.md" >&2
+    fail=1
+  elif ! grep -q "generated from .claude/agents/$agent.md" ".opencode/agents/$agent.md"; then
+    echo "ERR: OpenCode agent adapter $agent is not generated from .claude/agents/$agent.md" >&2
     fail=1
   fi
 done
@@ -56,4 +62,4 @@ if [ "$fail" -ne 0 ]; then
   exit 1
 fi
 
-echo "✓ OpenCode loads hephaestus commands and agents"
+echo "✓ OpenCode loads hephaestus commands and agent adapters"
