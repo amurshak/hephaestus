@@ -77,6 +77,13 @@ truncate_desc() {
 }
 
 # Rewrite Claude-dialect body text for Hermes mechanics.
+#
+# Spawn commands are localized per skill, never generically. `hermes chat -q`
+# bypasses the slash dispatcher, so a generic `claude "<prompt>"` → `hermes chat
+# -q "<prompt>"` rule would quietly turn any `/<skill>` spawn into literal text
+# the model never acts on. Left unmatched instead, a new Claude-form spawn keeps
+# the word `claude` and trips the leak guard in tests/test_hermes_adapters.sh —
+# loud, and pointing at the line that needs its own `-s` rule.
 hermes_localize_body() {
   sed \
     -e 's/parallel coder subagents (in worktrees)/parallel coder delegates via `delegate_task` (serialize file edits; Hermes delegates share one working tree)/g' \
@@ -99,9 +106,7 @@ hermes_localize_body() {
     -e 's/seeded Claude Code session/seeded Hermes session/g' \
     -e 's|claude --permission-mode default \\"/start-issue <N>\\"|hermes chat -s hephaestus/start-issue -q \\"Run the start-issue workflow for issue <N>.\\"|g' \
     -e 's|claude "/start-issue <N>"|hermes chat -s hephaestus/start-issue -q "Run the start-issue workflow for issue <N>."|g' \
-    -e 's|claude --permission-mode default |hermes chat -q |g' \
-    -e 's|&& claude "|\&\& hermes chat -q "|g' \
-    -e 's|`--permission-mode default` prevents spawned sessions inheriting plan mode and stalling|`-s` preloads the skill, because a bare `/start-issue` is never dispatched in `-q` mode — it reaches the model as literal text; `-q` then runs it non-interactively, the form the Hermes kanban worker lanes use|g' \
+    -e 's|`--permission-mode default` prevents spawned sessions inheriting plan mode and stalling|`-s` preloads the skill, because a bare `/start-issue` is never dispatched in `-q` mode — it reaches the model as literal text|g' \
     -e "s/Claude Code's title rewrites/the TUI's title rewrites/g"
 }
 

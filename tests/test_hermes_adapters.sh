@@ -201,8 +201,10 @@ worktrees=$(cat "$SKILLS/worktrees/SKILL.md")
 # unknown skill) instead of relying on `/start-issue` resolving.
 assert_contains "osascript spawn uses hermes" "$worktrees" 'do script "cd <worktree> && hermes chat -s hephaestus/start-issue -q \"Run the start-issue workflow for issue <N>.\""'
 assert_contains "manual fallback uses hermes" "$worktrees" 'cd <worktree> && hermes chat -s hephaestus/start-issue -q "Run the start-issue workflow for issue <N>."'
-assert_not_contains "spawn never passes a bare slash command to -q" "$worktrees" '-q \"/start-issue'
-assert_not_contains "manual fallback never passes a bare slash command" "$worktrees" '-q "/start-issue'
+# Deliberately broader than /start-issue: `-q` swallows ANY leading-slash
+# prompt as literal text, so no skill may be spawned that way.
+assert_not_contains "spawn never passes a bare slash command to -q" "$worktrees" '-q \"/'
+assert_not_contains "manual fallback never passes a bare slash command" "$worktrees" '-q "/'
 assert_contains "spawn explains why -s is required" "$worktrees" "never dispatched in \`-q\` mode"
 assert_contains "summary names Hermes sessions" "$worktrees" "spawn a seeded Hermes session"
 
@@ -262,6 +264,15 @@ unwired_out=$(cd "$PROJ" && PATH="$FIXTURE4/bin:$PATH" bash .hephaestus/scripts/
 assert_exit_code "verifier fails when unwired" 1 "$?"
 assert_contains "remediation names the project skills dir" "$unwired_out" "$PROJ/.hermes/skills"
 assert_not_contains "remediation never names the submodule dir" "$unwired_out" ".hephaestus/.hermes/skills"
+
+# Wired, but the skill the /worktrees spawn preloads is absent. `hermes chat -s
+# hephaestus/start-issue` would abort every spawned session, so the verifier
+# must fail rather than report a healthy install.
+printf 'skills:\n  external_dirs:\n    - %s/.hermes/skills\n' "$PROJ" > "$FIXTURE4/config.yaml"
+rm -rf "$PROJ/.hermes/skills/hephaestus/start-issue"
+noskill_out=$(cd "$PROJ" && PATH="$FIXTURE4/bin:$PATH" bash .hephaestus/scripts/verify-hermes-load.sh 2>&1)
+assert_exit_code "verifier fails when the preload identifier is missing" 1 "$?"
+assert_contains "names the missing identifier" "$noskill_out" "no skill at hephaestus/start-issue"
 
 # ─────────────────────────────────────────────────────────────────────────────
 
