@@ -95,6 +95,9 @@ assert_contains "uncommitted edit under an ignore-all .gitignore is copied" \
 # rsync drops the last character of an unterminated final line, which turns the
 # last pattern into a different one — under-excluding the artifact it names, or
 # excluding a tracked file that the truncated pattern happens to match.
+# assert_file_exists first: `tail` on a missing path yields empty stdout, which
+# would compare equal to "" and pass, leaving the property silently unguarded.
+assert_file_exists "exclude list is written" "$FIXTURE_DIR/rsync-excludes"
 assert_eq "exclude list's last line is newline-terminated" \
   "" "$(tail -c 1 "$FIXTURE_DIR/rsync-excludes")"
 
