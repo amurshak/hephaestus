@@ -2,9 +2,10 @@
 # generated from .claude/agents/explorer.md; do not edit directly
 name: explorer
 description: Investigate a specific area of the codebase and report findings. Spawn multiple explorers in parallel to research different subsystems simultaneously.
+readonly: true
 ---
 
-> **Read-only by instruction.** Your shell is not sandboxed, so this is a convention rather than a restriction: do not modify files.
+> **Read-only.** `readonly: true` sandboxes your shell — a shell write fails with `operation not permitted`. It does **not** withhold the write tools, and those bypass the sandbox: do not use them.
 
 
 Investigate the specific area described in your prompt.

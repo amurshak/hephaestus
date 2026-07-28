@@ -192,17 +192,22 @@ for agent_file in "$HEPHAESTUS_ROOT"/.cursor/agents/*.md; do
   assert_eq "$(basename "$agent_file"): no keys Cursor ignores" "" "$unread"
 done
 
-# `readonly: true` is honoured (permissionMode READONLY), so it is emitted where
-# it cannot cost the agent its job. Whether READONLY also withholds the terminal
-# is undocumented, so shell-bearing roles keep DEFAULT and rely on instruction —
-# the same line the Codex and OpenCode generators draw.
+# `readonly: true` (permissionMode READONLY) sandboxes the shell to read-only and
+# nothing else — measured on Cursor 3.13.21, not inferred. So every role that
+# never writes carries it, and only a role whose shell must write is exempt.
 assert_contains "researcher is enforced read-only" "$(cat "$researcher")" "readonly: true"
-for shell_agent in reviewer tester explorer; do
-  assert_eq "$shell_agent keeps its shell (no readonly)" "0" \
-    "$(grep -c '^readonly:' "$HEPHAESTUS_ROOT/.cursor/agents/$shell_agent.md")"
-  assert_contains "$shell_agent told not to modify files" \
-    "$(cat "$HEPHAESTUS_ROOT/.cursor/agents/$shell_agent.md")" "> **Read-only by instruction.**"
+for ro_agent in reviewer explorer; do
+  assert_eq "$ro_agent gets a sandboxed shell (readonly)" "1" \
+    "$(grep -c '^readonly: true$' "$HEPHAESTUS_ROOT/.cursor/agents/$ro_agent.md")"
+  assert_contains "$ro_agent warned the write tool escapes the sandbox" \
+    "$(cat "$HEPHAESTUS_ROOT/.cursor/agents/$ro_agent.md")" "bypass the sandbox"
 done
+# tester is read-only in intent but its shell must write — a sandboxed shell
+# fails the test command outright, so `shell: write` exempts it.
+assert_eq "tester keeps a writable shell (no readonly)" "0" \
+  "$(grep -c '^readonly:' "$HEPHAESTUS_ROOT/.cursor/agents/tester.md")"
+assert_contains "tester told not to modify files" \
+  "$(cat "$HEPHAESTUS_ROOT/.cursor/agents/tester.md")" "> **Read-only by instruction.**"
 assert_eq "coder is not read-only" "0" "$(grep -c '^readonly:' "$coder")"
 # Cursor splits on the first ':' without unquoting, so a quoted value would reach
 # the model with its quotes attached.

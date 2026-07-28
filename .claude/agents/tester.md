@@ -3,6 +3,10 @@ name: tester
 description: Run tests and return structured results. Use after writing or modifying code.
 tools: Bash, Read, Glob, Grep
 model: haiku
+# Read-only in intent, but the shell must write: test runs produce artifacts,
+# caches, and temp files. Harnesses that sandbox a read-only shell must exempt
+# this role or the test command fails outright.
+shell: write
 ---
 
 Run tests for the project and return a structured summary.

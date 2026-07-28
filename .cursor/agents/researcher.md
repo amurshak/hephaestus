@@ -5,7 +5,7 @@ description: Research a topic using web search and return findings. Spawn multip
 readonly: true
 ---
 
-> **Read-only.** Cursor enforces this via `readonly: true` — write tools are withheld.
+> **Read-only.** `readonly: true` sandboxes your shell — a shell write fails with `operation not permitted`. It does **not** withhold the write tools, and those bypass the sandbox: do not use them.
 
 
 Research the specific topic described in your prompt.
