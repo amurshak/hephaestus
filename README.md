@@ -126,7 +126,7 @@ Boyd argued that speed of the OODA loop matters less than quality of orientation
 
 ### Minimum viable command set
 
-Twelve commands, but the delivery spine is `/autopilot` and the three commands it chains — `start-issue`, `ship`, `finish` — with orientation run inline as its first phase. The rest are support functions that pipeline phases call or convenience entry points that start at a different phase.
+Thirteen commands, but the delivery spine is `/autopilot` and the three commands it chains — `start-issue`, `ship`, `finish` — with orientation run inline as its first phase. The rest are support functions that pipeline phases call or convenience entry points that start at a different phase.
 
 **Delivery**
 
@@ -137,6 +137,7 @@ Twelve commands, but the delivery spine is `/autopilot` and the three commands i
 | `/ship` | Code review → quality gates → CHANGELOG → PR → auto-merge |
 | `/finish` | Close issue, clean branches, file follow-ups |
 | `/refactor` | Autonomous refactoring with review gate and before/after metrics |
+| `/worktrees` | Parallel multi-session orchestration — reap finished worktrees, wave-plan non-conflicting issues, spawn a seeded session per issue |
 
 **Support**
 
@@ -154,9 +155,9 @@ Twelve commands, but the delivery spine is `/autopilot` and the three commands i
 
 Hephaestus owns the workflow — what order things happen, when to retry, when to stop. Canonical workflows live in `.ai/workflows/` with frontmatter for `name`, `requires`, and `chains`; `.claude/commands/` and `.opencode/commands/` are generated adapters checked by `scripts/sync-agent-adapters.sh --check` and `scripts/sync-opencode-adapters.sh --check`. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific command hephaestus ever creates is a scaffold for `orient.md`, which it then refuses to overwrite.
 
-### Parallelization at two levels
+### Parallelization at three levels
 
-**Within a session**: multiple coder agents work in parallel worktrees for independent tasks; multiple explorer and researcher agents fan out across subsystems simultaneously. **Across sessions**: `loop.sh` runs `/autopilot` in fresh sessions on a timer, each picking up the next issue. The system parallelizes both within a unit of work and across units of work.
+**Within a session**: multiple coder agents work in parallel worktrees for independent tasks; multiple explorer and researcher agents fan out across subsystems simultaneously. **Across issues**: `/worktrees` surveys and reaps finished worktrees, plans a wave of mutually non-conflicting issues under a configurable cap (declare contention hotspots in a `## Worktrees` section of CLAUDE.md), creates a sibling worktree per issue with config propagated and env files single-sourced, and spawns a seeded Claude Code session in each. **Across time**: `loop.sh` runs `/autopilot` in fresh sessions on a timer, each picking up the next issue.
 
 ### Deterministic failure modes
 
