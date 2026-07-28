@@ -6,8 +6,9 @@
 #   ./uninstall.sh <target_project>   (from the hephaestus repo)
 #
 # What it does:
-#   1. Removes symlinks in .claude/agents/, .claude/commands/ that point to .hephaestus/
-#      and matching OpenCode symlinks in .opencode/agents/, .opencode/commands/
+#   1. Removes symlinks in .claude/agents/, .claude/commands/ that point to .hephaestus/,
+#      matching OpenCode symlinks in .opencode/agents/, .opencode/commands/,
+#      and Codex symlinks in .agents/skills/, .codex/agents/
 #   2. Removes the .hephaestus git submodule
 #   3. Does NOT remove project-specific files (orient.md, hooks, settings, CLAUDE.md)
 #
@@ -58,6 +59,8 @@ remove_hephaestus_links ".claude/agents"
 remove_hephaestus_links ".claude/commands"
 remove_hephaestus_links ".opencode/agents"
 remove_hephaestus_links ".opencode/commands"
+remove_hephaestus_links ".agents/skills"
+remove_hephaestus_links ".codex/agents"
 
 if [ "$REMOVED_LINKS" -eq 0 ]; then
   echo "  (no hephaestus symlinks found)"
@@ -91,6 +94,7 @@ echo ""
 echo "Kept (project-specific):"
 echo "  - .claude/commands/orient.md (if present)"
 echo "  - .opencode/commands/orient.md (if present)"
+echo "  - .agents/skills/orient/ (if present)"
 echo "  - .claude/hooks/ (if present)"
 echo "  - .claude/settings.local.json (if present)"
 echo "  - CLAUDE.md"
