@@ -17,8 +17,9 @@
 #     own opening line leads and the metadata comments follow it.
 #   - Cursor subagents have no worktree isolation; they share one working tree.
 #   - Cursor's subagent parser does not unquote values, so they are emitted bare.
-#     `readonly: true` is honoured (permissionMode READONLY); `tools` is only
-#     rendered as prose for the model, so it is not used as an access control.
+#     `readonly: true` is honoured (permissionMode READONLY) but only sandboxes
+#     the shell; `tools` is only rendered as prose for the model, so it is not
+#     used as an access control.
 
 set -uo pipefail
 
@@ -104,16 +105,20 @@ render_cursor_command() {
   }
 }
 
-# Cursor honours `readonly: true` — its parser maps it to permissionMode READONLY,
-# which is threaded into tool generation. Emit it only where it cannot cost the
-# agent its job: whether READONLY also withholds the terminal is not documented
-# and not determinable from the bundle, so this uses the same predicate the Codex
-# generator uses for `workspace-write` — a write-capable shell counts as write
-# access. An agent with Bash keeps DEFAULT and carries the restriction as
-# instruction, exactly as it does under Claude Code.
+# `readonly: true` maps to permissionMode READONLY. Measured on Cursor 3.13.21
+# (2026-07-28) rather than assumed — a probe subagent reported its tool list and
+# then tried to write both ways:
+#   - the shell runs, but under a read-only filesystem sandbox: a shell write
+#     fails with "operation not permitted"
+#   - `Shell` and `Write` both stay in the tool list; only `SwitchMode` is dropped
+#   - the write *tool* bypasses the sandbox and succeeds
+# So READONLY constrains the shell and nothing else. It is safe for any role that
+# never needs to write, and fatal to one whose shell must (see `shell: write`).
+# Because the write tool still works, this is a guard rail, not a sandbox — the
+# emitted prose must not claim more than that.
 render_readonly() {
-  local tools=$1
-  if [[ "$tools" == *"Bash"* ]] || [[ "$tools" == *"Edit"* ]] || [[ "$tools" == *"Write"* ]]; then
+  local tools=$1 shell=$2
+  if [[ "$tools" == *"Edit"* ]] || [[ "$tools" == *"Write"* ]] || [ "$shell" = "write" ]; then
     echo "no"
   else
     echo "yes"
@@ -132,13 +137,14 @@ render_advisory_readonly() {
 
 render_cursor_agent() {
   local agent=$1
-  local name description tools isolation tier model start
+  local name description tools isolation tier model shell start
 
   name=$(field "$agent" "name")
   description=$(field "$agent" "description")
   tools=$(field "$agent" "tools")
   isolation=$(field "$agent" "isolation")
   tier=$(field "$agent" "model")
+  shell=$(field "$agent" "shell")
   start=$(body_start_line "$agent")
 
   if [ -z "$name" ] || [ -z "$description" ] || [ -z "$tools" ] || [ -z "$start" ]; then
@@ -164,14 +170,14 @@ render_cursor_agent() {
     echo "name: ${name}"
     echo "description: ${description}"
     [ -n "$model" ] && echo "model: $model"
-    [ "$(render_readonly "$tools")" = "yes" ] && echo "readonly: true"
+    [ "$(render_readonly "$tools" "$shell")" = "yes" ] && echo "readonly: true"
     echo "---"
     echo ""
     if [ "$(render_advisory_readonly "$tools")" = "yes" ]; then
-      if [ "$(render_readonly "$tools")" = "yes" ]; then
-        echo "> **Read-only.** Cursor enforces this via \`readonly: true\` — write tools are withheld."
+      if [ "$(render_readonly "$tools" "$shell")" = "yes" ]; then
+        echo "> **Read-only.** \`readonly: true\` sandboxes your shell — a shell write fails with \`operation not permitted\`. It does **not** withhold the write tools, and those bypass the sandbox: do not use them."
       else
-        echo "> **Read-only by instruction.** Your shell is not sandboxed, so this is a convention rather than a restriction: do not modify files."
+        echo "> **Read-only by instruction.** Your shell must stay writable, so nothing is sandboxed: do not modify files."
       fi
       echo ""
     fi
@@ -210,9 +216,9 @@ render_cursor_rule() {
   echo "## Cursor mapping"
   echo ""
   echo "- **Subagents, no worktrees.** Under Claude Code the \`coder\` agent runs in an isolated git worktree. Cursor subagents share one working tree — serialize file-modifying tasks."
-  echo "- **Least privilege is only partly enforced.** \`researcher\` carries \`readonly: true\`, which Cursor enforces. \`reviewer\`, \`tester\`, and \`explorer\` need a working shell, so they run unrestricted and must decline to modify files on instruction alone — \`tools:\` is prose to Cursor, not an access control."
+  echo "- **Least privilege is only partly enforced.** \`researcher\`, \`reviewer\`, and \`explorer\` carry \`readonly: true\`, which sandboxes their shell — shell writes fail. It does not withhold the write tools, and those bypass the sandbox, so file writes still rest on instruction. \`tester\` is exempt: its shell must write for tests to run. \`tools:\` is prose to Cursor, not an access control."
   echo "- **Commands are injected verbatim.** Cursor strips YAML frontmatter only from imported \`.claude/commands\` files, so these adapters carry none. \`\$ARGUMENTS\` and \`\$1\`… are substituted."
-  echo "- **Never hand-edit \`.cursor/\`.** Edit \`.ai/workflows/\` and \`.claude/agents/\` in the hephaestus repo (\`.hephaestus/\` when installed as a submodule), then run \`scripts/sync-cursor-adapters.sh\`."
+  echo "- **Never hand-edit \`.cursor/\`.** Edit \`.ai/workflows/\` and \`.claude/agents/\` in the hephaestus clone, then run \`scripts/sync-cursor-adapters.sh\`."
 }
 
 check_or_write() {

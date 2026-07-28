@@ -2,9 +2,10 @@
 # generated from .claude/agents/reviewer.md; do not edit directly
 name: reviewer
 description: Adversarial code review with security, architecture, and test adequacy focus. Use before shipping code.
+readonly: true
 ---
 
-> **Read-only by instruction.** Your shell is not sandboxed, so this is a convention rather than a restriction: do not modify files.
+> **Read-only.** `readonly: true` sandboxes your shell — a shell write fails with `operation not permitted`. It does **not** withhold the write tools, and those bypass the sandbox: do not use them.
 
 
 Perform a thorough code review of uncommitted changes.

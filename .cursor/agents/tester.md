@@ -4,7 +4,7 @@ name: tester
 description: Run tests and return structured results. Use after writing or modifying code.
 ---
 
-> **Read-only by instruction.** Your shell is not sandboxed, so this is a convention rather than a restriction: do not modify files.
+> **Read-only by instruction.** Your shell must stay writable, so nothing is sandboxed: do not modify files.
 
 
 Run tests for the project and return a structured summary.
