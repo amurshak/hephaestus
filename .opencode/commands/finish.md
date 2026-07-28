@@ -22,7 +22,7 @@ Steps:
    - If cleanup later needs `headRefName`, re-read the same PR field immediately before deletion and use the latest value. If it changed since the first payload, log `PR #N head branch changed during finish: <old> -> <new>` and use the latest value.
 
 3. **Close the issue**:
-   - Derive the shipped issue from `closingIssuesReferences`; if it disagrees with `$ARGUMENTS`, use the PR's closing issue and log `using PR closing issue #M instead of requested #N`.
+   - Derive the shipped issue from `closingIssuesReferences`; if it disagrees with `$ARGUMENTS`, use the PR's closing issue and log `using PR closing issue #M instead of requested #N`. If the PR closes no issue and none was provided, skip this step.
    - Check issue state first: `gh issue view <resolved-issue> --repo <detected-repo> --json state`.
    - If already closed, log `issue #N already closed by PR #M` and continue.
    - If open and PR state is merged, close it:
@@ -58,10 +58,10 @@ Steps:
 
 7. **Update docs** — decide mechanically from the PR diff; do not use model judgment.
    - Determine the changed files: `BASE_SHA=$(gh pr view <pr-number> --repo <detected-repo> --json baseRefOid -q '.baseRefOid'); HEAD_SHA=$(gh pr view <pr-number> --repo <detected-repo> --json headRefOid -q '.headRefOid'); git diff "$BASE_SHA..$HEAD_SHA" --name-only`
-   - Build the required docs set from the changed files:
+   - Build the required docs set from the changed files. These are the defaults; a project may override them with its own trigger list in a "Docs Requirements" section of its CLAUDE.md:
      - `CHANGELOG.md` is required for every PR, no exceptions.
-     - `README.md` is required when the PR touches `install.sh`, `update.sh`, `uninstall.sh`, or any `.claude/commands/*.md` file.
-     - `CLAUDE.md` is required when the PR touches any `.claude/agents/*.md` or `.claude/commands/*.md` file.
+     - `README.md` is required when the PR touches user-facing entry points — installers, CLI scripts, or command definitions (in this repo: `install.sh`, `update.sh`, `uninstall.sh`, `.claude/commands/*.md`).
+     - `CLAUDE.md` is required when the PR changes conventions or capabilities the agent relies on — agent or command definitions (in this repo: `.claude/agents/*.md`, `.claude/commands/*.md`).
    - If every required doc file is present in the PR diff, skip `/update-docs` and log `skipped /update-docs: docs updated in PR #N (auto-detected)` in the session summary.
    - If any required doc file is missing, run `/update-docs` and log `ran /update-docs: missing <files> in PR #N (auto-detected)` in the session summary.
    - The skip/run decision must be deterministic from `git diff "$BASE_SHA..$HEAD_SHA" --name-only`; no prose assessment like "docs surface covered" is sufficient.

@@ -1,6 +1,8 @@
 # hephaestus
 
-**A generic software development workflow pattern, implemented in Claude Code.**
+[![tests](https://github.com/amurshak/hephaestus/actions/workflows/tests.yml/badge.svg)](https://github.com/amurshak/hephaestus/actions/workflows/tests.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**A generic software development workflow pattern for AI coding agents.**
 
 Software delivery follows the same loop in every project: understand the problem, plan the work, validate the plan, execute, verify, ship, clean up.
 Hephaestus is an opinionated instantiation of this loop as an agentic software development workflow pattern that answers the question:
@@ -16,6 +18,21 @@ Or run the whole loop as one command:
 ```
 /autopilot
 ```
+
+The core is a set of harness-neutral workflow specs (`.ai/workflows/`) and agent definitions — plain markdown files. Per-harness support is *generated adapters* from those specs: Claude Code and [OpenCode](https://opencode.ai) adapters ship today; new harnesses are a ~200-line generator script away.
+
+## Install
+
+In Claude Code:
+
+```
+/plugin marketplace add amurshak/hephaestus
+/plugin install heph@hephaestus
+```
+
+That's it — commands appear under `/heph:` (`/heph:autopilot`, `/heph:ship`, …). For OpenCode, manual copy/symlink, or the git-submodule install (headless mode, forking), see [Get started](#get-started).
+
+**Requirements:** [Claude Code](https://claude.com/claude-code) or [OpenCode](https://opencode.ai) · [`gh` CLI](https://cli.github.com) authenticated (workflows drive GitHub issues and PRs) · git.
 
 Hephaestus is an OODA loop — observe, orient, decide, act — for software. Boyd designed OODA for fighter pilots: cycle faster than the opponent and you win. Software has the opposite problem. Shipping too fast costs more than slowing down. So this loop puts most of its weight on Orient. Plans face adversarial review before code begins. Code faces adversarial review before it ships. Retries are bounded so nothing spirals.
 
@@ -34,6 +51,8 @@ The core of Hephaestus is composed of five commands spread across eight internal
 - [Get started](#get-started)
 - [Your project's setup](#your-projects-setup)
 - [Submodule install](#submodule-install-for-headless-mode-and-forking)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
@@ -56,15 +75,15 @@ The core of Hephaestus is composed of five commands spread across eight internal
 
 Five roles, stratified by capability through least-privilege tool access:
 
-| Agent | Writes code | Web access | Shell access | Isolation |
+| Agent | Edit tools | Web access | Shell access | Isolation |
 |-------|------------|------------|-------------|-----------|
 | **coder** | Yes | No | Yes | worktree |
-| **reviewer** | No | No | Yes (read-only) | none |
-| **tester** | No | No | Yes (read-only) | none |
-| **explorer** | No | No | Yes (read-only) | none |
+| **reviewer** | No | No | Yes (instructed read-only) | none |
+| **tester** | No | No | Yes (instructed read-only) | none |
+| **explorer** | No | No | Yes (instructed read-only) | none |
 | **researcher** | No | Yes | No | none |
 
-The coder is the only agent that can modify files; it runs in an isolated git worktree so parallel coders don't interfere. The reviewer, tester, and explorer can read code and run commands but can't edit. The researcher can access the web but can't run shell commands. The blast radius of any single agent misbehaving is bounded by its tool permissions.
+The coder is the only agent granted edit tools; it runs in an isolated git worktree so parallel coders don't interfere. The reviewer, tester, and explorer have no edit tools and are instructed to treat their shell as read-only — a convention, not a sandbox, since an unrestricted shell can write. The researcher can access the web but has no shell at all. Tool grants bound most of the blast radius; the shell-bearing agents rely on instruction for the rest.
 
 Every agent returns structured output — typed fields and verdicts, not prose. This turns agent invocations into function calls the orchestrating command can branch on.
 
@@ -107,7 +126,7 @@ Boyd argued that speed of the OODA loop matters less than quality of orientation
 
 ### Minimum viable command set
 
-Twelve commands, but only five form the delivery spine: `orient`, `start-issue`, `ship`, `finish`, and `autopilot` (which chains the other four and adds the critique/test gates). The remaining seven are support functions that pipeline phases call or convenience entry points that start at a different phase.
+Twelve commands, but the delivery spine is `/autopilot` and the three commands it chains — `start-issue`, `ship`, `finish` — with orientation run inline as its first phase. The rest are support functions that pipeline phases call or convenience entry points that start at a different phase.
 
 **Delivery**
 
@@ -224,6 +243,10 @@ Slack, Notion, and other documentation systems extend the principle — addition
 
 ## Get started
 
+The workflows, commands, and agents are plain markdown files. Three ways to get them into a project, in order of friction:
+
+### 1. Plugin (Claude Code)
+
 ```bash
 /plugin marketplace add amurshak/hephaestus
 /plugin install heph@hephaestus
@@ -236,12 +259,35 @@ Commands install under the `/heph:` namespace: `/heph:autopilot`, `/heph:ship`, 
 /heph:start-issue 42         # work a specific issue
 ```
 
-**Manage the install:**
-
 | | |
 |---|---|
-| `/plugin marketplace update` | Pull the latest hephaestus |
+| `/plugin marketplace update hephaestus` | Pull the latest hephaestus |
 | `/plugin uninstall heph`     | Remove the plugin |
+
+### 2. Copy or symlink the files (any harness)
+
+Zero machinery — vendor the files directly:
+
+```bash
+git clone https://github.com/amurshak/hephaestus.git
+# Claude Code:
+mkdir -p your-project/.claude
+cp -R hephaestus/.claude/commands hephaestus/.claude/agents your-project/.claude/
+# OpenCode:
+mkdir -p your-project/.opencode
+cp -R hephaestus/.opencode/commands hephaestus/.opencode/agents your-project/.opencode/
+```
+
+Commands run under bare names (`/autopilot`). No update story — re-copy when you want the latest. Symlink instead of copy if you keep a local clone and want updates via `git pull`.
+
+### 3. Submodule (updatable vendoring, headless mode, forking)
+
+```bash
+git clone https://github.com/amurshak/hephaestus.git && cd hephaestus
+./install.sh /path/to/your/project
+```
+
+One shared copy, relative symlinks into `.claude/` and `.opencode/`, `update.sh` for updates. Required for [headless mode](#headless-mode) (`loop.sh` runs Claude Code as a subprocess). Details in [Submodule install](#submodule-install-for-headless-mode-and-forking).
 
 ---
 
@@ -255,7 +301,7 @@ curl -s https://raw.githubusercontent.com/amurshak/hephaestus/master/templates/C
 
 Then replace the placeholder commands with your actual test/lint/build commands.
 
-Hephaestus also reads `.claude/commands/orient.md` to understand the project's repos, structure, and priorities. Pull the template and customize it:
+Hephaestus also ships an `/orient` command for cold-start context. The shipped version is generic (detects your repo, reads your CLAUDE.md); each project should own a customized `.claude/commands/orient.md` with its repos, structure, and priorities. Pull the template and customize it:
 
 ```bash
 mkdir -p .claude/commands
@@ -275,7 +321,7 @@ Optional but recommended:
 
 ## Submodule install (for headless mode and forking)
 
-Plugin install is the recommended path. Submodule install is the alternative when you need:
+For most Claude Code users the plugin is the least-friction path. The submodule is the right choice when you need:
 
 - **Headless mode** — `loop.sh` runs `/autopilot` on a timer in a fresh session each time. The plugin can't do this since plugins run *inside* Claude Code; `loop.sh` runs Claude Code as a subprocess.
 - **Forking and upstream sync** — clone the repo, modify commands, `git merge upstream/master` for upstream changes.
@@ -323,7 +369,7 @@ Fork hephaestus to customize commands for your org while still pulling upstream 
 **Will conflict if modified** — actively developed upstream:
 - `.ai/workflows/` and `.claude/agents/` — the core workflow and agent files
 - `.claude/commands/` — generated Claude adapters; update via `scripts/sync-agent-adapters.sh`
-- `.opencode/commands/` and `.opencode/agent/` — generated OpenCode adapters; update via `scripts/sync-opencode-adapters.sh`
+- `.opencode/commands/` and `.opencode/agents/` — generated OpenCode adapters; update via `scripts/sync-opencode-adapters.sh`
 - `install.sh`, `update.sh`, `uninstall.sh` — the install tooling
 - `.claude-plugin/plugin.json` — the plugin manifest
 
@@ -332,3 +378,21 @@ git remote add upstream https://github.com/amurshak/hephaestus.git
 git fetch upstream
 git merge upstream/master
 ```
+
+---
+
+## Contributing
+
+PRs welcome. Before submitting:
+
+```bash
+./tests/run.sh                            # integration suite
+./scripts/sync-agent-adapters.sh --check  # Claude adapter drift
+./scripts/sync-opencode-adapters.sh --check  # OpenCode adapter drift
+```
+
+Edit canonical sources (`.ai/workflows/`, `.claude/agents/`), never generated adapters (`.claude/commands/`, `.opencode/`); regenerate with the sync scripts. Adapter generators for new harnesses are especially welcome — see `scripts/sync-opencode-adapters.sh` for the pattern.
+
+## License
+
+[MIT](LICENSE)

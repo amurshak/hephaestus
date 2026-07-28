@@ -2,40 +2,25 @@
 <!-- chains: none -->
 <!-- generated from .ai/workflows/orient.md; do not edit directly -->
 
-# Orient — Hephaestus
+Orient in the current project before starting work. Run autonomously.
 
-## Repo
-`amurshak/hephaestus` — a generic software development workflow pattern, implemented in Claude Code.
+> Each project should own its `orient.md` — `install.sh` scaffolds a customizable template from `templates/orient.md` and never symlinks this one. This generic version is the fallback when no project-specific orient exists (e.g. plugin installs).
 
-## What it is
-Eight-phase delivery loop (orient → plan → critique → implement → review → test → ship → finish) encoded as slash commands and agent definitions. Distributed as a git submodule installed into other projects via `./install.sh <target>`.
+## Steps
 
-## Structure
-- `.claude/agents/` — coder, reviewer, tester, explorer, researcher
-- `.claude/commands/` — autopilot, start-issue, ship, finish, critique, refactor, research, create-issue, test-issue, update-docs, update-hephaestus, orient
-- `install.sh` / `update.sh` — submodule install/update scripts
-- `CHANGELOG.md` — release history
+1. **Detect repo**: `git remote get-url origin` — derive `<owner>/<repo>` for all `gh` commands. If there is no remote, work local-only and skip issue listing.
 
-## Development commands
-- **Tests**: `./tests/run.sh` — integration tests for shell scripts (install, update, uninstall)
-- **Quality gates**: code review (reviewer subagent) + test suite
+2. **Load project context**: Read the project's `CLAUDE.md` (conventions, "Development Commands" for test/lint/build) and README. If a project-specific `orient.md` command exists alongside this one, prefer its guidance.
 
-## Sync state
-First, sync with remote and prune stale tracking refs (branches GitHub deleted on merge but git still has):
-```
-git fetch --prune origin
-```
+3. **Sync state**: `git fetch --prune origin`, then `git status -sb` and `git log --oneline -5` for recent context.
 
-## Find work
-```
-gh issue list --state open --repo amurshak/hephaestus
-```
-If no open issues, self-triage: scan for TODOs, inconsistencies between agents/commands, missing functionality.
+4. **Find work**:
+   ```
+   gh issue list --state open --repo <detected-repo>
+   ```
+   Also check open PRs: `gh pr list --state open --repo <detected-repo>`. If no open issues, self-triage: scan for TODOs, failing checks, doc drift, missing tests.
+
+5. **Report**: current branch and sync state, open issues/PRs, and the recommended next action.
 
 ## Next action
-Run `/autopilot` — it will pick the highest-priority open issue or self-triage if the queue is empty.
-
-## Key constraints
-- Symlinks in installed projects are relative — don't break paths when renaming files
-- `orient.md` is excluded from `install.sh` symlinking (each project owns its own)
-- `settings.local.json` pre-approves `Bash(*) + WebFetch(*)` for this project
+Run `/autopilot` — it picks the highest-priority open issue or self-triages if the queue is empty. Or `/start-issue <#>` for a specific issue.

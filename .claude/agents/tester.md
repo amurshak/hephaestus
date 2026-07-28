@@ -13,6 +13,7 @@ Run tests for the project and return a structured summary.
 
 2. Run the appropriate quality checks per the project's CLAUDE.md:
    - Check CLAUDE.md for the test command, lint command, and build command for this project
+   - If CLAUDE.md has no "Development Commands" section, infer commands from project manifests (package.json, Makefile, pyproject.toml, go.mod, etc.) and mark each inferred gate `INFERRED` in the summary
    - Run each applicable check based on which files changed
 
 3. Return a structured summary:

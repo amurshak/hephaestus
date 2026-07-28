@@ -2,7 +2,7 @@
   "name": "hephaestus",
   "owner": {
     "name": "Alex Murshak",
-    "email": "amurshak@gmail.com"
+    "email": "23587671+amurshak@users.noreply.github.com"
   },
   "metadata": {
     "description": "Generic software delivery workflow pattern — orient → plan → critique → implement → review → test → ship → finish, with bounded retries at every gate."

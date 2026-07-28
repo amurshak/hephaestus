@@ -46,11 +46,12 @@ if [ -z "$comp_block" ]; then
   exit 1
 fi
 
-# Extract from each line of the comp block:
-#   - readme_req[cmd]   = the "(requires: ...)" annotation
-#   - readme_chains[parent] = space-separated children visible in the tree
-declare -A readme_req
-declare -A readme_chains
+# Extract from each line of the comp block (bash-3.2 safe — no associative
+# arrays; stored as newline-delimited records instead):
+#   - readme_req    = lines of "cmd|requires-annotation"
+#   - readme_chains = lines of "parent child" edges visible in the tree
+readme_req=""
+readme_chains=""
 re_cmd_req='/([a-z][a-z0-9-]+)[[:space:]].*\(requires:[[:space:]]*([^)]+)\)'
 current_root=""
 current_top=""
@@ -60,7 +61,8 @@ while IFS= read -r line; do
     cmd="${BASH_REMATCH[1]}"
     req="${BASH_REMATCH[2]}"
     req="${req%"${req##*[![:space:]]}"}"  # rtrim
-    readme_req[$cmd]=$req
+    readme_req="${readme_req}${cmd}|${req}
+"
 
     # Determine tree position to assign parent→child edge
     if [[ "$line" =~ ^/ ]]; then
@@ -69,17 +71,24 @@ while IFS= read -r line; do
       current_top=""
     elif [[ "$line" =~ ^[├└] ]]; then
       # top-level child of the current root
-      [ -n "$current_root" ] && readme_chains[$current_root]+=" $cmd"
+      [ -n "$current_root" ] && readme_chains="${readme_chains}${current_root} ${cmd}
+"
       current_top=$cmd
     else
       # indented sub-child of the most recent top-level
-      [ -n "$current_top" ] && readme_chains[$current_top]+=" $cmd"
+      [ -n "$current_top" ] && readme_chains="${readme_chains}${current_top} ${cmd}
+"
     fi
   fi
 done <<< "$comp_block"
 
-# (1) Every (cmd, requires) pair in the README must match the file's metadata.
-for cmd in "${!readme_req[@]}"; do
+readme_children_for() {
+  printf '%s' "$readme_chains" | awk -v p="$1" '$1==p{out=out" "$2} END{print out}'
+}
+
+# (1) Every (cmd, requires) annotation in the README must match the file's metadata.
+while IFS='|' read -r cmd expected_req; do
+  [ -z "$cmd" ] && continue
   file="$CMDS_DIR/${cmd}.md"
   if [ ! -f "$file" ]; then
     report "README mentions /$cmd but $file does not exist"
@@ -87,17 +96,15 @@ for cmd in "${!readme_req[@]}"; do
   fi
   meta=$(cmd_meta "$file")
   actual_req="${meta%|*}"
-  expected_req="${readme_req[$cmd]}"
   if [ "$actual_req" != "$expected_req" ]; then
     report "/$cmd: README says (requires: $expected_req); file declares (requires: $actual_req)"
   fi
-done
+done <<< "$readme_req"
 
 # (2) For every parent → children edge implied by the README tree, the parent
 # file's `chains:` list must equal that set. Catches both: chain removed from
 # file but kept in README, and phantom child added to README.
-declare -A parents_seen
-for parent in "${!readme_chains[@]}"; do parents_seen[$parent]=1; done
+parents_seen=$(printf '%s' "$readme_chains" | awk '{print $1}')
 # Also include parents that have chains: declared in their file but no children
 # in the README at all (otherwise we'd miss "all children dropped" drift).
 for f in "$CMDS_DIR"/*.md; do
@@ -105,15 +112,17 @@ for f in "$CMDS_DIR"/*.md; do
   meta=$(cmd_meta "$f")
   chs="${meta#*|}"
   [ -z "$chs" ] || [ "$chs" = "none" ] && continue
-  parents_seen[$cmd]=1
+  parents_seen="${parents_seen}
+${cmd}"
 done
+parents_seen=$(printf '%s\n' "$parents_seen" | sed '/^$/d' | sort -u)
 
-for parent in "${!parents_seen[@]}"; do
+for parent in $parents_seen; do
   file="$CMDS_DIR/${parent}.md"
   [ -f "$file" ] || continue
   meta=$(cmd_meta "$file")
   file_set=$(normalize_chains "${meta#*|}")
-  readme_set=$(normalize_chains "${readme_chains[$parent]:-}")
+  readme_set=$(normalize_chains "$(readme_children_for "$parent")")
   if [ "$file_set" != "$readme_set" ]; then
     report "/$parent: README children = '${readme_set:-<none>}'; file chains = '${file_set:-<none>}'"
   fi

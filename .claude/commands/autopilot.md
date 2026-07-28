@@ -48,11 +48,11 @@ If `/start-issue` winds down early (`[WIP]`, `[BLOCKED]`, `[FAILING]` prefix on 
 
 Run `/ship <#>`. It runs the pre-push critique gate, runs all quality gates in parallel, updates CHANGELOG, pushes the branch, creates the PR, and auto-merges.
 
-If `/ship` cannot auto-merge (branch protection, required reviewers): the PR is left open, the work is preserved, and `/ship` notes that manual merge is needed. Skip Phase 4 in that case — `/finish` requires a merged PR.
+If `/ship` cannot auto-merge (branch protection, required reviewers): the PR is left open, the work is preserved, and `/ship` notes that manual merge is needed. Still run Phase 4 — `/finish` branches on PR state and performs safe cleanup for unmerged PRs without closing the issue or deleting the branch.
 
 ### Phase 4: Finish → `/finish <#>`
 
-Run `/finish <#>`. It closes the issue, deletes branches, files follow-ups, runs `/update-docs` to sync CLAUDE.md / CHANGELOG / README, captures a retrospective, and prints the session summary.
+Run `/finish <#>`. It closes the issue, deletes branches, files follow-ups, runs `/update-docs` when the PR diff requires it, captures a retrospective, and prints the session summary.
 
 If there are additional open issues suitable for immediate work and the session is still productive, loop back to Phase 1 with the next issue. Otherwise, wind down.
 

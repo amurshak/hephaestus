@@ -73,12 +73,12 @@ bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 
 # Create a stale symlink
 ln -s "../../.hephaestus/.claude/agents/gone.md" "$TARGET/.claude/agents/gone.md"
-ln -s "../../.hephaestus/.opencode/agent/gone.md" "$TARGET/.opencode/agent/gone.md"
+ln -s "../../.hephaestus/.opencode/agents/gone.md" "$TARGET/.opencode/agents/gone.md"
 
 output=$(cd "$TARGET" && bash .hephaestus/update.sh 2>&1)
 
 assert_file_not_exists "stale symlink cleaned by update" "$TARGET/.claude/agents/gone.md"
-assert_file_not_exists "stale OpenCode symlink cleaned by update" "$TARGET/.opencode/agent/gone.md"
+assert_file_not_exists "stale OpenCode symlink cleaned by update" "$TARGET/.opencode/agents/gone.md"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
