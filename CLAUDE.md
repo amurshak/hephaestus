@@ -24,6 +24,14 @@ Hephaestus is an implementation of a generic software development workflow patte
 - **Lint/drift**: `./scripts/sync-agent-adapters.sh --check`, `./scripts/sync-opencode-adapters.sh --check`, `./scripts/sync-codex-adapters.sh --check`, `bash tests/check_composition.sh`
 - **Build**: none (prose + shell; no compile step)
 
+## Worktrees
+
+- `max:` 3
+- `serialize_paths:` `install.sh`, `README.md`
+- `setup:` none (no deps to install)
+
+`install.sh` and `README.md` are where adapter, installer, and distribution work collides semantically — two issues rewriting install paths or the install section in the same wave conflict in ways a rebase can't resolve. `CHANGELOG.md` is deliberately absent: `/finish` requires an entry on every PR, so listing it would make every pair of issues conflict and pin concurrency at 1. Append-collisions there are cheap to rebase.
+
 ## Repository Structure
 
 - `.claude/agents/` — Subagent definitions (coder, reviewer, tester, explorer, researcher) with tool permissions and structured output contracts
