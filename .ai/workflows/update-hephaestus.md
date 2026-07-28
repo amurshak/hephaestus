@@ -3,20 +3,19 @@ name: update-hephaestus
 requires: none
 chains: none
 ---
-Update the hephaestus submodule to the latest version.
+Update hephaestus to the latest version.
 
 ## Steps
 
-0. If `.hephaestus/` does not exist, this isn't a submodule install — stop here. Plugin installs update via `/plugin marketplace update hephaestus`; manual copy installs update by re-copying the files from the hephaestus repo.
-1. Record the current version: `cat .hephaestus/VERSION 2>/dev/null || echo "unknown"`
-2. Capture the current submodule HEAD: `OLD_HEAD=$(git -C .hephaestus rev-parse HEAD 2>/dev/null)`
-3. Pull the latest: `git submodule update --remote .hephaestus`
-4. Capture the new submodule HEAD: `NEW_HEAD=$(git -C .hephaestus rev-parse HEAD 2>/dev/null)`
-5. Record the new version: `cat .hephaestus/VERSION 2>/dev/null || echo "unknown"`
-6. Re-run install to pick up new commands/agents: `bash .hephaestus/install.sh --clean .`
-7. Show what changed: `git -C .hephaestus log --oneline $OLD_HEAD..$NEW_HEAD 2>/dev/null || echo "(first update — no previous ref)"`
-8. Print version transition and suggest commit:
+1. Detect the install:
+   - `.heph-manifest` in the project root → **vendored** (its `# version:` line is the current version)
+   - otherwise resolve the clone: `dirname $(dirname $(dirname $(readlink ~/.claude/commands/ship.md)))`, falling back to `$HEPHAESTUS_HOME` or `~/.hephaestus` → **user-level**
+   - neither → **plugin** install: run `/plugin marketplace update hephaestus` and stop here.
+2. Run the updater — it pulls, re-installs, and prints the version transition plus the commits in between:
+   - user-level: `bash <clone>/update.sh`
+   - vendored: `bash <clone>/update.sh --vendor .`
+3. Report the version transition and what changed.
+4. Vendored installs only — commit the refreshed copy:
    ```
-   Updated hephaestus: <old_version> → <new_version>
-   Commit: git add .hephaestus .claude && git commit -m "chore: update hephaestus to <new_version>"
+   git add .heph-manifest .claude .opencode .agents .codex && git commit -m "chore: update hephaestus to <new_version>"
    ```

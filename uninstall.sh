@@ -1,106 +1,84 @@
 #!/usr/bin/env bash
-# uninstall.sh — Remove hephaestus submodule and symlinks from a target project
+# uninstall.sh — Remove hephaestus adapters
 #
 # Usage:
-#   .hephaestus/uninstall.sh          (from the target project root)
-#   ./uninstall.sh <target_project>   (from the hephaestus repo)
+#   ./uninstall.sh                  Remove the user-level install
+#   ./uninstall.sh --vendor <path>  Remove a project's vendored copies
 #
-# What it does:
-#   1. Removes symlinks in .claude/agents/, .claude/commands/ that point to .hephaestus/,
-#      matching OpenCode symlinks in .opencode/agents/, .opencode/commands/,
-#      Codex symlinks in .agents/skills/, .codex/agents/,
-#      and Hermes symlinks in .hermes/skills/hephaestus/, .hermes/agents/
-#   2. Removes the .hephaestus git submodule
-#   3. Does NOT remove project-specific files (orient.md, hooks, settings, CLAUDE.md)
+# Removes exactly what the matching install recorded in its manifest, so files
+# hephaestus never wrote are never touched. Project-owned files always stay:
+# orient (all harnesses), AGENTS.md, opencode.json, .claude/hooks/, CLAUDE.md.
 #
 # Idempotent: safe to run if already uninstalled.
 
-# Intentionally omit -e: cleanup scripts should continue past individual failures.
+# Intentionally omit -e: cleanup should continue past individual failures.
 set -uo pipefail
 
-TARGET="${1:-$(pwd)}"
+MODE=user
+TARGET=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --vendor) MODE=vendor; shift ;;
+    -*) echo "Error: unknown flag '$1'"; echo "Usage: ./uninstall.sh [--vendor <path>]"; exit 1 ;;
+    *) TARGET="$1"; shift ;;
+  esac
+done
 
-if [ ! -d "$TARGET" ]; then
-  echo "Error: target directory '$TARGET' does not exist."
-  exit 1
+if [ "$MODE" = vendor ]; then
+  TARGET="${TARGET:-$(pwd)}"
+  MANIFEST="$TARGET/.heph-manifest"
+  LABEL="vendored hephaestus adapters from $TARGET"
+else
+  MANIFEST="${XDG_STATE_HOME:-$HOME/.local/state}/hephaestus/manifest"
+  LABEL="user-level hephaestus adapters"
 fi
 
-if [ ! -d "$TARGET/.git" ]; then
-  echo "Error: '$TARGET' is not a git repository."
-  exit 1
+if [ ! -f "$MANIFEST" ]; then
+  echo "No hephaestus install found (no manifest at $MANIFEST)."
+  if [ "$MODE" = user ]; then
+    echo "  For a project's vendored copy, run: ./uninstall.sh --vendor <path>"
+  else
+    echo "  For the user-level install, run: ./uninstall.sh"
+  fi
+  exit 0
 fi
 
-cd "$TARGET"
-
-REMOVED_LINKS=0
-
-echo "Uninstalling hephaestus from $TARGET"
+echo "Removing $LABEL"
 echo ""
 
-# ── 1. Remove symlinks pointing to .hephaestus ──────────────────────────────
+REMOVED=0
+while IFS= read -r entry; do
+  case "$entry" in ''|'#'*) continue ;; esac
+  [ "$MODE" = vendor ] && path="$TARGET/$entry" || path="$entry"
+  if [ -e "$path" ] || [ -L "$path" ]; then
+    rm -rf "$path"
+    echo "  [removed] $entry"
+    REMOVED=$((REMOVED + 1))
+  fi
+done < "$MANIFEST"
+rm -f "$MANIFEST"
 
-remove_hephaestus_links() {
-  local dir="$1"
-  [ -d "$dir" ] || return 0
-
-  for f in "$dir"/*; do
-    [ -L "$f" ] || continue
-    local target
-    target=$(readlink "$f")
-    if [[ "$target" == *".hephaestus/"* ]]; then
-      rm "$f"
-      echo "  [removed] $f"
-      REMOVED_LINKS=$((REMOVED_LINKS + 1))
-    fi
+# Drop directories the adapters left empty; keep any holding project files.
+if [ "$MODE" = vendor ]; then
+  for d in .claude/commands .claude/agents .opencode/commands .opencode/agents \
+           .agents/skills .codex/agents .hermes/skills/hephaestus .hermes/skills \
+           .hermes/agents .claude .opencode .agents .codex; do
+    rmdir "$TARGET/$d" 2>/dev/null || true
   done
-}
-
-echo "Removing hephaestus symlinks:"
-remove_hephaestus_links ".claude/agents"
-remove_hephaestus_links ".claude/commands"
-remove_hephaestus_links ".opencode/agents"
-remove_hephaestus_links ".opencode/commands"
-remove_hephaestus_links ".agents/skills"
-remove_hephaestus_links ".codex/agents"
-remove_hephaestus_links ".hermes/skills/hephaestus"
-remove_hephaestus_links ".hermes/agents"
-
-if [ "$REMOVED_LINKS" -eq 0 ]; then
-  echo "  (no hephaestus symlinks found)"
-fi
-echo ""
-
-# ── 2. Remove .hephaestus submodule ──────────────────────────────────────────
-
-SUBMODULE_REMOVED=false
-if [ -d ".hephaestus" ] || grep -qF '.hephaestus' .gitmodules 2>/dev/null; then
-  echo "Removing .hephaestus submodule:"
-  git submodule deinit -f .hephaestus 2>/dev/null || true
-  git rm -f .hephaestus 2>/dev/null || true
-  rm -rf .git/modules/.hephaestus 2>/dev/null || true
-  echo "  [removed] .hephaestus submodule"
-  SUBMODULE_REMOVED=true
 else
-  echo "Submodule:"
-  echo "  (no .hephaestus submodule found)"
+  rmdir "$(dirname "$MANIFEST")" 2>/dev/null || true
+  for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/commands" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/agents" \
+           "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/commands" "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/agents" \
+           "${CODEX_HOME:-$HOME/.codex}/skills" "${CODEX_HOME:-$HOME/.codex}/agents" \
+           "${HERMES_HOME:-$HOME/.hermes}/skills/hephaestus" "${HERMES_HOME:-$HOME/.hermes}/agents"; do
+    rmdir "$d" 2>/dev/null || true
+  done
 fi
-echo ""
 
-# ── 3. Summary ───────────────────────────────────────────────────────────────
-
-if [ "$SUBMODULE_REMOVED" = true ]; then
-  echo "Done. Removed $REMOVED_LINKS symlink(s) and the .hephaestus submodule."
-else
-  echo "Done. Removed $REMOVED_LINKS symlink(s). No submodule was present."
-fi
 echo ""
-echo "Kept (project-specific):"
-echo "  - .claude/commands/orient.md (if present)"
-echo "  - .opencode/commands/orient.md (if present)"
-echo "  - .agents/skills/orient/ (if present)"
-echo "  - .hermes/skills/hephaestus/orient/ (if present)"
-echo "  - .claude/hooks/ (if present)"
-echo "  - .claude/settings.local.json (if present)"
-echo "  - CLAUDE.md"
+echo "Done. Removed $REMOVED file(s)."
 echo ""
-echo "Run: git add -A && git commit -m 'chore: remove hephaestus'"
+echo "Kept (project-owned):"
+echo "  - orient (.claude/commands/, .opencode/commands/, .agents/skills/orient/, .hermes/skills/hephaestus/orient/)"
+echo "  - AGENTS.md, opencode.json, CLAUDE.md"
+echo "  - .claude/hooks/, .claude/settings.local.json"

@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Three ideas shape every design decision:
 
-1. **Simplicity** — One command to deliver an issue. One file to configure quality gates. One submodule to share across projects. Complexity is a bug.
+1. **Simplicity** — One command to deliver an issue. One file to configure quality gates. One install to share across projects. Complexity is a bug.
 
-2. **Self-improvement** — The system critiques its own plans before implementing, reviews its own code before shipping, and finds work when idle. Improvements propagate to every project via the submodule.
+2. **Self-improvement** — The system critiques its own plans before implementing, reviews its own code before shipping, and finds work when idle. Improvements propagate to every project from one clone.
 
 3. **Autonomy** — Commands run without human intervention. They resolve ambiguity, recover from failures, and wind down cleanly. Stopping to ask is a last resort reserved for irreversible risk.
 
@@ -16,7 +16,7 @@ When in doubt about a design choice, pick the option that is simpler, more self-
 
 ## What This Is
 
-Hephaestus is an implementation of a generic software development workflow pattern for AI coding agents. It encodes the observation that all delivery follows the same loop — orient, plan, critique, implement, review, test, ship, finish — and makes that loop executable, autonomous, and self-correcting. Distributed as a git submodule containing prose workflows plus tool adapters that cause an AI coding agent to behave as a structured delivery system. Installed into other projects via `./install.sh <target>`.
+Hephaestus is an implementation of a generic software development workflow pattern for AI coding agents. It encodes the observation that all delivery follows the same loop — orient, plan, critique, implement, review, test, ship, finish — and makes that loop executable, autonomous, and self-correcting. Distributed as one clone of prose workflows plus tool adapters that cause an AI coding agent to behave as a structured delivery system. Installed into the harness config dirs via `./install.sh`, per repo via `./install.sh --project <target>`.
 
 ## Development Commands
 
@@ -56,8 +56,9 @@ At release, `scripts/collect-changelog.sh <version>` folds every fragment into a
 - `scripts/sync-codex-adapters.sh` — generates/checks Codex skills and agent-role adapters
 - `scripts/sync-hermes-adapters.sh` — generates/checks Hermes skills and delegate briefs
 - `changelog.d/` — one changelog fragment per PR; `scripts/collect-changelog.sh <version>` folds them into CHANGELOG.md at release
-- `install.sh` — Adds hephaestus as `.hephaestus` submodule in a target project, creates symlinks into `.claude/`, `.opencode/`, `.agents/`, `.codex/`, and `.hermes/`
-- `update.sh` — Pulls latest hephaestus into an already-installed project
+- `install.sh` — Three modes: default symlinks the shared adapters into the harness config dirs (`~/.claude/`, `~/.config/opencode/`, `~/.codex/`, `~/.hermes/`); `--project` scaffolds the files a repo owns; `--vendor` commits the shared set into a repo. Every mode records what it wrote in a manifest. `--migrate` first strips a pre-2.2 `.hephaestus` submodule install from the target repo
+- `update.sh` — Pulls the clone and re-installs (`--vendor <path>` for a vendored repo)
+- `uninstall.sh` — Removes exactly what the matching manifest records
 
 ## Core Workflow Pattern
 
@@ -89,9 +90,11 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 - **`/finish` branches on explicit PR state** before cleanup. Merged PRs complete the full close/cleanup/docs flow; auto-merge-pending and manual-merge-needed PRs preserve the issue and PR branch; closed-unmerged PRs abort finish cleanly.
 - **`/finish` decides docs sync mechanically** from the PR diff: every PR requires CHANGELOG.md; command or installer changes also require README.md; command or agent changes also require CLAUDE.md. If any required doc is missing, `/finish` runs `/update-docs` and logs the missing files.
 - **Repo detection** is done via `git remote get-url origin` — commands never hardcode repo references.
-- **orient is project-specific** — it is excluded from symlinking in every harness. If the target project doesn't have one, install.sh scaffolds a template from `templates/orient.md` that must be customized. The shipped generic `/orient` covers install paths without install.sh (plugin, manual copy): on first run in an unprepared project it bootstraps the operating requirements — infers a Development Commands section from manifests and scaffolds a project orient — additively, never overwriting.
-- **install.sh is idempotent** — it never overwrites existing files; re-running is safe.
-- **Symlinks are relative** — agents link as `../../.hephaestus/.claude/agents/<name>`, commands as `../../.hephaestus/.claude/commands/<name>`.
+- **orient is project-specific** — it is excluded from symlinking in every harness. `install.sh --project` scaffolds a template from `templates/orient.md` that must be customized. The shipped generic `/orient` covers install paths without install.sh (plugin, manual copy): on first run in an unprepared project it bootstraps the operating requirements — infers a Development Commands section from manifests and scaffolds a project orient — additively, never overwriting.
+- **install.sh is idempotent** — re-running refreshes the files it installed and never touches anything else.
+- **Ownership is recorded, not inferred** — each install writes a manifest (`$XDG_STATE_HOME/hephaestus/manifest` at user level, `<project>/.heph-manifest` when vendored) listing every path it wrote. Install, update, `--clean`, and uninstall all read it, so a file hephaestus did not write is never modified or removed, and an adapter dropped upstream is detected exactly.
+- **User-level symlinks are absolute** — they point into the clone, so they resolve from any cwd, including a git worktree. (The former submodule layout used relative links into `.hephaestus/`, which dangle in worktrees because `git worktree add` does not populate submodules.)
+- **Never `git add .hermes` wholesale** — under `HERMES_HOME` that directory is Hermes's profile home. Stage `.hermes/skills`, `.hermes/agents`, and `.hermes/.gitignore` only; the scaffolded `.gitignore` is the backstop.
 
 ## Agent Conventions
 
@@ -166,14 +169,14 @@ Composition rule: if you find yourself copying procedure from `/foo` into `/bar`
 
 ## What Target Projects Must Provide
 
-These are NOT in this repo — each installed project owns them:
-- `.claude/commands/orient.md` — project-specific context (scaffolded by install.sh, must be customized)
-- `.opencode/commands/orient.md` — OpenCode project-specific context (scaffolded by install.sh, must be customized if using OpenCode)
-- `.agents/skills/orient/` — Codex project-specific orient skill (scaffolded by install.sh, must be customized if using Codex)
-- `.hermes/skills/hephaestus/orient/` — Hermes project-specific orient skill (scaffolded by install.sh, must be customized if using Hermes)
+These are NOT in this repo — each installed project owns them (`install.sh --project` scaffolds them):
+- `.claude/commands/orient.md` — project-specific context (must be customized)
+- `.opencode/commands/orient.md` — OpenCode project-specific context (must be customized if using OpenCode)
+- `.agents/skills/orient/` — Codex project-specific orient skill (must be customized if using Codex)
+- `.hermes/skills/hephaestus/orient/` — Hermes project-specific orient skill (must be customized if using Hermes)
 - `.claude/hooks/` — lint/test hooks for the project's tech stack
 - `CLAUDE.md` with a "Development Commands" section (test, lint, build commands)
-- `AGENTS.md` — index of available local and shared agents (scaffolded by install.sh from `templates/AGENTS.md`)
+- `AGENTS.md` — index of available local and shared agents (scaffolded from `templates/AGENTS.md`)
 - `.claude/settings.local.json` — project-specific config
 
 ## Communication rules

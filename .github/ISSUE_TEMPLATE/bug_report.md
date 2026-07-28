@@ -11,7 +11,7 @@ labels: bug
 
 
 **Repro**
-- Install path: plugin / submodule / manual copy
+- Install path: plugin / install.sh (user-level) / install.sh --vendor / manual copy
 - Harness + version: (e.g. Claude Code v2.x, OpenCode vX)
 - OS:
 - Command or script involved:

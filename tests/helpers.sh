@@ -18,6 +18,9 @@ TESTS_FAILED=0
 # The real hephaestus repo root (one level up from tests/)
 HEPHAESTUS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# The developer's real HOME, restored by teardown_fixture.
+REAL_HOME="$HOME"
+
 # ── Assertions ───────────────────────────────────────────────────────────────
 
 pass() {
@@ -115,7 +118,8 @@ setup_fixture() {
 
   FIXTURE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-test-XXXXXX")
 
-  # Allow file:// transport for local submodule operations (git >= 2.38.1 restricts this)
+  # Isolate git from the developer's real config. protocol.file.allow is needed
+  # to add a local-path submodule (git >= 2.38.1), which the migration test builds.
   export GIT_CONFIG_GLOBAL="$FIXTURE_DIR/gitconfig"
   git config -f "$GIT_CONFIG_GLOBAL" protocol.file.allow always
 
@@ -144,6 +148,51 @@ setup_fixture() {
   SOURCE_REPO="$FIXTURE_DIR/source"
 }
 
+# Reproduce a pre-2.2 install in $1: a `.hephaestus` submodule with every
+# adapter symlinked through it, plus a project-owned orient. Used to test
+# `install.sh --migrate`.
+create_legacy_install() {
+  local dir="$1" git_as=(-c user.email=test@test.com -c user.name=Test)
+  # Migration only inspects the submodule's registration, never its contents,
+  # so point it at a one-commit repo instead of re-cloning all of hephaestus.
+  local stub="$FIXTURE_DIR/legacy-submodule.git"
+  if [ ! -d "$stub" ]; then
+    git init --quiet "$stub.work"
+    git -C "$stub.work" "${git_as[@]}" commit --allow-empty -m "stub" --quiet
+    git clone --quiet --bare "$stub.work" "$stub" 2>/dev/null
+  fi
+  git -C "$dir" "${git_as[@]}" submodule add --quiet "$stub" .hephaestus 2>/dev/null
+  mkdir -p "$dir"/.claude/{agents,commands} "$dir"/.opencode/{agents,commands} \
+           "$dir"/.agents/skills "$dir"/.codex/agents
+  ln -s ../../.hephaestus/.claude/agents/coder.md      "$dir/.claude/agents/coder.md"
+  ln -s ../../.hephaestus/.claude/commands/ship.md     "$dir/.claude/commands/ship.md"
+  ln -s ../../.hephaestus/.opencode/agents/coder.md    "$dir/.opencode/agents/coder.md"
+  ln -s ../../.hephaestus/.opencode/commands/ship.md   "$dir/.opencode/commands/ship.md"
+  ln -s ../../.hephaestus/.agents/skills/ship          "$dir/.agents/skills/ship"
+  ln -s ../../.hephaestus/.codex/agents/coder.toml     "$dir/.codex/agents/coder.toml"
+  mkdir -p "$dir"/.hermes/skills/hephaestus "$dir"/.hermes/agents
+  ln -s ../../../.hephaestus/.hermes/skills/hephaestus/ship "$dir/.hermes/skills/hephaestus/ship"
+  ln -s ../../.hephaestus/.hermes/agents/coder.md           "$dir/.hermes/agents/coder.md"
+  echo "MY CUSTOM ORIENT" > "$dir/.claude/commands/orient.md"
+  git -C "$dir" "${git_as[@]}" add -A 2>/dev/null
+  git -C "$dir" "${git_as[@]}" commit -m "legacy hephaestus install" --quiet 2>/dev/null
+}
+
+# Redirect every harness config dir into the fixture so a user-level install
+# under test can never touch the developer's real ~/.claude, ~/.codex, or
+# ~/.config/opencode. Call after setup_fixture; teardown_fixture restores HOME.
+sandbox_home() {
+  SANDBOX_HOME="$FIXTURE_DIR/home"
+  mkdir -p "$SANDBOX_HOME"
+  export HOME="$SANDBOX_HOME"
+  unset CLAUDE_CONFIG_DIR XDG_CONFIG_HOME CODEX_HOME HERMES_HOME XDG_STATE_HOME
+  CLAUDE_DIR="$SANDBOX_HOME/.claude"
+  OPENCODE_DIR="$SANDBOX_HOME/.config/opencode"
+  CODEX_DIR="$SANDBOX_HOME/.codex"
+  HERMES_DIR="$SANDBOX_HOME/.hermes"
+  USER_MANIFEST="$SANDBOX_HOME/.local/state/hephaestus/manifest"
+}
+
 # Create a fresh, empty target git repo. Returns its path.
 create_target() {
   local name="${1:-target}"
@@ -156,10 +205,12 @@ create_target() {
 }
 
 teardown_fixture() {
+  export HOME="$REAL_HOME"
   if [ -n "${FIXTURE_DIR:-}" ] && [ -d "$FIXTURE_DIR" ]; then
     rm -rf "$FIXTURE_DIR"
   fi
-  unset FIXTURE_DIR REMOTE_REPO SOURCE_REPO GIT_CONFIG_GLOBAL 2>/dev/null || true
+  unset FIXTURE_DIR REMOTE_REPO SOURCE_REPO GIT_CONFIG_GLOBAL \
+        SANDBOX_HOME CLAUDE_DIR OPENCODE_DIR CODEX_DIR HERMES_DIR USER_MANIFEST 2>/dev/null || true
 }
 
 # ── Test lifecycle ───────────────────────────────────────────────────────────

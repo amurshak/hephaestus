@@ -3,14 +3,14 @@
 #
 # Each iteration starts a new harness session so context stays clean.
 #
-# Usage (from the project root where hephaestus is installed):
-#   ./.hephaestus/loop.sh                          # every 30 min (Claude)
-#   ./.hephaestus/loop.sh 15                       # every 15 min
-#   ./.hephaestus/loop.sh 30 /tmp/autopilot.log    # custom log path
-#   HEPH_HARNESS=opencode ./.hephaestus/loop.sh 30 # OpenCode instead of Claude
+# Run from the project root; the script itself lives in the hephaestus clone:
+#   ~/.hephaestus/loop.sh                          # every 30 min (Claude)
+#   ~/.hephaestus/loop.sh 15                       # every 15 min
+#   ~/.hephaestus/loop.sh 30 /tmp/autopilot.log    # custom log path
+#   HEPH_HARNESS=opencode ~/.hephaestus/loop.sh 30 # OpenCode instead of Claude
 #
 # Background (unattended):
-#   nohup ./.hephaestus/loop.sh 30 /tmp/autopilot.log &
+#   nohup ~/.hephaestus/loop.sh 30 /tmp/autopilot.log &
 #   echo $! > autopilot.pid   # save PID to kill later
 #
 # Stop:
