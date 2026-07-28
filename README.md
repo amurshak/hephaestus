@@ -30,7 +30,7 @@ In Claude Code:
 /plugin install heph@hephaestus
 ```
 
-That's it — commands appear under `/heph:` (`/heph:autopilot`, `/heph:ship`, …). For OpenCode, Codex, Hermes, manual copy/symlink, or the git-submodule install (headless mode, forking), see [Get started](#get-started).
+That's it — commands appear under `/heph:` (`/heph:autopilot`, `/heph:ship`, …). For OpenCode, Codex, Hermes, manual copy, or the script install (one install, every project — plus headless mode and forking), see [Get started](#get-started).
 
 **Requirements:** [Claude Code](https://claude.com/claude-code), [OpenCode](https://opencode.ai), [Codex](https://openai.com/codex), or [Hermes](https://github.com/NousResearch/hermes-agent) · [`gh` CLI](https://cli.github.com) authenticated (workflows drive GitHub issues and PRs) · git.
 
@@ -50,7 +50,7 @@ The core of Hephaestus is composed of five commands spread across eight internal
 - [Memory through external systems](#memory-through-external-systems)
 - [Get started](#get-started)
 - [Your project's setup](#your-projects-setup)
-- [Submodule install](#submodule-install-for-headless-mode-and-forking)
+- [Script install](#script-install-every-project-at-once)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -257,7 +257,7 @@ Slack, Notion, and other documentation systems extend the principle — addition
 
 ## Get started
 
-The workflows, commands, and agents are plain markdown files. Three ways to get them into a project, in order of friction:
+The workflows, commands, and agents are plain markdown files. Three ways to get them in front of your harness, in order of friction:
 
 ### 1. Plugin (Claude Code)
 
@@ -278,7 +278,17 @@ Commands install under the `/heph:` namespace: `/heph:autopilot`, `/heph:ship`, 
 | `/plugin marketplace update hephaestus` | Pull the latest hephaestus |
 | `/plugin uninstall heph`     | Remove the plugin |
 
-### 2. Copy or symlink the files (any harness)
+### 2. Script install (any harness)
+
+```bash
+git clone https://github.com/amurshak/hephaestus.git ~/.hephaestus
+~/.hephaestus/install.sh                             # once per machine
+~/.hephaestus/install.sh --project /path/to/project  # once per repo
+```
+
+The first command installs the shared commands, agents, and skills into your harness config dirs — `~/.claude/`, `~/.config/opencode/`, `~/.codex/`, `~/.hermes/` — so they work in **every** project. The second scaffolds the handful of files a project owns: `orient` for each harness, `AGENTS.md`, `opencode.json`, `.hermes/.gitignore`. Commands run under bare names (`/autopilot`, `/ship`). `~/.hephaestus/update.sh` pulls and re-links. Full detail in [Script install](#script-install-every-project-at-once).
+
+### 3. Copy the files by hand (any harness)
 
 Zero machinery — vendor the files directly:
 
@@ -300,12 +310,12 @@ mkdir -p your-project/.hermes
 cp -R hephaestus/.hermes/skills hephaestus/.hermes/agents your-project/.hermes/
 ```
 
-Commands run under bare names (`/autopilot`). No update story — re-copy when you want the latest. Symlink instead of copy if you keep a local clone and want updates via `git pull`.
+No update story — re-copy when you want the latest, or use `install.sh --vendor` to get the same committed copies with a manifest that makes updates and removal exact.
 
 ### OpenCode usage (cwd is the product)
 
-1. Install adapters into the **project** (copy or `./install.sh`), not only into a sibling checkout.
-2. **Start OpenCode from that project root** — config discovery walks up from cwd; starting from `$HOME` will not load project `.opencode/`.
+1. Shared adapters load from `~/.config/opencode/` in every project (`install.sh`); a vendored or hand-copied `.opencode/` works too.
+2. **Start OpenCode from the project root** — the project's own `.opencode/orient` and `AGENTS.md` are discovered by walking up from cwd, so starting from `$HOME` loses them.
 3. Type `/` — you should see `/autopilot`, `/ship`, `/finish`, …
 4. Verify load: `opencode debug config` or `bash scripts/verify-opencode-load.sh` (from hephaestus root or after install).
 5. Nested steps say “run `/ship`” — invoke the slash command so the full template loads; do not paraphrase. Role work uses the Task tool or `@coder` / `@reviewer` / … (no worktree isolation — serialize file-writing `@coder` tasks).
@@ -314,28 +324,19 @@ Commands run under bare names (`/autopilot`). No update story — re-copy when y
 
 Hermes is not a command-file harness. Its extension surface is a skills system, so hephaestus ships as a **skill package**: thirteen skills under the `hephaestus` category plus five delegate briefs.
 
-1. Install adapters into the project (copy or `./install.sh`) — this creates `.hermes/skills/hephaestus/` and `.hermes/agents/`.
-2. **Wire discovery once.** Hermes reads `~/.hermes/skills` plus whatever `skills.external_dirs` names; it has no project-local discovery. Add to `~/.hermes/config.yaml` under the top-level `skills:` key:
+1. `install.sh` puts the package straight into `~/.hermes/skills/hephaestus/` and `~/.hermes/agents/`, which Hermes already reads — **no wiring needed**, and it applies to every project. The rest of this section is only for a per-project copy (`--vendor` or hand-copied), which creates `.hermes/skills/hephaestus/` and `.hermes/agents/` inside the repo.
+2. **Wire discovery once**, for a per-project copy only. Hermes reads `~/.hermes/skills` plus whatever `skills.external_dirs` names; it has no project-local discovery. Add to `~/.hermes/config.yaml` under the top-level `skills:` key:
    ```yaml
    skills:
      external_dirs:
        - /path/to/your-project/.hermes/skills
    ```
    `HERMES_HOME=/path/to/your-project/.hermes` also works and needs no config edit, but it makes the repo Hermes's whole profile home — `config.yaml`, credentials, session transcripts and memories land in your working tree, and `.hermes/skills` becomes writable. Commit only `.hermes/skills` and `.hermes/agents` if you go that route. `external_dirs` is the recommended path.
-3. Verify: `bash scripts/verify-hermes-load.sh` (or `bash .hephaestus/scripts/verify-hermes-load.sh` after a submodule install) — it checks the wiring, then confirms the skills appear in `hermes skills list`.
+3. Verify: `bash ~/.hephaestus/scripts/verify-hermes-load.sh` (add the project path for a per-project copy) — it checks the wiring, then confirms the skills appear in `hermes skills list`.
 4. Invoke as `/autopilot`, `/ship`, `/finish`, … Under `external_dirs` the package is read-only to Hermes, so its self-improving skill writes land in `~/.hermes/skills` and cannot mutate a generated adapter out of sync; the generator's `--check` catches it if they ever do.
 5. Role work uses `delegate_task`. Each brief in `.hermes/agents/` gives the `toolsets` to pass (`["terminal", "file"]` for coder, `["file", "web"]` for researcher) and the prompt to send as `context`. Two Hermes specifics: a delegate inherits **none** of the parent conversation, so everything it needs goes in `context`; and there is no worktree isolation, so parallel coder delegates share one working tree — serialize file-modifying work.
 
 **Two doctrines to keep straight.** Hermes's persistent memory (`~/.hermes/memories/`) is profile-scoped, capped, and frozen into the system prompt at session start — it is not repo state. Hephaestus keeps the repo canonical: issues, PRs, and git history are the memory that survives a machine change. Use Hermes memory for durable preferences, not for what a workflow decided. Likewise the kanban toolset is a local board with no GitHub issue sync, so GitHub issues remain the work queue; kanban is optional scratch space for a single session's fan-out.
-
-### 3. Submodule (updatable vendoring, headless mode, forking)
-
-```bash
-git clone https://github.com/amurshak/hephaestus.git && cd hephaestus
-./install.sh /path/to/your/project
-```
-
-One shared copy, relative symlinks into `.claude/`, `.opencode/`, `.agents/`, `.codex/`, and `.hermes/`, plus `opencode.json` scaffold; `update.sh` for updates. Required for [headless mode](#headless-mode) (`loop.sh` runs Claude or OpenCode as a subprocess). Details in [Submodule install](#submodule-install-for-headless-mode-and-forking).
 
 ---
 
@@ -362,7 +363,7 @@ Optional but recommended:
 |---|---|
 | `.claude/hooks/lint-on-commit.sh` | Your lint command, before every commit |
 | `.claude/hooks/protect-files.sh` | Block edits to `.env`, lock files, secrets |
-| `AGENTS.md` | Index of local + shared agents (submodule installs scaffold this from a template) |
+| `AGENTS.md` | Index of local + shared agents (`install.sh --project` scaffolds this from a template) |
 | `.claude/settings.local.json` | Permissions and hook paths |
 
 Both hooks ship as ready-to-use templates — deterministic backstops for the prose gates (`protect-files.sh` works as-is; set `LINT_CMD` in `lint-on-commit.sh`):
@@ -378,9 +379,12 @@ Each file's header shows the `settings.json` wiring.
 
 ---
 
-## Submodule install (for headless mode and forking)
+## Script install (every project at once)
 
-For most Claude Code users the plugin is the least-friction path. The submodule is the right choice when you need:
+For Claude Code alone, the plugin is the least-friction path. The script install is the right choice when you need:
+
+- **Every harness** — one install covers Claude Code, OpenCode, Codex, and Hermes.
+- **Every project** — the shared set lives in your harness config dirs, so a new repo needs no adapter install at all.
 
 - **Headless mode** — `loop.sh` runs `/autopilot` on a timer in a fresh session each time. Plugins can't do this since they run *inside* the harness; `loop.sh` runs Claude Code or OpenCode as a subprocess.
 - **Forking and upstream sync** — clone the repo, modify commands, `git merge upstream/master` for upstream changes.
@@ -388,32 +392,66 @@ For most Claude Code users the plugin is the least-friction path. The submodule 
 ### Install
 
 ```bash
-./install.sh /path/to/your/project
+git clone https://github.com/amurshak/hephaestus.git ~/.hephaestus
+~/.hephaestus/install.sh
 ```
 
-This adds `.hephaestus` as a submodule, symlinks commands and agents into `<project>/.claude/`, `<project>/.opencode/`, `<project>/.agents/skills/`, `<project>/.codex/agents/`, and `<project>/.hermes/`, scaffolds project-specific orient files, `AGENTS.md`, and `opencode.json`, validates `CLAUDE.md`, and runs a health check. Safe to re-run. Commands install under bare names (`/autopilot`, `/ship`, etc.) — no plugin namespace, since they live directly in the project's command directories.
+Symlinks the shared commands, agents, and skills into `~/.claude/`, `~/.config/opencode/`, `~/.codex/`, and `~/.hermes/` (honoring `$CLAUDE_CONFIG_DIR`, `$XDG_CONFIG_HOME`, `$CODEX_HOME`, and `$HERMES_HOME`), then runs a health check. Commands work under bare names (`/autopilot`, `/ship`, …) in every project — no plugin namespace, and for Hermes no `external_dirs` wiring.
 
-If your project already has `.claude/commands/` or agents, audit first to surface conflicts:
+Then prepare each repo with the files a project genuinely owns — `orient` for each harness, `AGENTS.md`, `opencode.json`, `.hermes/.gitignore` — and validate its `CLAUDE.md`:
 
 ```bash
-./install.sh --audit /path/to/your/project
+~/.hephaestus/install.sh --project /path/to/your/project
 ```
+
+Both are idempotent and never overwrite a file they did not install. If a config dir already holds a command, agent, or skill of the same name, audit first to surface the conflict:
+
+```bash
+~/.hephaestus/install.sh --audit
+```
+
+### Pin the workflow to a repo instead
+
+Teams that want everyone's `/ship` to behave identically — and CI to be reproducible — can commit the adapters alongside the code:
+
+```bash
+~/.hephaestus/install.sh --vendor /path/to/your/project
+```
+
+This copies the shared set into the repo, does the `--project` scaffolding, and writes a `.heph-manifest` recording the version and every file it wrote. That manifest is the pin: `update.sh --vendor` refreshes exactly those files, and `uninstall.sh --vendor` removes exactly those files. Plain committed files — no submodule, so nothing to initialize on clone, in CI, or in a git worktree.
+
+### Migrating from a submodule install
+
+Installs from before 2.2 put hephaestus in a `.hephaestus` submodule and symlinked every adapter through it. One command converts a repo:
+
+```bash
+~/.hephaestus/install.sh --migrate /path/to/your/project     # add --audit to preview
+```
+
+It removes the submodule (deinit, `git rm`, the `.git/modules` entry, and `.gitmodules` if nothing else uses it) and every symlink pointing through `.hephaestus/`, then scaffolds the project-owned files. Your `orient`, `AGENTS.md`, hooks, and `CLAUDE.md` are untouched. `--migrate` implies `--project`; add `--vendor` to migrate straight to committed copies. Run `install.sh` once for the shared set if you haven't — the health check tells you if it's missing. Commit the result.
 
 ### Manage the install
 
 | | |
 |---|---|
 | `install.sh --audit`         | Preview what would change without modifying anything |
-| `install.sh --force`         | Replace existing shared adapter files with hephaestus versions; project `orient.md` files stay protected |
-| `install.sh --clean`         | Remove dangling symlinks after upstream renames |
-| `/update-hephaestus`         | Pull latest, re-install, show what changed |
-| `.hephaestus/uninstall.sh`   | Clean removal — only hephaestus symlinks |
+| `install.sh --force`         | Take over a same-named file the installer did not write; project `orient` files stay protected |
+| `install.sh --clean`         | Remove adapters dropped upstream since the last install |
+| `install.sh --migrate <path>` | Convert a pre-2.2 submodule install, then scaffold |
+| `install.sh --project <path>`| Scaffold the project-owned files in a repo |
+| `install.sh --vendor <path>` | Commit the shared set into a repo, pinned by `.heph-manifest` |
+| `update.sh` / `update.sh --vendor <path>` | Pull the latest and re-install |
+| `/update-hephaestus`         | The same update, driven from inside your harness |
+| `uninstall.sh` / `uninstall.sh --vendor <path>` | Remove exactly what was installed |
+
+Every install records what it wrote — user-level in `$XDG_STATE_HOME/hephaestus/manifest`, vendored in the repo's `.heph-manifest`. Updates and removals read that record, so your own files are never touched by either.
 
 ### Headless mode
 
 ```bash
-nohup ./.hephaestus/loop.sh 30 autopilot.log &
-HEPH_HARNESS=opencode nohup ./.hephaestus/loop.sh 30 autopilot-oc.log &
+cd /path/to/your/project
+nohup ~/.hephaestus/loop.sh 30 autopilot.log &
+HEPH_HARNESS=opencode nohup ~/.hephaestus/loop.sh 30 autopilot-oc.log &
 ```
 
 `loop.sh` runs `/autopilot` in a fresh session every N minutes. Clean context each time — no bloat. Project-scoped lockfile prevents overlap. Survives crashes. Claude path uses `--dangerously-skip-permissions`; OpenCode path uses `opencode run --auto --command autopilot` (start from the project root so `.opencode/` loads). Default harness is Claude; set `HEPH_HARNESS=opencode` for OpenCode.

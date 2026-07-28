@@ -7,146 +7,113 @@ source "$SCRIPT_DIR/helpers.sh"
 
 trap teardown_fixture EXIT
 
+AGENTS="coder explorer researcher reviewer tester"
+
 # ─────────────────────────────────────────────────────────────────────────────
 
-begin_test "clean uninstall removes symlinks and submodule"
+begin_test "user uninstall removes every installed adapter"
 setup_fixture
-TARGET=$(create_target)
-bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
+sandbox_home
+bash "$SOURCE_REPO/install.sh" >/dev/null 2>&1
 
-output=$(bash "$SOURCE_REPO/uninstall.sh" "$TARGET" 2>&1)
+output=$(bash "$SOURCE_REPO/uninstall.sh" 2>&1)
 rc=$?
 
 assert_exit_code "exits 0" 0 "$rc"
-
-# Symlinks should be removed
-assert_file_not_exists "coder.md removed"     "$TARGET/.claude/agents/coder.md"
-assert_file_not_exists "reviewer.md removed"  "$TARGET/.claude/agents/reviewer.md"
-assert_file_not_exists "autopilot.md removed" "$TARGET/.claude/commands/autopilot.md"
-assert_file_not_exists "ship.md removed"      "$TARGET/.claude/commands/ship.md"
-assert_file_not_exists "OpenCode coder.md removed"     "$TARGET/.opencode/agents/coder.md"
-assert_file_not_exists "OpenCode autopilot.md removed" "$TARGET/.opencode/commands/autopilot.md"
-
-# .hephaestus submodule should be removed
-assert_file_not_exists ".hephaestus removed" "$TARGET/.hephaestus"
-
-assert_contains "output mentions removed" "$output" "[removed]"
+for agent in $AGENTS; do
+  assert_file_not_exists "Claude $agent.md removed"   "$CLAUDE_DIR/agents/$agent.md"
+  assert_file_not_exists "OpenCode $agent.md removed" "$OPENCODE_DIR/agents/$agent.md"
+  assert_file_not_exists "Codex $agent.toml removed"  "$CODEX_DIR/agents/$agent.toml"
+  assert_file_not_exists "Hermes $agent.md removed"   "$HERMES_DIR/agents/$agent.md"
+done
+assert_file_not_exists "Claude ship.md removed"   "$CLAUDE_DIR/commands/ship.md"
+assert_file_not_exists "OpenCode ship.md removed" "$OPENCODE_DIR/commands/ship.md"
+assert_file_not_exists "Codex ship skill removed" "$CODEX_DIR/skills/ship"
+assert_file_not_exists "Hermes ship skill removed" "$HERMES_DIR/skills/hephaestus/ship"
+assert_file_not_exists "manifest removed"         "$USER_MANIFEST"
+assert_contains        "reports what it removed"  "$output" "Removed 68 file(s)"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
 
-begin_test "uninstall preserves project-specific files"
+begin_test "user uninstall leaves files hephaestus never installed"
 setup_fixture
-TARGET=$(create_target)
-bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
+sandbox_home
+bash "$SOURCE_REPO/install.sh" >/dev/null 2>&1
+echo "my own command" > "$CLAUDE_DIR/commands/my-command.md"
+echo "my own agent"   > "$CLAUDE_DIR/agents/my-agent.md"
 
-# orient.md was scaffolded — it should survive uninstall
-echo "my orient" > "$TARGET/.claude/commands/orient.md"
-echo "my opencode orient" > "$TARGET/.opencode/commands/orient.md"
-# Create a project-specific CLAUDE.md
-echo "# Project" > "$TARGET/CLAUDE.md"
+bash "$SOURCE_REPO/uninstall.sh" >/dev/null 2>&1
 
-bash "$SOURCE_REPO/uninstall.sh" "$TARGET" >/dev/null 2>&1
-
-assert_file_exists "orient.md preserved" "$TARGET/.claude/commands/orient.md"
-content=$(cat "$TARGET/.claude/commands/orient.md")
-assert_eq "orient.md content intact" "my orient" "$content"
-assert_file_exists "OpenCode orient.md preserved" "$TARGET/.opencode/commands/orient.md"
-opencode_content=$(cat "$TARGET/.opencode/commands/orient.md")
-assert_eq "OpenCode orient.md content intact" "my opencode orient" "$opencode_content"
-assert_file_exists "CLAUDE.md preserved" "$TARGET/CLAUDE.md"
+assert_file_exists "personal command preserved" "$CLAUDE_DIR/commands/my-command.md"
+assert_file_exists "personal agent preserved"   "$CLAUDE_DIR/agents/my-agent.md"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
 
-begin_test "idempotent uninstall (second run succeeds)"
+begin_test "vendor uninstall removes copies but keeps project-owned files"
 setup_fixture
+sandbox_home
 TARGET=$(create_target)
-bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
-bash "$SOURCE_REPO/uninstall.sh" "$TARGET" >/dev/null 2>&1
-
-# Second uninstall — should succeed with no errors
-output=$(bash "$SOURCE_REPO/uninstall.sh" "$TARGET" 2>&1)
-rc=$?
-
-assert_exit_code "exits 0"                      0 "$rc"
-assert_contains  "no symlinks found"             "$output" "no hephaestus symlinks found"
-assert_contains  "no submodule found"            "$output" "no .hephaestus submodule found"
-teardown_fixture
-
-# ─────────────────────────────────────────────────────────────────────────────
-
-begin_test "uninstall only removes hephaestus symlinks"
-setup_fixture
-TARGET=$(create_target)
-bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
-
-# Create a non-hephaestus symlink in agents dir
+bash "$SOURCE_REPO/install.sh" --vendor "$TARGET" >/dev/null 2>&1
 echo "local agent" > "$TARGET/.claude/agents/local-agent.md"
 
-bash "$SOURCE_REPO/uninstall.sh" "$TARGET" >/dev/null 2>&1
+output=$(bash "$SOURCE_REPO/uninstall.sh" --vendor "$TARGET" 2>&1)
+rc=$?
 
-assert_file_exists "local agent preserved" "$TARGET/.claude/agents/local-agent.md"
+assert_exit_code "exits 0" 0 "$rc"
+assert_file_not_exists "ship.md copy removed"      "$TARGET/.claude/commands/ship.md"
+assert_file_not_exists "coder.md copy removed"     "$TARGET/.claude/agents/coder.md"
+assert_file_not_exists "Codex ship skill removed"  "$TARGET/.agents/skills/ship"
+assert_file_not_exists "Codex coder.toml removed"  "$TARGET/.codex/agents/coder.toml"
+assert_file_not_exists "Hermes ship skill removed" "$TARGET/.hermes/skills/hephaestus/ship"
+assert_file_not_exists "manifest removed"          "$TARGET/.heph-manifest"
+
+assert_file_exists "orient.md preserved"           "$TARGET/.claude/commands/orient.md"
+assert_file_exists "Codex orient skill preserved"  "$TARGET/.agents/skills/orient/SKILL.md"
+assert_file_exists "Hermes orient skill preserved" "$TARGET/.hermes/skills/hephaestus/orient/SKILL.md"
+assert_file_exists "Hermes .gitignore preserved"   "$TARGET/.hermes/.gitignore"
+assert_file_exists "AGENTS.md preserved"           "$TARGET/AGENTS.md"
+assert_file_exists "opencode.json preserved"       "$TARGET/opencode.json"
+assert_file_exists "local agent preserved"         "$TARGET/.claude/agents/local-agent.md"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
 
-begin_test "non-existent target exits 1"
+begin_test "uninstall with nothing installed is a no-op"
 setup_fixture
-bash "$SOURCE_REPO/uninstall.sh" "/tmp/nonexistent-heph-test-path" >/dev/null 2>&1
-rc=$?
+sandbox_home
+TARGET=$(create_target)
 
-assert_exit_code "exits 1" 1 "$rc"
-teardown_fixture
+output=$(bash "$SOURCE_REPO/uninstall.sh" 2>&1)
+assert_exit_code "user mode exits 0"      0 $?
+assert_contains  "says nothing is installed" "$output" "No hephaestus install found"
 
-# ─────────────────────────────────────────────────────────────────────────────
+output=$(bash "$SOURCE_REPO/uninstall.sh" --vendor "$TARGET" 2>&1)
+assert_exit_code "vendor mode exits 0"    0 $?
+assert_contains  "says nothing is vendored" "$output" "No hephaestus install found"
 
-begin_test "non-git target exits 1"
-setup_fixture
-plain_dir="$FIXTURE_DIR/not-a-repo"
-mkdir -p "$plain_dir"
-bash "$SOURCE_REPO/uninstall.sh" "$plain_dir" >/dev/null 2>&1
-rc=$?
-
-assert_exit_code "exits 1" 1 "$rc"
+bash "$SOURCE_REPO/uninstall.sh" --invalid >/dev/null 2>&1
+assert_exit_code "unknown flag exits 1" 1 $?
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
 
 begin_test "full lifecycle: install → uninstall → reinstall"
 setup_fixture
-TARGET=$(create_target)
+sandbox_home
+bash "$SOURCE_REPO/install.sh" >/dev/null 2>&1
+assert_symlink_valid "after install: coder.md linked" "$CLAUDE_DIR/agents/coder.md"
 
-# Install
-bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
-assert_symlink "after install: coder.md linked" "$TARGET/.claude/agents/coder.md"
-assert_symlink "after install: OpenCode coder.md linked" "$TARGET/.opencode/agents/coder.md"
-assert_symlink "after install: Codex ship skill linked" "$TARGET/.agents/skills/ship"
-assert_symlink "after install: Codex coder.toml linked" "$TARGET/.codex/agents/coder.toml"
-assert_symlink "after install: Hermes ship skill linked" "$TARGET/.hermes/skills/hephaestus/ship"
-assert_symlink "after install: Hermes coder brief linked" "$TARGET/.hermes/agents/coder.md"
+bash "$SOURCE_REPO/uninstall.sh" >/dev/null 2>&1
+assert_file_not_exists "after uninstall: coder.md gone" "$CLAUDE_DIR/agents/coder.md"
 
-# Uninstall
-bash "$SOURCE_REPO/uninstall.sh" "$TARGET" >/dev/null 2>&1
-assert_file_not_exists "after uninstall: coder.md gone" "$TARGET/.claude/agents/coder.md"
-assert_file_not_exists "after uninstall: OpenCode coder.md gone" "$TARGET/.opencode/agents/coder.md"
-assert_file_not_exists "after uninstall: Codex ship skill gone" "$TARGET/.agents/skills/ship"
-assert_file_not_exists "after uninstall: Codex coder.toml gone" "$TARGET/.codex/agents/coder.toml"
-assert_file_exists     "after uninstall: Codex orient skill preserved" "$TARGET/.agents/skills/orient/SKILL.md"
-assert_file_not_exists "after uninstall: Hermes ship skill gone" "$TARGET/.hermes/skills/hephaestus/ship"
-assert_file_not_exists "after uninstall: Hermes coder brief gone" "$TARGET/.hermes/agents/coder.md"
-assert_file_exists     "after uninstall: Hermes orient skill preserved" "$TARGET/.hermes/skills/hephaestus/orient/SKILL.md"
-
-# Reinstall
-bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
-assert_symlink       "after reinstall: coder.md linked again" "$TARGET/.claude/agents/coder.md"
-assert_symlink_valid "after reinstall: coder.md resolves"     "$TARGET/.claude/agents/coder.md"
-assert_symlink       "after reinstall: OpenCode coder.md linked again" "$TARGET/.opencode/agents/coder.md"
-assert_symlink_valid "after reinstall: OpenCode coder.md resolves"     "$TARGET/.opencode/agents/coder.md"
-assert_symlink       "after reinstall: Codex ship skill linked again" "$TARGET/.agents/skills/ship"
-assert_symlink_valid "after reinstall: Codex ship skill resolves"     "$TARGET/.agents/skills/ship"
-assert_symlink       "after reinstall: Hermes ship skill linked again" "$TARGET/.hermes/skills/hephaestus/ship"
-assert_symlink_valid "after reinstall: Hermes ship skill resolves"     "$TARGET/.hermes/skills/hephaestus/ship"
+output=$(bash "$SOURCE_REPO/install.sh" 2>&1)
+assert_symlink_valid "after reinstall: coder.md linked again" "$CLAUDE_DIR/agents/coder.md"
+assert_symlink_valid "after reinstall: Codex ship skill linked" "$CODEX_DIR/skills/ship"
+assert_symlink_valid "after reinstall: Hermes ship skill linked" "$HERMES_DIR/skills/hephaestus/ship"
+assert_contains "reinstall reports a fresh install" "$output" "[install] coder.md"
+assert_file_exists "manifest rebuilt" "$USER_MANIFEST"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────

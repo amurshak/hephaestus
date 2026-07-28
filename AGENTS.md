@@ -22,15 +22,13 @@
 
 ## Repo Shape
 - This is a shell/prose workflow repo, not a package-manager project; there is no `package.json`. CI is `.github/workflows/tests.yml` (runs `tests/run.sh`, every adapter drift check, and the composition check).
-- Plugin metadata is in `.claude-plugin/plugin.json`; OpenCode config is `opencode.json`; submodule/headless install tooling is `install.sh`, `update.sh`, `uninstall.sh`, and `loop.sh`.
-- `install.sh` symlinks shared agents and commands into a target project, but always treats `.claude/commands/orient.md` as project-specific and scaffolds it from `templates/orient.md` only when missing.
-- `install.sh` also symlinks `.opencode/agents` and `.opencode/commands`; `.opencode/commands/orient.md` is project-specific and scaffolded from `templates/orient.md` when missing.
-- `install.sh` also symlinks Codex skills into `.agents/skills/` and agent roles into `.codex/agents/`; `.agents/skills/orient/` is project-specific and scaffolded when missing.
-- `install.sh` also symlinks Hermes skills into `.hermes/skills/hephaestus/` and delegate briefs into `.hermes/agents/`; `.hermes/skills/hephaestus/orient/` is project-specific and scaffolded when missing.
-- Symlinks created by `install.sh` are relative paths through `.hephaestus/`; tests assert this.
+- Plugin metadata is in `.claude-plugin/plugin.json`; OpenCode config is `opencode.json`; install/headless tooling is `install.sh`, `update.sh`, `uninstall.sh`, and `loop.sh`.
+- `install.sh` (no args) symlinks the shared adapters into the harness config dirs — `~/.claude/{commands,agents}`, `~/.config/opencode/{commands,agents}`, `~/.codex/{skills,agents}`, `~/.hermes/{skills/hephaestus,agents}` — honoring `$CLAUDE_CONFIG_DIR`, `$XDG_CONFIG_HOME`, `$CODEX_HOME`, and `$HERMES_HOME`. Links are absolute into the clone; tests assert this.
+- `install.sh --project <path>` scaffolds only what a repo owns: `orient` for all four harnesses (from `templates/orient.md`, never overwritten), `AGENTS.md`, `opencode.json`, `.hermes/.gitignore`. `--vendor <path>` does that plus copies the shared set into the repo; `--migrate` first strips a pre-2.2 `.hephaestus` submodule install.
+- Every mode writes a manifest of the paths it created — `$XDG_STATE_HOME/hephaestus/manifest` or `<project>/.heph-manifest` — and later runs read it to decide what is safe to refresh or remove.
 
 ## Verification Gotchas
-- Tests create isolated temporary git repos and copy current uncommitted working-tree changes into fixtures, so focused tests exercise local edits before commit.
+- Tests create isolated temporary git repos and copy current uncommitted working-tree changes into fixtures, so focused tests exercise local edits before commit. Install tests call `sandbox_home` so a user-level install under test can never touch the real `~/.claude`, `~/.codex`, `~/.config/opencode`, or `~/.hermes`.
 - Adapter changes usually need every `./scripts/sync-*-adapters.sh --check` and `./tests/run.sh`; workflow-command drift is a common failure mode.
 - README `## Composition` must match command `requires`/`chains` metadata bidirectionally; update README trees when command composition changes.
 - `/finish` docs rules are mechanical: every PR needs `CHANGELOG.md`; installer or command changes also need `README.md`; agent or command changes also need `CLAUDE.md`.

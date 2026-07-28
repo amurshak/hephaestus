@@ -1,43 +1,59 @@
 #!/usr/bin/env bash
-# update.sh — Pull the latest hephaestus into the current project
+# update.sh — Pull the latest hephaestus and refresh the install
 #
-# Run this from inside a project that already has .hephaestus installed.
-# Updates the submodule to the latest commit on the hephaestus main branch.
+# Usage:
+#   ./update.sh                   Pull, then refresh the user-level install
+#   ./update.sh --vendor <path>   Pull, then refresh a project's vendored copy
+#
+# Run from anywhere — paths resolve against this clone.
 
 set -euo pipefail
 
-if [ ! -e ".hephaestus/.git" ] && ! grep -qF '.hephaestus' .gitmodules 2>/dev/null; then
-  echo "Error: .hephaestus submodule not found. Run install.sh first."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+MODE=user
+TARGET=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --vendor) MODE=vendor; shift ;;
+    -*) echo "Error: unknown flag '$1'"; echo "Usage: ./update.sh [--vendor <path>]"; exit 1 ;;
+    *) TARGET="$1"; shift ;;
+  esac
+done
+
+if [ "$MODE" = vendor ] && [ -z "$TARGET" ]; then
+  echo "Error: --vendor requires a project path."
   exit 1
 fi
 
-# Record current version
-OLD_VERSION=$(cat .hephaestus/VERSION 2>/dev/null || echo "unknown")
-OLD_HEAD=$(git -C .hephaestus rev-parse HEAD 2>/dev/null || echo "")
+OLD_VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "unknown")
+OLD_HEAD=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || echo "")
 
-echo "Updating .hephaestus submodule (current: $OLD_VERSION)..."
-git submodule update --init --remote .hephaestus
+echo "Updating hephaestus at $SCRIPT_DIR (current: $OLD_VERSION)..."
+git -C "$SCRIPT_DIR" pull --ff-only
 echo ""
 
-# Record new version
-NEW_VERSION=$(cat .hephaestus/VERSION 2>/dev/null || echo "unknown")
-NEW_HEAD=$(git -C .hephaestus rev-parse HEAD 2>/dev/null || echo "")
+NEW_VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "unknown")
+NEW_HEAD=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || echo "")
 
-# Show what changed
 if [ -n "$OLD_HEAD" ] && [ "$OLD_HEAD" != "$NEW_HEAD" ]; then
   echo "Changes:"
-  git -C .hephaestus log --oneline "$OLD_HEAD..$NEW_HEAD" 2>/dev/null || echo "  (could not read log)"
+  git -C "$SCRIPT_DIR" log --oneline "$OLD_HEAD..$NEW_HEAD" 2>/dev/null || echo "  (could not read log)"
   echo ""
 else
   echo "Already up to date."
   echo ""
 fi
 
-echo "Repairing symlinks and cleaning stale links..."
-bash .hephaestus/install.sh --clean .
-echo ""
+if [ "$MODE" = vendor ]; then
+  bash "$SCRIPT_DIR/install.sh" --vendor "$TARGET"
+else
+  bash "$SCRIPT_DIR/install.sh" --clean
+fi
 
 echo "Updated hephaestus: $OLD_VERSION → $NEW_VERSION"
-echo ""
-echo "Commit the update:"
-echo "  git add .hephaestus .claude .opencode .agents .codex .hermes/skills .hermes/agents && git commit -m 'chore: update hephaestus to $NEW_VERSION'"
+if [ "$MODE" = vendor ]; then
+  echo ""
+  echo "Commit the refreshed copy:"
+  echo "  git -C $TARGET add .heph-manifest .claude .opencode .agents .codex .hermes/skills .hermes/agents && git -C $TARGET commit -m 'chore: update hephaestus to $NEW_VERSION'"
+fi
