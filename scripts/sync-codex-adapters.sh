@@ -49,6 +49,13 @@ first_body_line() {
 }
 
 # Rewrite Claude-dialect body text for Codex mechanics.
+#
+# The /worktrees Step 6 spawn rules below are verified against codex-cli 0.145.0:
+# a bare positional prompt auto-submits into the interactive TUI, `/start-issue
+# <N>` reaches the generated skill by implicit match on the `Use for /<name>
+# requests.` description anchor, and a worktree inherits the parent repo's trust
+# — so there is no approval flag to add, unlike Claude's `--permission-mode
+# default`. scripts/verify-codex-load.sh re-checks the positional form.
 codex_localize_body() {
   sed \
     -e 's/parallel coder subagents (in worktrees)/parallel coder role agents when available (serialize file edits; Codex has no worktree isolation)/g' \

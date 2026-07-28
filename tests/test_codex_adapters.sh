@@ -161,6 +161,20 @@ assert_eq "no Claude-product leak in any Codex adapter" "" "$leaks"
 
 # ─────────────────────────────────────────────────────────────────────────────
 
+begin_test "verify-codex-load.sh passes when CLI present or skips cleanly"
+
+if verify_output=$(bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" 2>&1); then
+  if command -v codex >/dev/null 2>&1; then
+    assert_contains "live load reports success" "$verify_output" "Codex takes the positional-prompt spawn form"
+  else
+    assert_contains "skips without codex" "$verify_output" "skip: codex not on PATH"
+  fi
+else
+  fail "verify-codex-load.sh exited non-zero" "$verify_output"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 begin_test "hand-written files in .codex/agents survive the stale sweep"
 
 FIXTURE_OWN=$(mktemp -d "${TMPDIR:-/tmp}/heph-codex-XXXXXX")
