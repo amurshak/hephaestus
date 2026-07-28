@@ -261,7 +261,7 @@ Commands install under the `/heph:` namespace: `/heph:autopilot`, `/heph:ship`, 
 
 | | |
 |---|---|
-| `/plugin marketplace update` | Pull the latest hephaestus |
+| `/plugin marketplace update hephaestus` | Pull the latest hephaestus |
 | `/plugin uninstall heph`     | Remove the plugin |
 
 ### 2. Copy or symlink the files (any harness)
@@ -271,8 +271,10 @@ Zero machinery — vendor the files directly:
 ```bash
 git clone https://github.com/amurshak/hephaestus.git
 # Claude Code:
+mkdir -p your-project/.claude
 cp -R hephaestus/.claude/commands hephaestus/.claude/agents your-project/.claude/
 # OpenCode:
+mkdir -p your-project/.opencode
 cp -R hephaestus/.opencode/commands hephaestus/.opencode/agents your-project/.opencode/
 ```
 

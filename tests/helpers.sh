@@ -119,8 +119,12 @@ setup_fixture() {
   export GIT_CONFIG_GLOBAL="$FIXTURE_DIR/gitconfig"
   git config -f "$GIT_CONFIG_GLOBAL" protocol.file.allow always
 
-  # Bare clone of real repo (acts as remote origin for submodule add)
-  git clone --bare --quiet "$HEPHAESTUS_ROOT" "$FIXTURE_DIR/remote.git" 2>/dev/null
+  # Fixture remote (acts as origin). Built explicitly rather than bare-cloned
+  # so it works from detached-HEAD checkouts too (e.g. CI pull_request events,
+  # where a bare clone would contain zero branches).
+  git init --bare --quiet "$FIXTURE_DIR/remote.git"
+  git -C "$HEPHAESTUS_ROOT" push --quiet "$FIXTURE_DIR/remote.git" HEAD:refs/heads/master 2>/dev/null
+  git -C "$FIXTURE_DIR/remote.git" symbolic-ref HEAD refs/heads/master
 
   # Working clone (acts as hephaestus source — its origin points to remote.git)
   git clone --quiet "$FIXTURE_DIR/remote.git" "$FIXTURE_DIR/source" 2>/dev/null
