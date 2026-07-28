@@ -85,6 +85,9 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
 done
 
 # Stale adapters: generated files whose source workflow was renamed or deleted.
+# In sync mode, skip when any source failed to parse — an unparseable source is
+# not a deleted one, and deleting its adapter would destroy a live command.
+[ "$MODE" = "sync" ] && [ "$drift" -ne 0 ] && exit 1
 for adapter in "$CLAUDE_COMMANDS_DIR"/*.md; do
   [ -e "$adapter" ] || continue
   base=$(basename "$adapter")

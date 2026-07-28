@@ -205,6 +205,10 @@ for agent in "$CLAUDE_AGENTS_DIR"/*.md; do
   rm -f "$tmp"
 done
 
+# In sync mode, skip stale removal when any source failed to parse — an
+# unparseable source is not a deleted one, and deleting its adapter would
+# destroy a live command or agent.
+[ "$MODE" = "sync" ] && [ "$drift" -ne 0 ] && exit 1
 check_stale "$OPENCODE_COMMANDS_DIR" "$expected_commands" "$WORKFLOWS_DIR" || drift=1
 check_stale "$OPENCODE_AGENTS_DIR" "$expected_agents" "$CLAUDE_AGENTS_DIR" || drift=1
 
