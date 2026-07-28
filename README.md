@@ -317,6 +317,17 @@ Optional but recommended:
 | `AGENTS.md` | Index of local + shared agents |
 | `.claude/settings.local.json` | Permissions and hook paths |
 
+Both hooks ship as ready-to-use templates — deterministic backstops for the prose gates (`protect-files.sh` works as-is; set `LINT_CMD` in `lint-on-commit.sh`):
+
+```bash
+mkdir -p .claude/hooks
+curl -s https://raw.githubusercontent.com/amurshak/hephaestus/master/templates/hooks/protect-files.sh > .claude/hooks/protect-files.sh
+curl -s https://raw.githubusercontent.com/amurshak/hephaestus/master/templates/hooks/lint-on-commit.sh > .claude/hooks/lint-on-commit.sh
+chmod +x .claude/hooks/*.sh
+```
+
+Each file's header shows the `settings.json` wiring.
+
 ---
 
 ## Submodule install (for headless mode and forking)
