@@ -53,6 +53,10 @@ assert_not_symlink  "orient.md is not symlink" "$TARGET/.claude/commands/orient.
 assert_file_exists  "OpenCode orient.md exists"         "$TARGET/.opencode/commands/orient.md"
 assert_not_symlink  "OpenCode orient.md is not symlink" "$TARGET/.opencode/commands/orient.md"
 
+# AGENTS.md should be scaffolded as a regular file, not a symlink
+assert_file_exists  "AGENTS.md exists"         "$TARGET/AGENTS.md"
+assert_not_symlink  "AGENTS.md is not symlink" "$TARGET/AGENTS.md"
+
 assert_contains "output mentions health check" "$output" "Health check:"
 teardown_fixture
 
@@ -67,6 +71,7 @@ output=$(bash "$SOURCE_REPO/install.sh" "$TARGET" 2>&1)
 assert_contains "submodule skipped"      "$output" "[skip] .hephaestus submodule already registered"
 assert_contains "agents skipped"         "$output" "[skip]"
 assert_contains "orient.md skipped"      "$output" "[skip] orient.md (already exists)"
+assert_contains "AGENTS.md skipped"      "$output" "[skip] AGENTS.md (already exists)"
 assert_exit_code "exits 0" 0 $?
 teardown_fixture
 
@@ -199,6 +204,12 @@ bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 
 content=$(cat "$TARGET/.claude/commands/orient.md")
 assert_eq "orient.md preserved" "MY CUSTOM ORIENT" "$content"
+
+# AGENTS.md must also survive re-install untouched
+echo "MY CUSTOM AGENTS" > "$TARGET/AGENTS.md"
+bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
+agents_content=$(cat "$TARGET/AGENTS.md")
+assert_eq "AGENTS.md preserved" "MY CUSTOM AGENTS" "$agents_content"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -407,6 +407,14 @@ else
   echo "[skip] OpenCode orient.md (already exists)"
 fi
 
+# Scaffold AGENTS.md if the target project doesn't have one (same pattern as orient)
+if [ ! -e AGENTS.md ] && [ ! -L AGENTS.md ]; then
+  cp "$HEPH_SRC/templates/AGENTS.md" AGENTS.md
+  echo "[scaffold] AGENTS.md (created agent index — customize the Local section)"
+else
+  echo "[skip] AGENTS.md (already exists)"
+fi
+
 # Check CLAUDE.md for Development Commands section
 if [ -f CLAUDE.md ]; then
   if grep -qiE '^#{2,} .*(development commands|test(s|ing)?|lint(ing)?|build)' CLAUDE.md; then
