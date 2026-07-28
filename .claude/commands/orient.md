@@ -2,25 +2,34 @@
 <!-- chains: none -->
 <!-- generated from .ai/workflows/orient.md; do not edit directly -->
 
-Orient in the current project before starting work. Run autonomously.
+Orient in the current project. On first contact with an unprepared project, set up the workflow's operating requirements, then orient. Run autonomously.
 
-> Each project should own its `orient.md` — `install.sh` scaffolds a customizable template from `templates/orient.md` and never symlinks this one. This generic version is the fallback when no project-specific orient exists (e.g. plugin installs).
+> Each project should own its orient command — `install.sh` scaffolds one from `templates/orient.md` and never symlinks this file. This shipped version is the generic fallback (plugin and manual-copy installs): it bootstraps missing setup, then orients.
 
-## Steps
+## Step 1 — Detect repo
 
-1. **Detect repo**: `git remote get-url origin` — derive `<owner>/<repo>` for all `gh` commands. If there is no remote, work local-only and skip issue listing.
+`git remote get-url origin` — derive `<owner>/<repo>` for all `gh` commands. If there is no remote, work local-only and skip issue listing.
 
-2. **Load project context**: Read the project's `CLAUDE.md` (conventions, "Development Commands" for test/lint/build) and README. If a project-specific `orient.md` command exists alongside this one, prefer its guidance.
+## Step 2 — Setup check
 
-3. **Sync state**: `git fetch --prune origin`, then `git status -sb` and `git log --oneline -5` for recent context.
+Hephaestus is an adjunct to the host codebase. Verify its operating requirements and bootstrap what's missing — all writes are additive; never overwrite or modify existing content beyond appending a missing section:
 
-4. **Find work**:
-   ```
-   gh issue list --state open --repo <detected-repo>
-   ```
-   Also check open PRs: `gh pr list --state open --repo <detected-repo>`. If no open issues, self-triage: scan for TODOs, failing checks, doc drift, missing tests.
+1. **CLAUDE.md with a "Development Commands" section** (test/lint/build — this drives every quality gate). If missing: derive the section from commands the repo already documents (CLAUDE.md under any heading, AGENTS.md, README, CI config); fall back to inferring from project manifests (package.json, Makefile, pyproject.toml, go.mod, etc.) only when nothing is documented. Create CLAUDE.md or append the section, marked `<!-- inferred by hephaestus — verify these commands -->`.
+2. **Project-specific orient** at `.claude/commands/orient.md` (also `.opencode/commands/orient.md` if the project has a `.opencode/` directory). For each that is missing: scaffold one containing the detected repo, a one-paragraph structure summary from a quick scan, the Development Commands from step 1, and find-work instructions — then note it should be customized as the project evolves.
+3. **`gh` CLI authenticated** (`gh auth status`). Not fixable autonomously — if missing or unauthenticated, report it and continue local-only.
 
-5. **Report**: current branch and sync state, open issues/PRs, and the recommended next action.
+Report every bootstrap action taken. Leave bootstrap writes uncommitted so the user can verify the inferred commands — say so in the report. On an already-prepared project this step is a silent no-op.
+
+## Step 3 — Orient
+
+- Read CLAUDE.md and the project orient — if a project-specific orient exists, prefer its guidance over this file.
+- Sync state: `git fetch --prune origin`, then `git status -sb` and `git log --oneline -5`.
+- Find work: `gh issue list --state open --repo <detected-repo>` and `gh pr list --state open --repo <detected-repo>`. If no open issues, self-triage: scan for TODOs, failing checks, doc drift, missing tests.
+
+## Step 4 — Report
+
+Current branch and sync state, setup actions taken (if any), open issues/PRs, and the recommended next action.
 
 ## Next action
+
 Run `/autopilot` — it picks the highest-priority open issue or self-triages if the queue is empty. Or `/start-issue <#>` for a specific issue.
