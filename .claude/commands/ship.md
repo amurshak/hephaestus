@@ -36,7 +36,7 @@ If any gate fails:
   - If it's build: this is a hard stop — do not create a PR with a broken build. Commit progress, file follow-up issue.
 
 ### 4. Update docs
-- Update CHANGELOG.md with the changes
+- Record the change. If `changelog.d/` exists, write one fragment per PR: `changelog.d/<issue-or-slug>.<added|changed|fixed|removed>.md`, containing the entry body without the leading `- `. Distinct filenames mean parallel branches never collide. Otherwise append under `## Unreleased` in CHANGELOG.md.
 - Commit doc changes
 
 ### 5. Push and create PR
