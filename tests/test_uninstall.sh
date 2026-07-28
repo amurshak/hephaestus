@@ -121,11 +121,16 @@ TARGET=$(create_target)
 bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 assert_symlink "after install: coder.md linked" "$TARGET/.claude/agents/coder.md"
 assert_symlink "after install: OpenCode coder.md linked" "$TARGET/.opencode/agents/coder.md"
+assert_symlink "after install: Codex ship skill linked" "$TARGET/.agents/skills/ship"
+assert_symlink "after install: Codex coder.toml linked" "$TARGET/.codex/agents/coder.toml"
 
 # Uninstall
 bash "$SOURCE_REPO/uninstall.sh" "$TARGET" >/dev/null 2>&1
 assert_file_not_exists "after uninstall: coder.md gone" "$TARGET/.claude/agents/coder.md"
 assert_file_not_exists "after uninstall: OpenCode coder.md gone" "$TARGET/.opencode/agents/coder.md"
+assert_file_not_exists "after uninstall: Codex ship skill gone" "$TARGET/.agents/skills/ship"
+assert_file_not_exists "after uninstall: Codex coder.toml gone" "$TARGET/.codex/agents/coder.toml"
+assert_file_exists     "after uninstall: Codex orient skill preserved" "$TARGET/.agents/skills/orient/SKILL.md"
 
 # Reinstall
 bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
@@ -133,6 +138,8 @@ assert_symlink       "after reinstall: coder.md linked again" "$TARGET/.claude/a
 assert_symlink_valid "after reinstall: coder.md resolves"     "$TARGET/.claude/agents/coder.md"
 assert_symlink       "after reinstall: OpenCode coder.md linked again" "$TARGET/.opencode/agents/coder.md"
 assert_symlink_valid "after reinstall: OpenCode coder.md resolves"     "$TARGET/.opencode/agents/coder.md"
+assert_symlink       "after reinstall: Codex ship skill linked again" "$TARGET/.agents/skills/ship"
+assert_symlink_valid "after reinstall: Codex ship skill resolves"     "$TARGET/.agents/skills/ship"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
