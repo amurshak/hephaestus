@@ -10,7 +10,7 @@ Modes from `$ARGUMENTS`: no args = full cycle (survey → reap → plan → crea
 
 Detect the repo (`git remote get-url origin`) and read the optional `## Worktrees` section of the project's CLAUDE.md:
 - `max:` — concurrent-session cap (default **3**)
-- `serialize_paths:` — high-contention files (e.g. a shared schema or generated bundle); issues likely touching the same listed path are never scheduled in the same wave
+- `serialize_paths:` — files where issues collide **semantically** (a shared schema, an installer, a generated bundle); issues likely touching the same listed path are never scheduled in the same wave. Do not list a file every PR touches by construction (a changelog, a version manifest) — serializing it blocks every pair and pins concurrency at 1. Fix those structurally instead, with one file per PR.
 - `setup:` — per-worktree setup command (deps, env), run after creation
 
 ## Step 2 — Survey

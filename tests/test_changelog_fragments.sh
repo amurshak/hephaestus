@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+# test_changelog_fragments.sh — Verify changelog fragment collection.
+#
+# Fragments exist so parallel branches never edit a shared anchor in CHANGELOG.md.
+# These tests cover filename validation, category ordering, the release fold, and
+# the transition guarantee that hand-written `## Unreleased` content is merged by
+# category rather than duplicated as a second heading.
+
+set -uo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/helpers.sh"
+
+FIXTURE=$(mktemp -d "${TMPDIR:-/tmp}/heph-changelog-XXXXXX")
+trap 'rm -rf "$FIXTURE"' EXIT
+
+# Build an isolated repo root: the script resolves paths from its own location.
+make_repo() {
+  local dest="$1" unreleased="${2:-}"
+  rm -rf "$dest"
+  mkdir -p "$dest/scripts" "$dest/changelog.d"
+  cp "$HEPHAESTUS_ROOT/scripts/collect-changelog.sh" "$dest/scripts/"
+  printf '# changelog.d/\n\nFragment docs, never a changelog entry.\n' > "$dest/changelog.d/README.md"
+  {
+    printf '# Changelog\n\n## Unreleased\n'
+    [ -n "$unreleased" ] && printf '\n%s\n' "$unreleased"
+    printf '\n## 2.1.0 — 2026-07-28\n\n### Added\n- Older stuff.\n'
+  } > "$dest/CHANGELOG.md"
+}
+
+frag() { printf '%s\n' "$3" > "$1/changelog.d/$2"; }
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "--check validates fragment filenames"
+
+R="$FIXTURE/check"
+make_repo "$R"
+frag "$R" "129.fixed.md" '**Spawn CLI** (#129): a fix.'
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+out=$("$R/scripts/collect-changelog.sh" --check 2>&1); rc=$?
+assert_exit_code "valid fragments pass --check" 0 "$rc"
+assert_contains "reports fragment count" "$out" "2 changelog fragment"
+
+touch "$R/changelog.d/bogus.md"
+out=$("$R/scripts/collect-changelog.sh" --check 2>&1); rc=$?
+assert_exit_code "missing category rejected" 1 "$rc"
+assert_contains "names the offending file" "$out" "bogus.md"
+rm "$R/changelog.d/bogus.md"
+
+frag "$R" "nope.wrongcat.md" 'x'
+out=$("$R/scripts/collect-changelog.sh" --check 2>&1); rc=$?
+assert_exit_code "unknown category rejected" 1 "$rc"
+assert_contains "lists valid categories" "$out" "added changed fixed removed"
+rm "$R/changelog.d/nope.wrongcat.md"
+
+: > "$R/changelog.d/empty.added.md"
+out=$("$R/scripts/collect-changelog.sh" --check 2>&1); rc=$?
+assert_exit_code "empty fragment rejected" 1 "$rc"
+assert_contains "flags emptiness" "$out" "empty fragment"
+rm "$R/changelog.d/empty.added.md"
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "--preview renders without mutating"
+
+R="$FIXTURE/preview"
+make_repo "$R"
+frag "$R" "129.fixed.md" '**Spawn CLI** (#129): a fix.'
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+before=$(cat "$R/CHANGELOG.md")
+out=$("$R/scripts/collect-changelog.sh" --preview 2>&1); rc=$?
+assert_exit_code "preview exits 0" 0 "$rc"
+assert_contains "renders Added section" "$out" "### Added"
+assert_contains "renders Fixed section" "$out" "### Fixed"
+assert_contains "prefixes entries with a dash" "$out" "- **Cursor generator**"
+assert_eq "CHANGELOG.md untouched" "$before" "$(cat "$R/CHANGELOG.md")"
+assert_file_exists "fragment retained" "$R/changelog.d/129.fixed.md"
+
+# Added must precede Fixed regardless of filename order.
+added_line=$(printf '%s\n' "$out" | grep -n '^### Added' | cut -d: -f1)
+fixed_line=$(printf '%s\n' "$out" | grep -n '^### Fixed' | cut -d: -f1)
+if [ "$added_line" -lt "$fixed_line" ]; then
+  pass "categories render in Keep-a-Changelog order"
+else
+  fail "categories render in Keep-a-Changelog order" "Added at $added_line, Fixed at $fixed_line"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "release folds fragments and consumes them"
+
+R="$FIXTURE/release"
+make_repo "$R"
+frag "$R" "129.fixed.md" '**Spawn CLI** (#129): a fix.'
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+out=$("$R/scripts/collect-changelog.sh" 2.2.0 2>&1); rc=$?
+body=$(cat "$R/CHANGELOG.md")
+assert_exit_code "release exits 0" 0 "$rc"
+assert_contains "writes dated version heading" "$body" "## 2.2.0 — "
+assert_contains "keeps an empty Unreleased" "$body" "## Unreleased"
+assert_contains "includes the fragment entry" "$body" "- **Cursor generator** (#107): a feature."
+assert_contains "preserves prior releases" "$body" "## 2.1.0"
+assert_file_not_exists "fragment consumed" "$R/changelog.d/129.fixed.md"
+assert_file_exists "changelog.d/README.md survives the fold" "$R/changelog.d/README.md"
+assert_not_contains "README is not treated as an entry" "$body" "Fragment docs, never a changelog entry."
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "release merges legacy Unreleased content by category"
+
+R="$FIXTURE/legacy"
+make_repo "$R" '### Added
+- **Legacy entry** (#100): written before fragments existed.
+
+### Deprecated
+- **Old thing** (#101): a category outside the known set.'
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+frag "$R" "129.fixed.md" '**Spawn CLI** (#129): a fix.'
+"$R/scripts/collect-changelog.sh" 2.2.0 >/dev/null 2>&1
+section=$(awk '/^## 2.2.0/,/^## 2.1.0/' "$R/CHANGELOG.md")
+
+added_headers=$(printf '%s\n' "$section" | grep -c '^### Added')
+assert_eq "legacy Added merges into one heading" "1" "$added_headers"
+assert_contains "fragment entry present" "$section" "- **Cursor generator** (#107)"
+assert_contains "legacy entry present" "$section" "- **Legacy entry** (#100)"
+assert_contains "unknown legacy category preserved" "$section" "### Deprecated"
+assert_contains "unknown legacy entry preserved" "$section" "- **Old thing** (#101)"
+
+# No blank-line collapse between the section and the next release heading.
+if printf '%s\n' "$(cat "$R/CHANGELOG.md")" | grep -qE '^- .*$' && \
+   ! grep -qE '^### .*[^ ]$' /dev/null; then :; fi
+blanks_before_next=$(awk '/^## 2.1.0/ { print prev } { prev = $0 }' "$R/CHANGELOG.md")
+assert_eq "blank line separates sections" "" "$blanks_before_next"
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "release preserves multi-line fragment bodies"
+
+R="$FIXTURE/multiline"
+make_repo "$R"
+printf '**Wrapped entry** (#42): first line of prose\n  continued on a second line.\n' \
+  > "$R/changelog.d/42.changed.md"
+"$R/scripts/collect-changelog.sh" 2.3.0 >/dev/null 2>&1
+body=$(cat "$R/CHANGELOG.md")
+assert_contains "first line prefixed" "$body" "- **Wrapped entry** (#42): first line of prose"
+assert_contains "continuation retained" "$body" "continued on a second line."
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "release refuses when there is nothing to release"
+
+R="$FIXTURE/empty"
+make_repo "$R"
+out=$("$R/scripts/collect-changelog.sh" 2.4.0 2>&1); rc=$?
+assert_exit_code "exits 1 with no fragments and empty Unreleased" 1 "$rc"
+assert_contains "explains why" "$out" "nothing to release"
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "release requires an Unreleased section"
+
+R="$FIXTURE/no-unreleased"
+make_repo "$R"
+printf '# Changelog\n\n## 2.1.0 — 2026-07-28\n\n### Added\n- Older stuff.\n' > "$R/CHANGELOG.md"
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+out=$("$R/scripts/collect-changelog.sh" 2.5.0 2>&1); rc=$?
+assert_exit_code "exits 1 without Unreleased" 1 "$rc"
+assert_contains "names the missing section" "$out" "Unreleased"
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "repo's own fragments are valid"
+
+out=$("$HEPHAESTUS_ROOT/scripts/collect-changelog.sh" --check 2>&1); rc=$?
+assert_exit_code "changelog.d/ passes --check" 0 "$rc"
+
+print_summary

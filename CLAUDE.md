@@ -24,6 +24,20 @@ Hephaestus is an implementation of a generic software development workflow patte
 - **Lint/drift**: `./scripts/sync-agent-adapters.sh --check`, `./scripts/sync-opencode-adapters.sh --check`, `./scripts/sync-codex-adapters.sh --check`, `bash tests/check_composition.sh`
 - **Build**: none (prose + shell; no compile step)
 
+## Worktrees
+
+- `max:` 3
+- `serialize_paths:` `install.sh`, `README.md`
+- `setup:` none (no deps to install)
+
+`install.sh` and `README.md` are where adapter, installer, and distribution work collides semantically — two issues rewriting install paths or the install section in the same wave conflict in ways a rebase can't resolve. `CHANGELOG.md` is absent because it is no longer contended: entries are written as one-file-per-PR fragments in `changelog.d/` (see below), so parallel branches never touch a shared anchor.
+
+## Changelog
+
+Entries are **fragments**, not direct edits to CHANGELOG.md: `/ship` writes `changelog.d/<issue-or-slug>.<added|changed|fixed|removed>.md` containing the entry body without the leading `- `. Distinct filenames per PR make merge conflicts structurally impossible.
+
+At release, `scripts/collect-changelog.sh <version>` folds every fragment into a dated `## <version>` section and deletes them (`--preview` to dry-run, `--check` to validate filenames). Hand-written `## Unreleased` content is merged by category, so the transition loses nothing. `.gitattributes` sets `CHANGELOG.md merge=union` as a backstop for any direct edit that slips through.
+
 ## Repository Structure
 
 - `.claude/agents/` — Subagent definitions (coder, reviewer, tester, explorer, researcher) with tool permissions and structured output contracts
@@ -38,6 +52,7 @@ Hephaestus is an implementation of a generic software development workflow patte
 - `scripts/sync-agent-adapters.sh` — generates/checks tool-specific adapters from `.ai/workflows/`
 - `scripts/sync-opencode-adapters.sh` — generates/checks OpenCode commands and agent adapters
 - `scripts/sync-codex-adapters.sh` — generates/checks Codex skills and agent-role adapters
+- `changelog.d/` — one changelog fragment per PR; `scripts/collect-changelog.sh <version>` folds them into CHANGELOG.md at release
 - `install.sh` — Adds hephaestus as `.hephaestus` submodule in a target project, creates symlinks into `.claude/`, `.opencode/`, `.agents/`, and `.codex/`
 - `update.sh` — Pulls latest hephaestus into an already-installed project
 
