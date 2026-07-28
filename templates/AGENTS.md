@@ -19,7 +19,7 @@ See CLAUDE.md "Development Commands" — agents read test/lint/build commands fr
 | **reviewer** | Adversarial code review — evidence-cited findings, 0–100 score | Read + shell (instructed read-only) |
 | **tester** | Runs quality gates, returns structured pass/fail | Read + shell (instructed read-only) |
 | **explorer** | Investigates the codebase, reports findings | Read + shell (instructed read-only) |
-| **researcher** | Web research with source cross-referencing | Web only, no shell |
+| **researcher** | Web research with source cross-referencing | Web + read, no shell |
 
 ## Conventions
 - Agents return structured output (status, files, verdicts) — never raw logs.
