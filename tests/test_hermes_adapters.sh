@@ -185,10 +185,10 @@ begin_test "verify-hermes-load.sh resolves the project, not the submodule"
 # exact command install.sh prints — the script must check <project>/.hermes/skills,
 # not the submodule's own copy. The submodule copy has no project-specific orient,
 # so wiring it would silently shadow the scaffold.
-FIXTURE5=$(mktemp -d "${TMPDIR:-/tmp}/heph-hermes-XXXXXX")
-trap 'rm -rf "$FIXTURE" "$FIXTURE2" "$FIXTURE3" "$FIXTURE5"' EXIT
+FIXTURE4=$(mktemp -d "${TMPDIR:-/tmp}/heph-hermes-XXXXXX")
+trap 'rm -rf "$FIXTURE" "$FIXTURE2" "$FIXTURE3" "$FIXTURE4"' EXIT
 
-PROJ="$FIXTURE5/proj"
+PROJ="$FIXTURE4/proj"
 mkdir -p "$PROJ/.hermes/skills/hephaestus" "$PROJ/.hermes/agents"
 PROJ=$(cd "$PROJ" && pwd)   # canonicalize: $TMPDIR may carry a trailing slash
 ln -s "$HEPHAESTUS_ROOT" "$PROJ/.hephaestus"
@@ -198,27 +198,27 @@ done
 
 # Stub `hermes` so the check runs without a real install. `config path` points at
 # a config wired to the PROJECT skills dir — what install.sh tells the user to add.
-mkdir -p "$FIXTURE5/bin"
-printf 'skills:\n  external_dirs:\n    - %s/.hermes/skills\n' "$PROJ" > "$FIXTURE5/config.yaml"
-cat > "$FIXTURE5/bin/hermes" <<STUB
+mkdir -p "$FIXTURE4/bin"
+printf 'skills:\n  external_dirs:\n    - %s/.hermes/skills\n' "$PROJ" > "$FIXTURE4/config.yaml"
+cat > "$FIXTURE4/bin/hermes" <<STUB
 #!/usr/bin/env bash
 case "\$1 \$2" in
-  "config path") echo "$FIXTURE5/config.yaml" ;;
+  "config path") echo "$FIXTURE4/config.yaml" ;;
   "skills list") echo "autopilot start-issue ship finish critique" ;;
   *) exit 1 ;;
 esac
 STUB
-chmod +x "$FIXTURE5/bin/hermes"
+chmod +x "$FIXTURE4/bin/hermes"
 
-verify_out=$(cd "$PROJ" && PATH="$FIXTURE5/bin:$PATH" bash .hephaestus/scripts/verify-hermes-load.sh 2>&1)
+verify_out=$(cd "$PROJ" && PATH="$FIXTURE4/bin:$PATH" bash .hephaestus/scripts/verify-hermes-load.sh 2>&1)
 verify_rc=$?
 assert_exit_code "verifier passes on a correctly wired install" 0 "$verify_rc"
 assert_contains "verifier names the project skills dir" "$verify_out" "$PROJ/.hermes/skills"
 assert_not_contains "verifier never names the submodule skills dir" "$verify_out" ".hephaestus/.hermes/skills"
 
 # Unwired project: must fail with the PROJECT path in the remediation.
-printf 'skills:\n  external_dirs: []\n' > "$FIXTURE5/config.yaml"
-unwired_out=$(cd "$PROJ" && PATH="$FIXTURE5/bin:$PATH" bash .hephaestus/scripts/verify-hermes-load.sh 2>&1)
+printf 'skills:\n  external_dirs: []\n' > "$FIXTURE4/config.yaml"
+unwired_out=$(cd "$PROJ" && PATH="$FIXTURE4/bin:$PATH" bash .hephaestus/scripts/verify-hermes-load.sh 2>&1)
 assert_exit_code "verifier fails when unwired" 1 "$?"
 assert_contains "remediation names the project skills dir" "$unwired_out" "$PROJ/.hermes/skills"
 assert_not_contains "remediation never names the submodule dir" "$unwired_out" ".hephaestus/.hermes/skills"

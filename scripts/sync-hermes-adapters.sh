@@ -68,6 +68,10 @@ truncate_desc() {
         if (length(cand) > max) break
         out = cand
       }
+      # A first word longer than max fits nothing; keep it whole rather than
+      # emit a bare ellipsis — over budget beats a description-less skill, and
+      # cutting mid-word could split a multibyte character.
+      if (out == "") out = w[1]
       print out "…"
     }'
 }

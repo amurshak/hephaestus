@@ -541,6 +541,26 @@ else
   echo "[skip] Hermes orient skill (already exists)"
 fi
 
+# Running Hermes with HERMES_HOME=<project>/.hermes makes this the profile home,
+# dropping config.yaml, credentials, sessions and memories into the working tree.
+# Only the generated adapters belong in git.
+if [ ! -e .hermes/.gitignore ] && [ ! -L .hermes/.gitignore ]; then
+  cat > .hermes/.gitignore <<'EOF'
+# Only the generated hephaestus adapters are tracked. Everything else here is
+# Hermes profile state (config, credentials, sessions, memories) if you run with
+# HERMES_HOME pointed at this directory — never commit it.
+*
+!.gitignore
+!skills/
+!skills/**
+!agents/
+!agents/**
+EOF
+  echo "[scaffold] .hermes/.gitignore (tracks adapters only, never profile state)"
+else
+  echo "[skip] .hermes/.gitignore (already exists)"
+fi
+
 # Scaffold opencode.json so installed projects load AGENTS.md/CLAUDE.md
 if [ ! -e opencode.json ] && [ ! -L opencode.json ]; then
   cat > opencode.json <<'EOF'

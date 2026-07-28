@@ -1,0 +1,9 @@
+# Only the generated hephaestus adapters are tracked. Everything else here is
+# Hermes profile state (config, credentials, sessions, memories) if you run with
+# HERMES_HOME pointed at this directory — never commit it.
+*
+!.gitignore
+!skills/
+!skills/**
+!agents/
+!agents/**

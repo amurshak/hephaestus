@@ -80,6 +80,23 @@ assert_not_symlink  "Hermes orient dir is not symlink"      "$TARGET/.hermes/ski
 assert_contains     "Hermes orient skill has frontmatter"   "$(cat "$TARGET/.hermes/skills/hephaestus/orient/SKILL.md")" "name: orient"
 assert_contains     "Hermes orient skill has category"      "$(cat "$TARGET/.hermes/skills/hephaestus/orient/SKILL.md")" "category: hephaestus"
 
+# .hermes may become Hermes's profile home under HERMES_HOME; only adapters are tracked
+assert_file_exists "Hermes .gitignore scaffolded" "$TARGET/.hermes/.gitignore"
+(
+  cd "$TARGET" || exit 1
+  mkdir -p .hermes/sessions
+  echo "key: SECRET" > .hermes/config.yaml
+  echo "transcript" > .hermes/sessions/s1.jsonl
+  git add -A >/dev/null 2>&1
+  git diff --cached --name-only > "$FIXTURE_DIR/staged.txt" 2>/dev/null
+  git reset -q >/dev/null 2>&1
+  rm -rf .hermes/sessions .hermes/config.yaml
+)
+staged=$(cat "$FIXTURE_DIR/staged.txt" 2>/dev/null)
+assert_contains     "adapters are tracked"                "$staged" ".hermes/agents/coder.md"
+assert_not_contains "Hermes config never staged"          "$staged" ".hermes/config.yaml"
+assert_not_contains "Hermes sessions never staged"        "$staged" ".hermes/sessions"
+
 # orient.md should be scaffolded as a regular file, not a symlink
 assert_file_exists  "orient.md exists"         "$TARGET/.claude/commands/orient.md"
 assert_not_symlink  "orient.md is not symlink" "$TARGET/.claude/commands/orient.md"

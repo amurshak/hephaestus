@@ -7,7 +7,7 @@
 - Confirm OpenCode loads project adapters (`opencode debug config` or `bash scripts/verify-opencode-load.sh`); start OpenCode from the project root.
 - Check generated Codex adapters with `./scripts/sync-codex-adapters.sh --check`; regenerate them with `./scripts/sync-codex-adapters.sh`.
 - Check generated Hermes adapters with `./scripts/sync-hermes-adapters.sh --check`; regenerate them with `./scripts/sync-hermes-adapters.sh`.
-- Confirm Hermes discovers project skills with `bash scripts/verify-hermes-load.sh` — Hermes needs `skills.external_dirs` pointed at `.hermes/skills`.
+- Confirm Hermes discovers project skills with `bash scripts/verify-hermes-load.sh` — Hermes needs the project's `.hermes/skills` wired via `skills.external_dirs` (recommended) or `HERMES_HOME`; pass a project path to check an installed project.
 - Check README composition drift with `bash tests/check_composition.sh`; `tests/test_composition.sh` wraps this plus negative fixture cases.
 
 ## Sources Of Truth

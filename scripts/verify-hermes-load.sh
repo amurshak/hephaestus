@@ -25,15 +25,16 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Verify the *project's* skills, not the submodule's. Run from an installed
 # project the script lives at <project>/.hephaestus/scripts/, and it is
 # <project>/.hermes/skills that install.sh links and tells the user to wire —
-# the submodule copy has no project-specific orient. Prefer the directory the
-# user ran from, since `cd`-resolving the script path follows a symlinked
-# .hephaestus back into the shared checkout. An explicit argument wins.
+# the submodule copy has no project-specific orient. The `.hephaestus` unwrap
+# comes first because it holds even when the submodule is a symlink (bash's
+# logical `cd` keeps the link name in $SRC); cwd is only a fallback, since a
+# Hermes user's $HOME always has a .hermes/skills that is not this project.
 if [ -n "${1:-}" ]; then
   ROOT="$(cd "$1" && pwd)" || exit 1
-elif [ -d "$PWD/.hermes/skills" ]; then
-  ROOT="$PWD"
 elif [ "$(basename "$SRC")" = ".hephaestus" ]; then
   ROOT="$(cd "$SRC/.." && pwd)"
+elif [ -d "$PWD/.hermes/skills" ]; then
+  ROOT="$PWD"
 else
   ROOT="$SRC"
 fi
@@ -66,7 +67,7 @@ done
 # Wired either by skills.external_dirs naming this project's .hermes/skills, or
 # by HERMES_HOME pointing at this project's .hermes (whose skills/ is native).
 wired=0
-if [ "${HERMES_HOME:-}" = "$ROOT/.hermes" ]; then
+if [ -n "${HERMES_HOME:-}" ] && [ "$(cd "$HERMES_HOME" 2>/dev/null && pwd)" = "$ROOT/.hermes" ]; then
   wired=1
   echo "  ✓ HERMES_HOME points at $ROOT/.hermes"
 elif cfg_path=$(hermes config path 2>/dev/null) && [ -f "$cfg_path" ]; then
