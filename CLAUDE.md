@@ -18,6 +18,12 @@ When in doubt about a design choice, pick the option that is simpler, more self-
 
 Hephaestus is an implementation of a generic software development workflow pattern for AI coding agents. It encodes the observation that all delivery follows the same loop — orient, plan, critique, implement, review, test, ship, finish — and makes that loop executable, autonomous, and self-correcting. Distributed as a git submodule containing prose workflows plus tool adapters that cause an AI coding agent to behave as a structured delivery system. Installed into other projects via `./install.sh <target>`.
 
+## Development Commands
+
+- **Test**: `./tests/run.sh` — full integration suite (single file: `bash tests/test_<name>.sh`)
+- **Lint/drift**: `./scripts/sync-agent-adapters.sh --check`, `./scripts/sync-opencode-adapters.sh --check`, `bash tests/check_composition.sh`
+- **Build**: none (prose + shell; no compile step)
+
 ## Repository Structure
 
 - `.claude/agents/` — Subagent definitions (coder, reviewer, tester, explorer, researcher) with tool permissions and structured output contracts

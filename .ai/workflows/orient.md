@@ -15,11 +15,11 @@ Orient in the current project. On first contact with an unprepared project, set 
 
 Hephaestus is an adjunct to the host codebase. Verify its operating requirements and bootstrap what's missing — all writes are additive; never overwrite or modify existing content beyond appending a missing section:
 
-1. **CLAUDE.md with a "Development Commands" section** (test/lint/build — this drives every quality gate). If missing: infer commands from project manifests (package.json, Makefile, pyproject.toml, go.mod, etc.), then create CLAUDE.md or append the section, marked `<!-- inferred by hephaestus — verify these commands -->`.
-2. **Project-specific orient** at `.claude/commands/orient.md` (also `.opencode/commands/orient.md` if the project has a `.opencode/` directory). If missing: scaffold one containing the detected repo, a one-paragraph structure summary from a quick scan, the Development Commands from step 1, and find-work instructions — then note it should be customized as the project evolves.
+1. **CLAUDE.md with a "Development Commands" section** (test/lint/build — this drives every quality gate). If missing: derive the section from commands the repo already documents (CLAUDE.md under any heading, AGENTS.md, README, CI config); fall back to inferring from project manifests (package.json, Makefile, pyproject.toml, go.mod, etc.) only when nothing is documented. Create CLAUDE.md or append the section, marked `<!-- inferred by hephaestus — verify these commands -->`.
+2. **Project-specific orient** at `.claude/commands/orient.md` (also `.opencode/commands/orient.md` if the project has a `.opencode/` directory). For each that is missing: scaffold one containing the detected repo, a one-paragraph structure summary from a quick scan, the Development Commands from step 1, and find-work instructions — then note it should be customized as the project evolves.
 3. **`gh` CLI authenticated** (`gh auth status`). Not fixable autonomously — if missing or unauthenticated, report it and continue local-only.
 
-Report every bootstrap action taken. On an already-prepared project this step is a silent no-op.
+Report every bootstrap action taken. Leave bootstrap writes uncommitted so the user can verify the inferred commands — say so in the report. On an already-prepared project this step is a silent no-op.
 
 ## Step 3 — Orient
 
