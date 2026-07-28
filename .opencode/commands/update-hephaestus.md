@@ -9,6 +9,7 @@ Update the hephaestus submodule to the latest version.
 
 ## Steps
 
+0. If `.hephaestus/` does not exist, this is a plugin install — run `/plugin marketplace update hephaestus` instead and stop here.
 1. Record the current version: `cat .hephaestus/VERSION 2>/dev/null || echo "unknown"`
 2. Capture the current submodule HEAD: `OLD_HEAD=$(git -C .hephaestus rev-parse HEAD 2>/dev/null)`
 3. Pull the latest: `git submodule update --remote .hephaestus`

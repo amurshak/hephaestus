@@ -16,7 +16,7 @@ OLD_VERSION=$(cat .hephaestus/VERSION 2>/dev/null || echo "unknown")
 OLD_HEAD=$(git -C .hephaestus rev-parse HEAD 2>/dev/null || echo "")
 
 echo "Updating .hephaestus submodule (current: $OLD_VERSION)..."
-git submodule update --remote .hephaestus
+git submodule update --init --remote .hephaestus
 echo ""
 
 # Record new version

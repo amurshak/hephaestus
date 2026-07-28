@@ -16,7 +16,7 @@ Steps:
    - Remove patterns that are now obsolete
    - Keep CLAUDE.md under ~300 lines — trim verbose sections if needed
 
-3. **Update CHANGELOG.md**:
+3. **Update CHANGELOG.md** (create it with a `# Changelog` title and `## Unreleased` section if the project has none):
    - Add entries under the existing `## Unreleased` heading in this format:
      ```
      ## Unreleased
@@ -28,7 +28,7 @@ Steps:
 
 4. **Update README.md** only if a public-facing feature or API changed (new endpoint, new CLI command, changed env var).
 
-5. **Verify the README Composition tree** is in sync with command metadata: `bash "$(git rev-parse --show-toplevel)/tests/check_composition.sh"`. If it reports drift, fix the README's `## Composition` section (or the affected command's `<!-- requires:/chains: -->` headers) per the verifier's output, then re-run.
+5. **Verify the README Composition tree** (hephaestus repo only): if `tests/check_composition.sh` exists at the repo root, run `bash "$(git rev-parse --show-toplevel)/tests/check_composition.sh"`; on drift, fix the README's `## Composition` section (or the affected command's `<!-- requires:/chains: -->` headers) per the verifier's output, then re-run. If the script doesn't exist (target projects), skip this step.
 
 6. **Commit the doc changes**:
    ```
