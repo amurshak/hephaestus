@@ -15,11 +15,12 @@
   ./scripts/sync-opencode-adapters.sh --check  # OpenCode adapter drift
   ./scripts/sync-codex-adapters.sh --check     # Codex adapter drift
   bash tests/check_composition.sh              # README composition drift
+  ./scripts/collect-changelog.sh --check       # changelog fragment names
   bash scripts/verify-opencode-load.sh         # optional live OpenCode load (skips if CLI absent)
   ```
 - **Bash 3.2 compatibility** — scripts must run on stock macOS bash: no associative arrays, no `mapfile`, portable `sed -i.bak`.
 - **No bloat** — replacements must be at least as concise as the original. Retry limits are defined once in CLAUDE.md; commands reference them, never hardcode.
-- Every PR updates `CHANGELOG.md` under `## Unreleased`.
+- Every PR adds a changelog fragment: `changelog.d/<issue-or-slug>.<added|changed|fixed|removed>.md`, entry body only, no leading `- `. Do not edit `CHANGELOG.md` — `scripts/collect-changelog.sh <version>` assembles it at release. Validate with `./scripts/collect-changelog.sh --check`.
 
 ## What we most want
 

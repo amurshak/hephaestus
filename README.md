@@ -240,7 +240,7 @@ Hephaestus doesn't build its own memory. It uses existing systems as read/write 
 | **Git history** | Implementation decisions, change rationale | Commits from every delivery command |
 | **GitHub PRs** | Review state, quality gate results, in-flight work | `ship`, retry exhaustion (draft PRs) |
 | **CLAUDE.md** | Project configuration, quality gates, constraints | `update-docs`, `finish` docs check |
-| **CHANGELOG.md** | Release history | `ship`, `update-docs` |
+| **changelog.d/ → CHANGELOG.md** | Release history — one fragment per PR, folded at release by `scripts/collect-changelog.sh` | `ship`, `update-docs` |
 | **Draft PRs with prefixes** | Failure breadcrumbs (`[WIP]`, `[BLOCKED]`, `[FAILING]`) | Retry exhaustion handlers |
 | **Follow-up issues** | Deferred work, unresolved problems | `finish`, retry exhaustion |
 

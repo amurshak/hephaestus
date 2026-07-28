@@ -19,14 +19,15 @@ Steps:
    - Remove patterns that are now obsolete
    - Keep CLAUDE.md under ~300 lines — trim verbose sections if needed
 
-3. **Update CHANGELOG.md** (create it with a `# Changelog` title and `## Unreleased` section if the project has none):
-   - Add entries under the existing `## Unreleased` heading in this format:
+3. **Record changelog entries**:
+   - If `changelog.d/` exists, write one fragment per change: `changelog.d/<issue-or-slug>.<added|changed|fixed|removed>.md`, containing the entry body without the leading `- `. Never edit CHANGELOG.md directly — it is assembled at release by `scripts/collect-changelog.sh <version>`.
+   - Otherwise update **CHANGELOG.md** (create it with a `# Changelog` title and `## Unreleased` section if the project has none):
      ```
      ## Unreleased
      ### Added / Changed / Fixed
      - <concise description of what shipped>
      ```
-   - Use `###` for category headings (Added, Changed, Fixed) — one per category, do not duplicate
+     Use `###` for category headings — one per category, do not duplicate.
    - Reference issue/PR numbers where applicable
 
 4. **Update README.md** only if a public-facing feature or API changed (new endpoint, new CLI command, changed env var).
@@ -35,8 +36,8 @@ Steps:
 
 6. **Commit the doc changes**:
    ```
-   git add CLAUDE.md CHANGELOG.md README.md
-   git commit -m "docs: update CLAUDE.md and CHANGELOG for <feature>"
+   git add CLAUDE.md README.md changelog.d/ CHANGELOG.md 2>/dev/null
+   git commit -m "docs: update CLAUDE.md and changelog for <feature>"
    ```
 
 ### Next steps
