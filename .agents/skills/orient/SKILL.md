@@ -6,6 +6,8 @@ description: "Orient in the current project. On first contact with an unprepared
 <!-- chains: none -->
 <!-- generated from .ai/workflows/orient.md; do not edit directly -->
 
+> **Codex:** this skill is the `/orient` adapter. Use Codex role agents from `.codex/agents/` when the runtime exposes them; otherwise perform the work directly and keep the same structured output.
+
 Orient in the current project. On first contact with an unprepared project, set up the workflow's operating requirements, then orient. Run autonomously.
 
 > Each project should own its orient command — `install.sh` scaffolds one from `templates/orient.md` and never symlinks this file. This shipped version is the generic fallback (plugin and manual-copy installs): it bootstraps missing setup, then orients.

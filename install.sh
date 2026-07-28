@@ -472,6 +472,19 @@ else
   echo "[skip] Codex orient skill (already exists)"
 fi
 
+# Scaffold opencode.json so installed projects load AGENTS.md/CLAUDE.md
+if [ ! -e opencode.json ] && [ ! -L opencode.json ]; then
+  cat > opencode.json <<'EOF'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md", "CLAUDE.md"]
+}
+EOF
+  echo "[scaffold] opencode.json (loads AGENTS.md + CLAUDE.md)"
+else
+  echo "[skip] opencode.json (already exists)"
+fi
+
 # Scaffold AGENTS.md if the target project doesn't have one (same pattern as orient)
 if [ ! -e AGENTS.md ] && [ ! -L AGENTS.md ]; then
   cp "$HEPH_SRC/templates/AGENTS.md" AGENTS.md
@@ -610,11 +623,13 @@ echo ""
 
 echo "Done. Next steps:"
 echo "  1. Customize .claude/commands/orient.md for your project"
-echo "  2. Customize .opencode/commands/orient.md if you use OpenCode"
+echo "  2. Customize .opencode/commands/orient.md if you use OpenCode — always start OpenCode from this project root"
 echo "  3. Customize .agents/skills/orient/SKILL.md if you use Codex"
 echo "  4. Add project-specific .claude/hooks/ (lint-on-commit.sh, protect-files.sh)"
 echo "  5. Update AGENTS.md to list newly available agents"
-echo "  6. git add .gitmodules .hephaestus .claude .opencode .agents .codex && git commit"
+echo "  6. git add .gitmodules .hephaestus .claude .opencode .agents .codex opencode.json && git commit"
+echo "  7. Verify OpenCode: bash .hephaestus/scripts/verify-opencode-load.sh (or opencode debug config)"
 echo ""
 echo "Optional — headless autonomous loop (fresh session per run):"
 echo "  nohup ./.hephaestus/loop.sh 30 autopilot.log &"
+echo "  HEPH_HARNESS=opencode nohup ./.hephaestus/loop.sh 30 autopilot-oc.log &"

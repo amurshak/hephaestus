@@ -6,6 +6,8 @@ description: "Start working on issue <argument>. Run autonomously through the fu
 <!-- chains: /test-issue -->
 <!-- generated from .ai/workflows/start-issue.md; do not edit directly -->
 
+> **Codex:** this skill is the `/start-issue` adapter. For chained workflows (/test-issue), invoke the matching generated skill (for example `heph:<workflow>`) when it is available; otherwise read and follow `.agents/skills/<workflow>/SKILL.md`. Use Codex role agents from `.codex/agents/` when the runtime exposes them; otherwise perform the work directly and keep the same structured output.
+
 > Codex does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
 
 Start working on issue $ARGUMENTS. Run autonomously through the full plan-critique-implement cycle.
@@ -21,9 +23,9 @@ Start working on issue $ARGUMENTS. Run autonomously through the full plan-critiq
 
 2. **Load context in parallel**:
    - **Read the issue**: `gh issue view <#> --repo <detected-repo>`
-   - **Explore codebase** (explorer subagent(s)): Search for relevant files, understand current implementation
+   - **Explore codebase** (explorer role agent(s)): Search for relevant files, understand current implementation
    - **Recent history**: `git log --oneline -10`
-   - For complex issues, spawn multiple explorer subagents per subsystem
+   - For complex issues, spawn multiple explorer role agents per subsystem
 
 3. **Resolve ambiguities**: If the issue is underspecified:
    - Infer intent from related code, tests, and commit history
@@ -34,7 +36,7 @@ Start working on issue $ARGUMENTS. Run autonomously through the full plan-critiq
 
 ## Phase 2: Plan-Critique Loop
 
-1. **Plan**: Break the issue into concrete steps with TodoWrite. Identify independent tasks for parallel coders.
+1. **Plan**: Break the issue into concrete steps with the plan tool. Identify independent tasks for parallel coders.
 2. **Self-critique** (general critique mode): Evaluate the plan for logic, assumptions, completeness, trade-offs.
 3. **Refine**: Update the plan to address weaknesses.
 4. **Re-critique**: Evaluate the refined plan.
@@ -46,7 +48,7 @@ If critique iterations are exhausted:
 
 ## Phase 3: Implement
 
-- Use parallel coder subagents (in worktrees) for independent changes
+- Use parallel coder role agents when available (serialize file edits; Codex has no worktree isolation) for independent changes
 - Sequential implementation for dependent changes
 - Commit each logical unit separately
 - If a task is blocked: try one alternative approach. If still blocked, skip it with a TODO comment and continue.

@@ -21,7 +21,7 @@ Hephaestus is an implementation of a generic software development workflow patte
 ## Development Commands
 
 - **Test**: `./tests/run.sh` — full integration suite (single file: `bash tests/test_<name>.sh`)
-- **Lint/drift**: `./scripts/sync-agent-adapters.sh --check`, `./scripts/sync-opencode-adapters.sh --check`, `bash tests/check_composition.sh`
+- **Lint/drift**: `./scripts/sync-agent-adapters.sh --check`, `./scripts/sync-opencode-adapters.sh --check`, `./scripts/sync-codex-adapters.sh --check`, `bash tests/check_composition.sh`
 - **Build**: none (prose + shell; no compile step)
 
 ## Repository Structure
@@ -31,11 +31,14 @@ Hephaestus is an implementation of a generic software development workflow patte
 - `.claude/commands/` — generated Claude slash-command adapters for the canonical workflows
 - `.opencode/commands/` — generated OpenCode command adapters for the same canonical workflows
 - `.opencode/agents/` — generated OpenCode subagent adapters from `.claude/agents/`
+- `.agents/skills/` — generated Codex skill adapters for the same canonical workflows
+- `.codex/agents/` — generated Codex agent-role adapters from `.claude/agents/`
 - `opencode.json` — OpenCode project config that loads `AGENTS.md` and this file as instructions
 - `.claude-plugin/plugin.json` — Plugin manifest for Claude Code marketplace install (declares `commands` and `agents` paths so the plugin loader finds them under `.claude/`)
 - `scripts/sync-agent-adapters.sh` — generates/checks tool-specific adapters from `.ai/workflows/`
 - `scripts/sync-opencode-adapters.sh` — generates/checks OpenCode commands and agent adapters
-- `install.sh` — Adds hephaestus as `.hephaestus` submodule in a target project, creates symlinks into `.claude/` and `.opencode/`
+- `scripts/sync-codex-adapters.sh` — generates/checks Codex skills and agent-role adapters
+- `install.sh` — Adds hephaestus as `.hephaestus` submodule in a target project, creates symlinks into `.claude/`, `.opencode/`, `.agents/`, and `.codex/`
 - `update.sh` — Pulls latest hephaestus into an already-installed project
 
 ## Core Workflow Pattern
@@ -61,7 +64,8 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 ## Key Design Constraints
 
 - **Workflows live in `.ai/workflows/`** as the canonical source. `.claude/commands/` files are generated adapters; run `./scripts/sync-agent-adapters.sh` after workflow edits and `./scripts/sync-agent-adapters.sh --check` in quality gates.
-- **OpenCode adapters are generated too**: `.opencode/commands/` comes from `.ai/workflows/`; `.opencode/agents/` comes from `.claude/agents/`. Run `./scripts/sync-opencode-adapters.sh` after workflow or agent edits and `./scripts/sync-opencode-adapters.sh --check` in quality gates.
+- **OpenCode adapters are generated too**: `.opencode/commands/` comes from `.ai/workflows/`; `.opencode/agents/` comes from `.claude/agents/`. The generator localizes Claude dialect (worktrees/subagents/TodoWrite → Task/`@agent` + serialize edits) and injects slash-command chain notes. Run `./scripts/sync-opencode-adapters.sh` after workflow or agent edits and `./scripts/sync-opencode-adapters.sh --check` in quality gates. Verify a live open session loads them with `bash scripts/verify-opencode-load.sh`.
+- **Codex adapters are generated too**: `.agents/skills/*/SKILL.md` comes from `.ai/workflows/`; `.codex/agents/*.toml` comes from `.claude/agents/`. Run `./scripts/sync-codex-adapters.sh` after workflow or agent edits and `./scripts/sync-codex-adapters.sh --check` in quality gates.
 - **Commands read the target project's CLAUDE.md** to discover test/lint/build commands. The "Development Commands" section in each installed project drives all quality gates.
 - **`/finish` branches on explicit PR state** before cleanup. Merged PRs complete the full close/cleanup/docs flow; auto-merge-pending and manual-merge-needed PRs preserve the issue and PR branch; closed-unmerged PRs abort finish cleanly.
 - **`/finish` decides docs sync mechanically** from the PR diff: every PR requires CHANGELOG.md; command or installer changes also require README.md; command or agent changes also require CLAUDE.md. If any required doc is missing, `/finish` runs `/update-docs` and logs the missing files.
@@ -122,11 +126,13 @@ When modifying agents or commands:
 - Preserve the YAML frontmatter format in agent files (name, description, tools, isolation)
 - Edit canonical workflow specs in `.ai/workflows/`, not generated `.claude/commands/` adapters.
 - Do not hand-edit `.opencode/commands/` or `.opencode/agents/`; regenerate them with `./scripts/sync-opencode-adapters.sh`.
+- Do not hand-edit `.agents/skills/*/SKILL.md` or `.codex/agents/`; regenerate them with `./scripts/sync-codex-adapters.sh`.
 - Preserve the `$ARGUMENTS` placeholder in workflows that receive user input at invocation.
 - Retry limits are defined in "Core Workflow Pattern" above — commands must reference them, not hardcode
 - Commands that delegate to subagents should specify which agent type to use and what structured output to expect
 - Run `./scripts/sync-agent-adapters.sh --check` before shipping adapter changes
 - Run `./scripts/sync-opencode-adapters.sh --check` before shipping OpenCode adapter changes
+- Run `./scripts/sync-codex-adapters.sh --check` before shipping Codex adapter changes
 - **No bloat**: Replacements must be at least as concise as the original. If the new text is longer without adding information, tighten it. Bloat and drift are the enemies of excellence.
 
 **Workflow metadata** — every `.ai/workflows/*.md` declares its dependencies in frontmatter:
@@ -140,6 +146,7 @@ Composition rule: if you find yourself copying procedure from `/foo` into `/bar`
 These are NOT in this repo — each installed project owns them:
 - `.claude/commands/orient.md` — project-specific context (scaffolded by install.sh, must be customized)
 - `.opencode/commands/orient.md` — OpenCode project-specific context (scaffolded by install.sh, must be customized if using OpenCode)
+- `.agents/skills/orient/` — Codex project-specific orient skill (scaffolded by install.sh, must be customized if using Codex)
 - `.claude/hooks/` — lint/test hooks for the project's tech stack
 - `CLAUDE.md` with a "Development Commands" section (test, lint, build commands)
 - `AGENTS.md` — index of available local and shared agents (scaffolded by install.sh from `templates/AGENTS.md`)

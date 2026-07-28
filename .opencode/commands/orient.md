@@ -5,6 +5,8 @@ description: "Orient in the current project. On first contact with an unprepared
 <!-- chains: none -->
 <!-- generated from .ai/workflows/orient.md; do not edit directly -->
 
+> **OpenCode:** start from the project root that contains `.opencode/`. Spawn role agents with the Task tool or @mentions when required.
+
 Orient in the current project. On first contact with an unprepared project, set up the workflow's operating requirements, then orient. Run autonomously.
 
 > Each project should own its orient command — `install.sh` scaffolds one from `templates/orient.md` and never symlinks this file. This shipped version is the generic fallback (plugin and manual-copy installs): it bootstraps missing setup, then orients.

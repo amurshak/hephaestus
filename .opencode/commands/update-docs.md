@@ -5,6 +5,8 @@ description: "Update documentation to reflect recent work."
 <!-- chains: none -->
 <!-- generated from .ai/workflows/update-docs.md; do not edit directly -->
 
+> **OpenCode:** start from the project root that contains `.opencode/`. Spawn role agents with the Task tool or @mentions when required.
+
 Update documentation to reflect recent work.
 
 Steps:

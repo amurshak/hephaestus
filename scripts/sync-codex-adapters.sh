@@ -44,6 +44,28 @@ first_body_line() {
   awk -v start="$start" 'NR >= start && NF { print; exit }' "$file"
 }
 
+# Rewrite Claude-dialect body text for Codex mechanics.
+codex_localize_body() {
+  sed \
+    -e 's/parallel coder subagents (in worktrees)/parallel coder role agents when available (serialize file edits; Codex has no worktree isolation)/g' \
+    -e 's/coder subagents (in worktrees)/coder role agents when available (serialize file edits; Codex has no worktree isolation)/g' \
+    -e 's/parallel coder subagents/parallel coder role agents when available/g' \
+    -e 's/coder subagent(s)/coder role agent(s)/g' \
+    -e 's/coder subagents/coder role agents/g' \
+    -e 's/explorer subagent(s)/explorer role agent(s)/g' \
+    -e 's/explorer subagents/explorer role agents/g' \
+    -e 's/reviewer subagent(s)/reviewer role agent(s)/g' \
+    -e 's/reviewer subagents/reviewer role agents/g' \
+    -e 's/tester subagent(s)/tester role agent(s)/g' \
+    -e 's/tester subagents/tester role agents/g' \
+    -e 's/researcher subagent(s)/researcher role agent(s)/g' \
+    -e 's/researcher subagents/researcher role agents/g' \
+    -e 's/subagent(s)/role agent(s)/g' \
+    -e 's/subagents/role agents/g' \
+    -e 's/subagent/role agent/g' \
+    -e 's/TodoWrite/the plan tool/g'
+}
+
 render_codex_skill() {
   local workflow=$1
   local name requires chains start desc
@@ -78,11 +100,17 @@ render_codex_skill() {
     echo "<!-- chains: ${chains} -->"
     echo "<!-- generated from .ai/workflows/${name}.md; do not edit directly -->"
     echo ""
+    if [ "$chains" != "none" ]; then
+      echo "> **Codex:** this skill is the \`/${name}\` adapter. For chained workflows (${chains}), invoke the matching generated skill (for example \`heph:<workflow>\`) when it is available; otherwise read and follow \`.agents/skills/<workflow>/SKILL.md\`. Use Codex role agents from \`.codex/agents/\` when the runtime exposes them; otherwise perform the work directly and keep the same structured output."
+    else
+      echo "> **Codex:** this skill is the \`/${name}\` adapter. Use Codex role agents from \`.codex/agents/\` when the runtime exposes them; otherwise perform the work directly and keep the same structured output."
+    fi
+    echo ""
     if grep -q '\$ARGUMENTS' "$workflow"; then
       echo "> Codex does not substitute \`\$ARGUMENTS\` — read it as the arguments given in the user's request."
       echo ""
     fi
-    sed -n "${start},\$p" "$workflow"
+    sed -n "${start},\$p" "$workflow" | codex_localize_body
   }
 }
 

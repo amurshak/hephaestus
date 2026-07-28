@@ -5,6 +5,8 @@ description: "Finish and close issue $ARGUMENTS. Run autonomously."
 <!-- chains: /update-docs -->
 <!-- generated from .ai/workflows/finish.md; do not edit directly -->
 
+> **OpenCode:** start from the project root that contains `.opencode/`. Invoke nested workflows as slash commands (/update-docs) so their full templates load — do not paraphrase. Spawn role agents with the Task tool or @mentions.
+
 Finish and close issue $ARGUMENTS. Run autonomously.
 
 Steps:

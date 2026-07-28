@@ -5,6 +5,8 @@ description: "Update the hephaestus submodule to the latest version."
 <!-- chains: none -->
 <!-- generated from .ai/workflows/update-hephaestus.md; do not edit directly -->
 
+> **OpenCode:** start from the project root that contains `.opencode/`. Spawn role agents with the Task tool or @mentions when required.
+
 Update the hephaestus submodule to the latest version.
 
 ## Steps

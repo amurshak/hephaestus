@@ -6,6 +6,8 @@ description: "Run the full autonomous pipeline for issue <argument>. No human in
 <!-- chains: /start-issue, /ship, /finish -->
 <!-- generated from .ai/workflows/autopilot.md; do not edit directly -->
 
+> **Codex:** this skill is the `/autopilot` adapter. For chained workflows (/start-issue, /ship, /finish), invoke the matching generated skill (for example `heph:<workflow>`) when it is available; otherwise read and follow `.agents/skills/<workflow>/SKILL.md`. Use Codex role agents from `.codex/agents/` when the runtime exposes them; otherwise perform the work directly and keep the same structured output.
+
 > Codex does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
 
 Run the full autonomous pipeline for issue $ARGUMENTS. No human intervention required.
@@ -32,7 +34,7 @@ If no open issues are found:
    - `grep -r "TODO\|FIXME\|HACK\|XXX"` for flagged technical debt
    - Review CLAUDE.md for documented next steps
    - Check CHANGELOG.md for recent patterns suggesting follow-up work
-   - Run explorer subagent(s) to identify code quality issues, missing tests, or architectural gaps
+   - Run explorer role agent(s) to identify code quality issues, missing tests, or architectural gaps
 2. Rank findings by impact (bugs > missing tests > tech debt > enhancements)
 3. Create the highest-impact issue via `gh issue create`
 4. Continue pipeline with the newly created issue
@@ -46,7 +48,7 @@ If no open issues are found:
 
 ### Phase 2: Start the issue → `/start-issue <#>`
 
-Run `/start-issue <#>`. It handles plan-critique loop, parallel coder subagents, implementation, and the test gate, and ends ready for `/ship`.
+Run `/start-issue <#>`. It handles plan-critique loop, parallel coder role agents when available, implementation, and the test gate, and ends ready for `/ship`.
 
 If `/start-issue` winds down early (`[WIP]`, `[BLOCKED]`, `[FAILING]` prefix on the draft PR it created), respect that wind-down — the breadcrumbs are filed; do not try to push past them.
 

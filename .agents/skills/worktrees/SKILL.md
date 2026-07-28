@@ -6,6 +6,8 @@ description: "Orchestrate parallel multi-session development: survey existing wo
 <!-- chains: none -->
 <!-- generated from .ai/workflows/worktrees.md; do not edit directly -->
 
+> **Codex:** this skill is the `/worktrees` adapter. Use Codex role agents from `.codex/agents/` when the runtime exposes them; otherwise perform the work directly and keep the same structured output.
+
 > Codex does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
 
 Orchestrate parallel multi-session development: survey existing worktrees, reap finished ones, plan a wave of non-conflicting issues, create sibling worktrees, and spawn a seeded Claude Code session per issue. Run autonomously.

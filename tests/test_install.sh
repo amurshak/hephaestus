@@ -73,6 +73,12 @@ assert_not_symlink  "OpenCode orient.md is not symlink" "$TARGET/.opencode/comma
 assert_file_exists  "AGENTS.md exists"         "$TARGET/AGENTS.md"
 assert_not_symlink  "AGENTS.md is not symlink" "$TARGET/AGENTS.md"
 
+# opencode.json should be scaffolded so instructions load AGENTS.md/CLAUDE.md
+assert_file_exists  "opencode.json exists"         "$TARGET/opencode.json"
+assert_not_symlink  "opencode.json is not symlink" "$TARGET/opencode.json"
+assert_contains     "opencode.json loads AGENTS.md"  "$(cat "$TARGET/opencode.json")" "AGENTS.md"
+assert_contains     "opencode.json loads CLAUDE.md"  "$(cat "$TARGET/opencode.json")" "CLAUDE.md"
+
 assert_contains "output mentions health check" "$output" "Health check:"
 teardown_fixture
 

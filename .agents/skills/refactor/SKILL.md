@@ -6,6 +6,8 @@ description: "Refactor the target specified in <argument>. Run autonomously — 
 <!-- chains: /ship, /finish -->
 <!-- generated from .ai/workflows/refactor.md; do not edit directly -->
 
+> **Codex:** this skill is the `/refactor` adapter. For chained workflows (/ship, /finish), invoke the matching generated skill (for example `heph:<workflow>`) when it is available; otherwise read and follow `.agents/skills/<workflow>/SKILL.md`. Use Codex role agents from `.codex/agents/` when the runtime exposes them; otherwise perform the work directly and keep the same structured output.
+
 > Codex does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
 
 Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause for plan approval.
@@ -15,20 +17,20 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 ### Phase 1: Analysis
 1. **Detect repo**: Run `git remote get-url origin` to identify the target repo.
 2. Read the target file(s) and all files that import/depend on them
-3. For large refactors spanning multiple modules, spawn parallel explorer subagents to investigate each module's dependencies and usage patterns simultaneously
+3. For large refactors spanning multiple modules, spawn parallel explorer role agents to investigate each module's dependencies and usage patterns simultaneously
 4. Measure current state: line count, function count, nesting depth, number of parameters
 5. Identify: repeated patterns, unused code, unnecessary abstractions, tight coupling
 
 ### Phase 2: Plan-Critique Loop
 1. Create a feature branch: `git checkout -b refactor/<short-description>` where `<short-description>` is a kebab-case summary derived from $ARGUMENTS.
-2. Build a refactoring plan (what changes, what's preserved, expected impact) via TodoWrite.
+2. Build a refactoring plan (what changes, what's preserved, expected impact) via the plan tool.
 3. Self-critique the plan (general critique mode): evaluate risks, coupling, test coverage gaps, API contract changes.
 4. Refine and re-critique until verdict reaches **SOUND** (per CLAUDE.md retry limits).
 5. If NEEDS REFINEMENT after all retries: proceed with best version, document caveats in PR. If RETHINK: file follow-up issue and wind down.
 
 ### Phase 3: Implement
 1. Make single, focused changes — one concern per commit
-2. For independent refactoring tasks across different files, use parallel coder subagents (in worktrees)
+2. For independent refactoring tasks across different files, use parallel coder role agents when available (serialize file edits; Codex has no worktree isolation)
 3. Run tests after each change per the project's CLAUDE.md (test command, lint command)
 4. If tests fail after a change, fix and re-test before proceeding (per CLAUDE.md retry limits)
 

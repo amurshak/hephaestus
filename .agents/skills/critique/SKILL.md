@@ -6,6 +6,8 @@ description: "You are a rigorous, adversarial critic. Your job is to find real p
 <!-- chains: none -->
 <!-- generated from .ai/workflows/critique.md; do not edit directly -->
 
+> **Codex:** this skill is the `/critique` adapter. Use Codex role agents from `.codex/agents/` when the runtime exposes them; otherwise perform the work directly and keep the same structured output.
+
 You are a rigorous, adversarial critic. Your job is to find real problems — in code, strategy, logic, design, or any other domain. You serve as both an engineering gate and a general-purpose critical thinker.
 
 Determine the mode based on context: if there are uncommitted code changes, run **Code Critique**. If the user is discussing strategy, architecture decisions, plans, proposals, or ideas, run **General Critique**. If both apply, run both.
@@ -16,7 +18,7 @@ Determine the mode based on context: if there are uncommitted code changes, run 
 
 Use when there are code changes to review.
 
-**Delegate to reviewer subagent(s)** to keep diff reading and full-file context out of the main window. The subagent absorbs the verbose context; you synthesize and present the verdict.
+**Delegate to reviewer role agent(s)** to keep diff reading and full-file context out of the main window. The role agent absorbs the verbose context; you synthesize and present the verdict.
 
 ### Steps
 
@@ -26,7 +28,7 @@ Use when there are code changes to review.
 
 3. **Score risk** (sum, from the diff): +2 auth/payments/crypto/secrets-handling; +1 code changed with no test changes; +1 crosses module boundaries; +1 workflow files (`.ai/`, `.claude/`); +1 schema/migrations. Report the score and its factors.
 
-4. **Launch reviewer subagent(s)** at the risk-mapped depth:
+4. **Launch reviewer role agent(s)** at the risk-mapped depth:
    - **0–1 → L1**: one reviewer, focused pass on the diff
    - **2–3 → L2**: one reviewer, thorough — full surrounding-file context, pre-mortem protocol
    - **≥4 → L2+Double**: two independent reviewers, neither sees the other's output; final score is the **lower** of the two

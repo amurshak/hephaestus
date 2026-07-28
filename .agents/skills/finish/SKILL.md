@@ -6,6 +6,8 @@ description: "Finish and close issue <argument>. Run autonomously. Use for /fini
 <!-- chains: /update-docs -->
 <!-- generated from .ai/workflows/finish.md; do not edit directly -->
 
+> **Codex:** this skill is the `/finish` adapter. For chained workflows (/update-docs), invoke the matching generated skill (for example `heph:<workflow>`) when it is available; otherwise read and follow `.agents/skills/<workflow>/SKILL.md`. Use Codex role agents from `.codex/agents/` when the runtime exposes them; otherwise perform the work directly and keep the same structured output.
+
 > Codex does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
 
 Finish and close issue $ARGUMENTS. Run autonomously.

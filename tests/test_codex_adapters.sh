@@ -127,4 +127,20 @@ assert_contains "ship skill declares requires" "$(cat "$ship")" "<!-- requires: 
 assert_contains "ship skill names its source" "$(cat "$ship")" "generated from .ai/workflows/ship.md"
 assert_not_contains "argument note only when body uses \$ARGUMENTS" "$(cat "$orient")" 'Codex does not substitute'
 
+begin_test "Codex skills use Codex dialect and chain notes"
+
+start="$HEPHAESTUS_ROOT/.agents/skills/start-issue/SKILL.md"
+refactor="$HEPHAESTUS_ROOT/.agents/skills/refactor/SKILL.md"
+research="$HEPHAESTUS_ROOT/.agents/skills/research/SKILL.md"
+
+assert_contains "start skill has Codex callout" "$(cat "$start")" "**Codex:**"
+assert_contains "start skill chain note names nested skill" "$(cat "$start")" "/test-issue"
+assert_contains "start skill maps todo tool" "$(cat "$start")" "the plan tool"
+assert_not_contains "start skill drops TodoWrite" "$(cat "$start")" "TodoWrite"
+assert_contains "start skill maps coder role agents" "$(cat "$start")" "coder role agents when available"
+assert_not_contains "start skill drops worktree subagent wording" "$(cat "$start")" "coder subagents (in worktrees)"
+assert_contains "refactor skill warns no worktree isolation" "$(cat "$refactor")" "Codex has no worktree isolation"
+assert_contains "research skill maps researcher role agents" "$(cat "$research")" "researcher role agents"
+assert_not_contains "research skill drops subagent wording" "$(cat "$research")" "researcher subagents"
+
 print_summary

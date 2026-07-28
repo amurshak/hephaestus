@@ -6,6 +6,8 @@ description: "Update the hephaestus submodule to the latest version. Use for /up
 <!-- chains: none -->
 <!-- generated from .ai/workflows/update-hephaestus.md; do not edit directly -->
 
+> **Codex:** this skill is the `/update-hephaestus` adapter. Use Codex role agents from `.codex/agents/` when the runtime exposes them; otherwise perform the work directly and keep the same structured output.
+
 Update the hephaestus submodule to the latest version.
 
 ## Steps

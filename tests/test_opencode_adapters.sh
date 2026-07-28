@@ -83,6 +83,21 @@ assert_contains "reviewer cannot edit" "$(cat "$reviewer")" "  edit: deny"
 assert_contains "researcher cannot run bash" "$(cat "$researcher")" "  bash: deny"
 assert_contains "researcher can websearch" "$(cat "$researcher")" "  websearch: allow"
 
+begin_test "OpenCode commands use OC dialect and chain notes"
+
+ship="$HEPHAESTUS_ROOT/.opencode/commands/ship.md"
+autopilot="$HEPHAESTUS_ROOT/.opencode/commands/autopilot.md"
+research="$HEPHAESTUS_ROOT/.opencode/commands/research.md"
+start="$HEPHAESTUS_ROOT/.opencode/commands/start-issue.md"
+
+assert_contains "ship has OpenCode callout" "$(cat "$ship")" "**OpenCode:**"
+assert_contains "ship chain note names nested cmds" "$(cat "$ship")" "/critique"
+assert_contains "autopilot chain note" "$(cat "$autopilot")" "/start-issue"
+assert_contains "research uses @researcher" "$(cat "$research")" "@researcher"
+assert_not_contains "research drops bare subagent" "$(cat "$research")" "researcher subagent"
+assert_contains "start-issue maps coder spawn" "$(cat "$start")" "@coder"
+assert_not_contains "start-issue drops worktree spawn" "$(cat "$start")" "coder subagents (in worktrees)"
+
 begin_test "opencode.json loads repo instructions"
 
 opencode_json=$(cat "$HEPHAESTUS_ROOT/opencode.json")
@@ -90,4 +105,17 @@ assert_contains "schema declared" "$opencode_json" '"$schema": "https://opencode
 assert_contains "CLAUDE.md included" "$opencode_json" '"CLAUDE.md"'
 assert_contains "AGENTS.md included" "$opencode_json" '"AGENTS.md"'
 
+begin_test "verify-opencode-load.sh passes when CLI present or skips cleanly"
+
+if verify_output=$(bash "$HEPHAESTUS_ROOT/scripts/verify-opencode-load.sh" 2>&1); then
+  if command -v opencode >/dev/null 2>&1; then
+    assert_contains "live load reports success" "$verify_output" "OpenCode loads hephaestus"
+  else
+    assert_contains "skips without opencode" "$verify_output" "skip: opencode not on PATH"
+  fi
+else
+  fail "verify-opencode-load.sh exited non-zero" "$verify_output"
+fi
+
 print_summary
+

@@ -5,13 +5,15 @@ description: "Create a GitHub issue for: $ARGUMENTS"
 <!-- chains: none -->
 <!-- generated from .ai/workflows/create-issue.md; do not edit directly -->
 
+> **OpenCode:** start from the project root that contains `.opencode/`. Spawn role agents with the Task tool or @mentions when required.
+
 Create a GitHub issue for: $ARGUMENTS
 
 Follow these steps:
 
 1. **Detect repo**: Run `git remote get-url origin` from the current directory to identify the target repo. If `--repo owner/repo` is provided in $ARGUMENTS, use that instead.
 
-2. **Research**: Explore relevant files (use explorer subagent for broad searches) to understand the affected code area. This ensures accurate acceptance criteria.
+2. **Research**: Explore relevant files (use explorer agent (Task tool or @mention) for broad searches) to understand the affected code area. This ensures accurate acceptance criteria.
 
 3. **Draft the issue**:
    - **Title**: Short, imperative ("Fix token refresh race condition")

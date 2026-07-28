@@ -6,6 +6,8 @@ description: "Update documentation to reflect recent work. Use for /update-docs 
 <!-- chains: none -->
 <!-- generated from .ai/workflows/update-docs.md; do not edit directly -->
 
+> **Codex:** this skill is the `/update-docs` adapter. Use Codex role agents from `.codex/agents/` when the runtime exposes them; otherwise perform the work directly and keep the same structured output.
+
 Update documentation to reflect recent work.
 
 Steps:

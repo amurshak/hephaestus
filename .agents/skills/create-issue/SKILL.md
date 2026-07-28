@@ -6,6 +6,8 @@ description: "Create a GitHub issue for: <argument> Use for /create-issue reques
 <!-- chains: none -->
 <!-- generated from .ai/workflows/create-issue.md; do not edit directly -->
 
+> **Codex:** this skill is the `/create-issue` adapter. Use Codex role agents from `.codex/agents/` when the runtime exposes them; otherwise perform the work directly and keep the same structured output.
+
 > Codex does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
 
 Create a GitHub issue for: $ARGUMENTS
@@ -14,7 +16,7 @@ Follow these steps:
 
 1. **Detect repo**: Run `git remote get-url origin` from the current directory to identify the target repo. If `--repo owner/repo` is provided in $ARGUMENTS, use that instead.
 
-2. **Research**: Explore relevant files (use explorer subagent for broad searches) to understand the affected code area. This ensures accurate acceptance criteria.
+2. **Research**: Explore relevant files (use explorer role agent for broad searches) to understand the affected code area. This ensures accurate acceptance criteria.
 
 3. **Draft the issue**:
    - **Title**: Short, imperative ("Fix token refresh race condition")
