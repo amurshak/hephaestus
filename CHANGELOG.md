@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+- **Ship evidence gate** (#112): before creating the PR, `/ship` verifies the composed body contains no unchecked `- [ ]` items or placeholder text, and that every checked quality-gate line corresponds to a gate actually run this session. Adopted from the nhi lineage's Evidence Gate.
+- **Critic calibration in `/finish`** (#113): the retrospective now records whether the pre-ship critique verdict held up post-merge (accurate / false-negative / false-positive, from post-merge fix commits and related issues) as a searchable line in the issue comment. Adopted from BaseCoMVP's calibration loop, translated to repo-as-memory.
+
 ### Fixed
 - **Dangling "per CLAUDE.md retry limits" reference on plugin/manual installs** (#111): distributed workflows reference retry limits that lived only in hephaestus's own CLAUDE.md, which plugin and manual-copy users never receive (plugin-level CLAUDE.md doesn't enter session context). `/orient`'s bootstrap now writes a compact "Workflow Rules" block (limits + wind-down convention) into the target CLAUDE.md, and `templates/CLAUDE.md.snippet` carries the same block. Found by cross-checking the nhi plugin lineage.
 
