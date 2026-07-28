@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1 — 2026-07-28
+
+### Fixed
+- **Plugin manifest rejected by Claude Code**: `plugin.json` declared `"agents"` as a directory path, which the plugin schema rejects (`agents: Invalid input`) — plugin installs failed at validation. The field now enumerates the five agent files individually (the schema-valid form, confirmed via `claude plugin validate --strict`). A new test locks the manifest list to the `.claude/agents/` directory contents so added/removed agents can't silently drift out of the manifest. Caught by live install verification minutes after the repo went public.
+
 ## 2.0.0 — 2026-07-28
 
 First public release. Hephaestus becomes a harness-neutral workflow core (`.ai/workflows/` + `.claude/agents/`) with generated adapters per harness, distributed three ways: Claude Code plugin, git submodule, or manual copy/symlink.
