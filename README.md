@@ -301,7 +301,7 @@ curl -s https://raw.githubusercontent.com/amurshak/hephaestus/master/templates/C
 
 Then replace the placeholder commands with your actual test/lint/build commands.
 
-Hephaestus also ships an `/orient` command for cold-start context. The shipped version is generic (detects your repo, reads your CLAUDE.md); each project should own a customized `.claude/commands/orient.md` with its repos, structure, and priorities. Pull the template and customize it:
+Hephaestus also ships an `/orient` command for cold-start context. The shipped version bootstraps an unprepared project on first run — it infers Development Commands from your manifests (marked for verification) and scaffolds a project-specific orient — then orients. Each project should own a customized `.claude/commands/orient.md` with its repos, structure, and priorities; pull the template to start from that instead:
 
 ```bash
 mkdir -p .claude/commands

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.2 — 2026-07-28
+
+### Changed
+- **`/orient` bootstraps unprepared projects**: hephaestus is an adjunct to the host codebase, but install paths without `install.sh` (plugin, manual copy) had no onboarding — commands landed in a project with none of the workflow's operating requirements established. The shipped generic `/orient` now runs a setup check before orienting: infers a CLAUDE.md "Development Commands" section from project manifests (marked `inferred — verify`), scaffolds a project-specific orient with the detected repo/structure/commands, and checks `gh` auth. All writes are additive (never overwrites); a silent no-op on prepared projects.
+
 ## 2.0.1 — 2026-07-28
 
 ### Fixed

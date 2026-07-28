@@ -60,7 +60,7 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 - **`/finish` branches on explicit PR state** before cleanup. Merged PRs complete the full close/cleanup/docs flow; auto-merge-pending and manual-merge-needed PRs preserve the issue and PR branch; closed-unmerged PRs abort finish cleanly.
 - **`/finish` decides docs sync mechanically** from the PR diff: every PR requires CHANGELOG.md; command or installer changes also require README.md; command or agent changes also require CLAUDE.md. If any required doc is missing, `/finish` runs `/update-docs` and logs the missing files.
 - **Repo detection** is done via `git remote get-url origin` — commands never hardcode repo references.
-- **orient.md is project-specific** — it is excluded from symlinking. If the target project doesn't have one, install.sh scaffolds a template from `templates/orient.md` that must be customized.
+- **orient.md is project-specific** — it is excluded from symlinking. If the target project doesn't have one, install.sh scaffolds a template from `templates/orient.md` that must be customized. The shipped generic `/orient` covers install paths without install.sh (plugin, manual copy): on first run in an unprepared project it bootstraps the operating requirements — infers a Development Commands section from manifests and scaffolds a project orient — additively, never overwriting.
 - **install.sh is idempotent** — it never overwrites existing files; re-running is safe.
 - **Symlinks are relative** — agents link as `../../.hephaestus/.claude/agents/<name>`, commands as `../../.hephaestus/.claude/commands/<name>`.
 
