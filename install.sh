@@ -14,8 +14,9 @@
 #   2. Symlinks shared agents into <target>/.claude/agents/
 #   3. Symlinks shared commands into <target>/.claude/commands/
 #   4. Symlinks OpenCode adapters into <target>/.opencode/
-#   5. Scaffolds orient.md template if missing
-#   6. Validates CLAUDE.md has development commands
+#   5. Symlinks Codex skills into <target>/.agents/skills/ and agent roles into <target>/.codex/agents/
+#   6. Scaffolds orient.md template if missing
+#   7. Validates CLAUDE.md has development commands
 #
 # Idempotent: safe to re-run. Never overwrites existing files (unless --force).
 
@@ -297,7 +298,45 @@ for f in "$HEPH_SRC"/.opencode/commands/*.md; do
 done
 echo ""
 
-# ── 6. Name collision check ─────────────────────────────────────────────────
+# ── 6. Codex skills ──────────────────────────────────────────────────────────
+if [ "$AUDIT_MODE" != true ]; then
+  mkdir -p .agents/skills
+fi
+echo "Codex skills:"
+if [ "$AUDIT_MODE" = true ]; then
+  printf "  %-25s %-12s %s\n" "Name" "Status" "Details"
+  printf "  %-25s %-12s %s\n" "----" "------" "-------"
+fi
+for d in "$HEPH_SRC"/.agents/skills/*/; do
+  [ -e "$d" ] || continue
+  name=$(basename "$d")
+  if [ "$name" = "orient" ]; then
+    if [ "$AUDIT_MODE" = true ]; then
+      printf "  %-25s %-12s %s\n" "$name" "protected" "project-specific (always skipped)"
+    fi
+    continue
+  fi
+  link_item "../../.hephaestus/.agents/skills/$name" "$d/SKILL.md" ".agents/skills/$name" "$name"
+done
+echo ""
+
+# ── 7. Codex agents ──────────────────────────────────────────────────────────
+if [ "$AUDIT_MODE" != true ]; then
+  mkdir -p .codex/agents
+fi
+echo "Codex agents:"
+if [ "$AUDIT_MODE" = true ]; then
+  printf "  %-25s %-12s %s\n" "Name" "Status" "Details"
+  printf "  %-25s %-12s %s\n" "----" "------" "-------"
+fi
+for f in "$HEPH_SRC"/.codex/agents/*.toml; do
+  [ -e "$f" ] || continue
+  name=$(basename "$f")
+  link_item "../../.hephaestus/.codex/agents/$name" "$f" ".codex/agents/$name" "$name"
+done
+echo ""
+
+# ── 8. Name collision check ─────────────────────────────────────────────────
 COLLISIONS_FOUND=false
 for target_dir_label in ".claude/commands:.claude/commands" ".claude/agents:.claude/agents" ".opencode/commands:.opencode/commands" ".opencode/agents:.opencode/agents"; do
   target_dir="${target_dir_label%%:*}"
@@ -316,7 +355,7 @@ if [ "$COLLISIONS_FOUND" = true ]; then
   echo ""
 fi
 
-# ── 7. Stale symlink detection ────────────────────────────────────────────────
+# ── 9. Stale symlink detection ────────────────────────────────────────────────
 # Find symlinks pointing into .hephaestus/ whose target no longer exists (e.g., after upstream renames/removals)
 
 detect_stale_links() {
@@ -350,6 +389,8 @@ detect_stale_links ".claude/agents"
 detect_stale_links ".claude/commands"
 detect_stale_links ".opencode/agents"
 detect_stale_links ".opencode/commands"
+detect_stale_links ".agents/skills"
+detect_stale_links ".codex/agents"
 
 if [ "$STALE_FOUND" = true ]; then
   echo ""
@@ -363,7 +404,7 @@ elif [ "$CLEAN_MODE" = true ]; then
   echo ""
 fi
 
-# ── 8. Post-install validation ───────────────────────────────────────────────
+# ── 10. Post-install validation ──────────────────────────────────────────────
 
 if [ "$AUDIT_MODE" = true ]; then
   # In audit mode, just report orient.md and CLAUDE.md status
@@ -376,6 +417,11 @@ if [ "$AUDIT_MODE" = true ]; then
     printf "  %-25s %-12s %s\n" "opencode orient.md" "exists" "project-specific (will keep yours)"
   else
     printf "  %-25s %-12s %s\n" "opencode orient.md" "missing" "will scaffold from template"
+  fi
+  if [ -e .agents/skills/orient/SKILL.md ] || [ -L .agents/skills/orient ]; then
+    printf "  %-25s %-12s %s\n" "codex orient skill" "exists" "project-specific (will keep yours)"
+  else
+    printf "  %-25s %-12s %s\n" "codex orient skill" "missing" "will scaffold from template"
   fi
   if [ -e AGENTS.md ] || [ -L AGENTS.md ]; then
     printf "  %-25s %-12s %s\n" "AGENTS.md" "exists" "project-specific (will keep yours)"
@@ -410,6 +456,33 @@ if [ ! -e .opencode/commands/orient.md ] && [ ! -L .opencode/commands/orient.md 
   echo "[scaffold] OpenCode orient.md (created template — customize for your project)"
 else
   echo "[skip] OpenCode orient.md (already exists)"
+fi
+if [ ! -e .agents/skills/orient/SKILL.md ] && [ ! -L .agents/skills/orient ]; then
+  mkdir -p .agents/skills/orient
+  {
+    echo "---"
+    echo "name: orient"
+    echo "description: Orient in this project — load context, sync repo state, and find the next piece of work. Use for /orient requests."
+    echo "---"
+    echo ""
+    cat "$HEPH_SRC/templates/orient.md"
+  } > .agents/skills/orient/SKILL.md
+  echo "[scaffold] Codex orient skill (created template — customize for your project)"
+else
+  echo "[skip] Codex orient skill (already exists)"
+fi
+
+# Scaffold opencode.json so installed projects load AGENTS.md/CLAUDE.md
+if [ ! -e opencode.json ] && [ ! -L opencode.json ]; then
+  cat > opencode.json <<'EOF'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md", "CLAUDE.md"]
+}
+EOF
+  echo "[scaffold] opencode.json (loads AGENTS.md + CLAUDE.md)"
+else
+  echo "[skip] opencode.json (already exists)"
 fi
 
 # Scaffold AGENTS.md if the target project doesn't have one (same pattern as orient)
@@ -448,14 +521,14 @@ else
 fi
 echo ""
 
-# ── 9. Health check ──────────────────────────────────────────────────────────
+# ── 11. Health check ─────────────────────────────────────────────────────────
 echo ""
 echo "Health check:"
 
 # Validate symlinks
 VALID_LINKS=0
 BROKEN_LINKS=0
-for dir in .claude/agents .claude/commands .opencode/agents .opencode/commands; do
+for dir in .claude/agents .claude/commands .opencode/agents .opencode/commands .agents/skills .codex/agents; do
   [ -d "$dir" ] || continue
   for f in "$dir"/*; do
     [ -L "$f" ] || continue
@@ -505,9 +578,14 @@ fi
 # Validate command → agent dependencies
 # Commands declare dependencies via <!-- requires: agent1, agent2 --> on line 1
 DEPS_OK=true
-for cmd_dir in .claude/commands .opencode/commands; do
+for cmd_dir in .claude/commands .opencode/commands .agents/skills; do
   [ -d "$cmd_dir" ] || continue
-  for cmd in "$cmd_dir"/*.md; do
+  if [ "$cmd_dir" = ".agents/skills" ]; then
+    cmd_glob=("$cmd_dir"/*/SKILL.md)
+  else
+    cmd_glob=("$cmd_dir"/*.md)
+  fi
+  for cmd in "${cmd_glob[@]}"; do
     [ -e "$cmd" ] || continue
     requires=$(grep -m1 -oE '<!-- requires:[^>]*-->' "$cmd" 2>/dev/null | sed -E 's|<!-- requires: *||; s| *-->||' || true)
     [ -n "$requires" ] || continue
@@ -518,6 +596,8 @@ for cmd_dir in .claude/commands .opencode/commands; do
       agent=$(echo "$agent" | tr -d ' ')
       if [ "$cmd_dir" = ".opencode/commands" ]; then
         agent_path=".opencode/agents/${agent}.md"
+      elif [ "$cmd_dir" = ".agents/skills" ]; then
+        agent_path=".codex/agents/${agent}.toml"
       else
         agent_path=".claude/agents/${agent}.md"
       fi
@@ -526,7 +606,11 @@ for cmd_dir in .claude/commands .opencode/commands; do
       fi
     done
     if [ -n "$missing" ]; then
-      cmd_name=$(basename "$cmd")
+      if [ "$cmd_dir" = ".agents/skills" ]; then
+        cmd_name="$(basename "$(dirname "$cmd")") skill"
+      else
+        cmd_name=$(basename "$cmd")
+      fi
       echo "  ✗ $cmd_name requires: $requires — missing: $missing"
       DEPS_OK=false
     fi
@@ -539,10 +623,13 @@ echo ""
 
 echo "Done. Next steps:"
 echo "  1. Customize .claude/commands/orient.md for your project"
-echo "  2. Customize .opencode/commands/orient.md if you use OpenCode"
-echo "  3. Add project-specific .claude/hooks/ (lint-on-commit.sh, protect-files.sh)"
-echo "  4. Update AGENTS.md to list newly available agents"
-echo "  5. git add .gitmodules .hephaestus .claude .opencode && git commit"
+echo "  2. Customize .opencode/commands/orient.md if you use OpenCode — always start OpenCode from this project root"
+echo "  3. Customize .agents/skills/orient/SKILL.md if you use Codex"
+echo "  4. Add project-specific .claude/hooks/ (lint-on-commit.sh, protect-files.sh)"
+echo "  5. Update AGENTS.md to list newly available agents"
+echo "  6. git add .gitmodules .hephaestus .claude .opencode .agents .codex opencode.json && git commit"
+echo "  7. Verify OpenCode: bash .hephaestus/scripts/verify-opencode-load.sh (or opencode debug config)"
 echo ""
 echo "Optional — headless autonomous loop (fresh session per run):"
 echo "  nohup ./.hephaestus/loop.sh 30 autopilot.log &"
+echo "  HEPH_HARNESS=opencode nohup ./.hephaestus/loop.sh 30 autopilot-oc.log &"

@@ -5,6 +5,8 @@ description: "Run the full autonomous pipeline for issue $ARGUMENTS. No human in
 <!-- chains: /start-issue, /ship, /finish -->
 <!-- generated from .ai/workflows/autopilot.md; do not edit directly -->
 
+> **OpenCode:** start from the project root that contains `.opencode/`. Invoke nested workflows as slash commands (/start-issue, /ship, /finish) so their full templates load — do not paraphrase. Spawn role agents with the Task tool or @mentions.
+
 Run the full autonomous pipeline for issue $ARGUMENTS. No human intervention required.
 
 If no issue number is provided, pick the highest-priority open issue from `gh issue list --state open --repo <detected-repo>` (prefer bugs over enhancements, older over newer). If no open issues exist, run **Self-Triage** (Phase 0) to generate work.
@@ -29,7 +31,7 @@ If no open issues are found:
    - `grep -r "TODO\|FIXME\|HACK\|XXX"` for flagged technical debt
    - Review CLAUDE.md for documented next steps
    - Check CHANGELOG.md for recent patterns suggesting follow-up work
-   - Run explorer subagent(s) to identify code quality issues, missing tests, or architectural gaps
+   - Run @explorer agent(s) to identify code quality issues, missing tests, or architectural gaps
 2. Rank findings by impact (bugs > missing tests > tech debt > enhancements)
 3. Create the highest-impact issue via `gh issue create`
 4. Continue pipeline with the newly created issue
@@ -43,7 +45,7 @@ If no open issues are found:
 
 ### Phase 2: Start the issue → `/start-issue <#>`
 
-Run `/start-issue <#>`. It handles plan-critique loop, parallel coder subagents, implementation, and the test gate, and ends ready for `/ship`.
+Run `/start-issue <#>`. It handles plan-critique loop, parallel @coder Task invocations, implementation, and the test gate, and ends ready for `/ship`.
 
 If `/start-issue` winds down early (`[WIP]`, `[BLOCKED]`, `[FAILING]` prefix on the draft PR it created), respect that wind-down — the breadcrumbs are filed; do not try to push past them.
 

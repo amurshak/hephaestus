@@ -5,6 +5,8 @@ description: "Prepare, validate, and ship the current work. Issue number to clos
 <!-- chains: /critique -->
 <!-- generated from .ai/workflows/ship.md; do not edit directly -->
 
+> **OpenCode:** start from the project root that contains `.opencode/`. Invoke nested workflows as slash commands (/critique) so their full templates load — do not paraphrase. Spawn role agents with the Task tool or @mentions.
+
 Prepare, validate, and ship the current work. Issue number to close (optional): $ARGUMENTS
 
 PRs must be **merge-ready** — all gates pass before creation, auto-merge after.
@@ -16,7 +18,7 @@ Run `git remote get-url origin` to identify the target repo.
 
 ### 2. Pre-push critique gate → `/critique`
 
-Run `/critique` (Code Critique mode auto-detects on uncommitted/staged changes; the reviewer subagent absorbs the verbose diff context). This is the last quality check before the code goes out.
+Run `/critique` (Code Critique mode auto-detects on uncommitted/staged changes; the reviewer agent (Task tool or @mention) absorbs the verbose diff context). This is the last quality check before the code goes out.
 
 - **FAIL**: Fix blocking issues, re-run `/critique` (per CLAUDE.md retry limits). If still FAIL:
   - Separate fixable issues from fundamental design problems
@@ -26,7 +28,7 @@ Run `/critique` (Code Critique mode auto-detects on uncommitted/staged changes; 
 - **PASS**: Proceed
 
 ### 3. Run all quality gates in parallel
-Launch as parallel subagents:
+Launch as parallel agents (Task tool or @mention):
 - **Tests**: run per project CLAUDE.md (test command, lint command, build command). If CLAUDE.md has no "Development Commands" section, infer commands from project manifests (package.json, Makefile, pyproject.toml, go.mod, etc.), mark each gate `INFERRED` in the report, and note the gap in the PR body.
 - **Git state**: `git status` (all staged) + detect base branch (`BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || git remote show origin 2>/dev/null | awk '/HEAD branch/{print $NF}' || echo master)`), then `git log --oneline origin/$BASE..HEAD` (commits ready)
 

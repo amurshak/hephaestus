@@ -4,6 +4,10 @@
 # Canonical workflow specs live in .ai/workflows/*.md. Claude agent definitions
 # remain the source of truth for shared subagent prompts. This script renders
 # OpenCode-compatible adapters from those sources so adapter metadata cannot drift.
+#
+# OpenCode-localizations applied at generate time (Claude adapters stay Claude-native):
+#   - worktree/subagent prose → Task tool / @agent mentions + serialize-edits
+#   - chain notes so nested /commands load full templates instead of paraphrased
 
 set -uo pipefail
 
@@ -41,6 +45,28 @@ first_body_line() {
   awk -v start="$start" 'NR >= start && NF { print; exit }' "$file"
 }
 
+# Rewrite Claude-dialect body text for OpenCode mechanics.
+opencode_localize_body() {
+  sed \
+    -e 's/parallel coder subagents (in worktrees)/parallel @coder Task invocations (serialize file edits — no worktree isolation)/g' \
+    -e 's/coder subagents (in worktrees)/@coder Task invocations (serialize file edits — no worktree isolation)/g' \
+    -e 's/parallel coder subagents/parallel @coder Task invocations/g' \
+    -e 's/coder subagent(s)/@coder agent(s)/g' \
+    -e 's/coder subagents/@coder agents/g' \
+    -e 's/explorer subagent(s)/@explorer agent(s)/g' \
+    -e 's/explorer subagents/@explorer agents/g' \
+    -e 's/reviewer subagent(s)/@reviewer agent(s)/g' \
+    -e 's/reviewer subagents/@reviewer agents/g' \
+    -e 's/tester subagent(s)/@tester agent(s)/g' \
+    -e 's/tester subagents/@tester agents/g' \
+    -e 's/researcher subagent(s)/@researcher agent(s)/g' \
+    -e 's/researcher subagents/@researcher agents/g' \
+    -e 's/subagent(s)/agent(s) (Task tool or @mention)/g' \
+    -e 's/subagents/agents (Task tool or @mention)/g' \
+    -e 's/subagent/agent (Task tool or @mention)/g' \
+    -e 's/TodoWrite/the todo tools/g'
+}
+
 render_opencode_command() {
   local workflow=$1
   local name requires chains start desc
@@ -66,7 +92,13 @@ render_opencode_command() {
     echo "<!-- chains: ${chains} -->"
     echo "<!-- generated from .ai/workflows/${name}.md; do not edit directly -->"
     echo ""
-    sed -n "${start},\$p" "$workflow"
+    if [ "$chains" != "none" ]; then
+      echo "> **OpenCode:** start from the project root that contains \`.opencode/\`. Invoke nested workflows as slash commands (${chains}) so their full templates load — do not paraphrase. Spawn role agents with the Task tool or @mentions."
+    else
+      echo "> **OpenCode:** start from the project root that contains \`.opencode/\`. Spawn role agents with the Task tool or @mentions when required."
+    fi
+    echo ""
+    sed -n "${start},\$p" "$workflow" | opencode_localize_body
   }
 }
 
@@ -133,7 +165,7 @@ render_opencode_agent() {
       echo "> **No worktree isolation.** The Claude version of this agent runs in an isolated git worktree; OpenCode has no equivalent. Parallel ${name} agents edit the same working tree — serialize file-modifying tasks."
       echo ""
     fi
-    sed -n "${start},\$p" "$agent"
+    sed -n "${start},\$p" "$agent" | opencode_localize_body
   }
 }
 

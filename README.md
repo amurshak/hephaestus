@@ -19,7 +19,7 @@ Or run the whole loop as one command:
 /autopilot
 ```
 
-The core is a set of harness-neutral workflow specs (`.ai/workflows/`) and agent definitions — plain markdown files. Per-harness support is *generated adapters* from those specs: Claude Code and [OpenCode](https://opencode.ai) adapters ship today; new harnesses are a ~200-line generator script away.
+The core is a set of harness-neutral workflow specs (`.ai/workflows/`) and agent definitions — plain markdown files. Per-harness support is *generated adapters* from those specs: Claude Code, [OpenCode](https://opencode.ai), and Codex adapters ship today; new harnesses are a ~200-line generator script away.
 
 ## Install
 
@@ -30,9 +30,9 @@ In Claude Code:
 /plugin install heph@hephaestus
 ```
 
-That's it — commands appear under `/heph:` (`/heph:autopilot`, `/heph:ship`, …). For OpenCode, manual copy/symlink, or the git-submodule install (headless mode, forking), see [Get started](#get-started).
+That's it — commands appear under `/heph:` (`/heph:autopilot`, `/heph:ship`, …). For OpenCode, Codex, manual copy/symlink, or the git-submodule install (headless mode, forking), see [Get started](#get-started).
 
-**Requirements:** [Claude Code](https://claude.com/claude-code) or [OpenCode](https://opencode.ai) · [`gh` CLI](https://cli.github.com) authenticated (workflows drive GitHub issues and PRs) · git.
+**Requirements:** [Claude Code](https://claude.com/claude-code), [OpenCode](https://opencode.ai), or [Codex](https://openai.com/codex) · [`gh` CLI](https://cli.github.com) authenticated (workflows drive GitHub issues and PRs) · git.
 
 Hephaestus is an OODA loop — observe, orient, decide, act — for software. Boyd designed OODA for fighter pilots: cycle faster than the opponent and you win. Software has the opposite problem. Shipping too fast costs more than slowing down. So this loop puts most of its weight on Orient. Plans face adversarial review before code begins. Code faces adversarial review before it ships. Retries are bounded so nothing spirals.
 
@@ -153,7 +153,7 @@ Thirteen commands, but the delivery spine is `/autopilot` and the three commands
 
 ### Separation of orchestration from configuration
 
-Hephaestus owns the workflow — what order things happen, when to retry, when to stop. Canonical workflows live in `.ai/workflows/` with frontmatter for `name`, `requires`, and `chains`; `.claude/commands/` and `.opencode/commands/` are generated adapters checked by `scripts/sync-agent-adapters.sh --check` and `scripts/sync-opencode-adapters.sh --check`. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific command hephaestus ever creates is a scaffold for `orient.md`, which it then refuses to overwrite.
+Hephaestus owns the workflow — what order things happen, when to retry, when to stop. Canonical workflows live in `.ai/workflows/` with frontmatter for `name`, `requires`, and `chains`; `.claude/commands/`, `.opencode/commands/`, and `.agents/skills/*/SKILL.md` are generated adapters checked by `scripts/sync-agent-adapters.sh --check`, `scripts/sync-opencode-adapters.sh --check`, and `scripts/sync-codex-adapters.sh --check`. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific command hephaestus ever creates is a scaffold for `orient`, which it then refuses to overwrite.
 
 ### Parallelization at three levels
 
@@ -277,9 +277,22 @@ cp -R hephaestus/.claude/commands hephaestus/.claude/agents your-project/.claude
 # OpenCode:
 mkdir -p your-project/.opencode
 cp -R hephaestus/.opencode/commands hephaestus/.opencode/agents your-project/.opencode/
+cp hephaestus/opencode.json your-project/   # loads AGENTS.md + CLAUDE.md
+# Codex:
+mkdir -p your-project/.agents your-project/.codex
+cp -R hephaestus/.agents/skills your-project/.agents/
+cp -R hephaestus/.codex/agents your-project/.codex/
 ```
 
 Commands run under bare names (`/autopilot`). No update story — re-copy when you want the latest. Symlink instead of copy if you keep a local clone and want updates via `git pull`.
+
+### OpenCode usage (cwd is the product)
+
+1. Install adapters into the **project** (copy or `./install.sh`), not only into a sibling checkout.
+2. **Start OpenCode from that project root** — config discovery walks up from cwd; starting from `$HOME` will not load project `.opencode/`.
+3. Type `/` — you should see `/autopilot`, `/ship`, `/finish`, …
+4. Verify load: `opencode debug config` or `bash scripts/verify-opencode-load.sh` (from hephaestus root or after install).
+5. Nested steps say “run `/ship`” — invoke the slash command so the full template loads; do not paraphrase. Role work uses the Task tool or `@coder` / `@reviewer` / … (no worktree isolation — serialize file-writing `@coder` tasks).
 
 ### 3. Submodule (updatable vendoring, headless mode, forking)
 
@@ -288,7 +301,7 @@ git clone https://github.com/amurshak/hephaestus.git && cd hephaestus
 ./install.sh /path/to/your/project
 ```
 
-One shared copy, relative symlinks into `.claude/` and `.opencode/`, `update.sh` for updates. Required for [headless mode](#headless-mode) (`loop.sh` runs Claude Code as a subprocess). Details in [Submodule install](#submodule-install-for-headless-mode-and-forking).
+One shared copy, relative symlinks into `.claude/`, `.opencode/`, `.agents/`, and `.codex/`, plus `opencode.json` scaffold; `update.sh` for updates. Required for [headless mode](#headless-mode) (`loop.sh` runs Claude or OpenCode as a subprocess). Details in [Submodule install](#submodule-install-for-headless-mode-and-forking).
 
 ---
 
@@ -335,7 +348,7 @@ Each file's header shows the `settings.json` wiring.
 
 For most Claude Code users the plugin is the least-friction path. The submodule is the right choice when you need:
 
-- **Headless mode** — `loop.sh` runs `/autopilot` on a timer in a fresh session each time. The plugin can't do this since plugins run *inside* Claude Code; `loop.sh` runs Claude Code as a subprocess.
+- **Headless mode** — `loop.sh` runs `/autopilot` on a timer in a fresh session each time. Plugins can't do this since they run *inside* the harness; `loop.sh` runs Claude Code or OpenCode as a subprocess.
 - **Forking and upstream sync** — clone the repo, modify commands, `git merge upstream/master` for upstream changes.
 
 ### Install
@@ -344,7 +357,7 @@ For most Claude Code users the plugin is the least-friction path. The submodule 
 ./install.sh /path/to/your/project
 ```
 
-This adds `.hephaestus` as a submodule, symlinks commands and agents into `<project>/.claude/` and `<project>/.opencode/`, scaffolds `orient.md` and `AGENTS.md` templates, validates `CLAUDE.md`, and runs a health check. Safe to re-run. Commands install under bare names (`/autopilot`, `/ship`, etc.) — no plugin namespace, since they live directly in the project's command directories.
+This adds `.hephaestus` as a submodule, symlinks commands and agents into `<project>/.claude/`, `<project>/.opencode/`, `<project>/.agents/skills/`, and `<project>/.codex/agents/`, scaffolds project-specific orient files, `AGENTS.md`, and `opencode.json`, validates `CLAUDE.md`, and runs a health check. Safe to re-run. Commands install under bare names (`/autopilot`, `/ship`, etc.) — no plugin namespace, since they live directly in the project's command directories.
 
 If your project already has `.claude/commands/` or agents, audit first to surface conflicts:
 
@@ -366,9 +379,10 @@ If your project already has `.claude/commands/` or agents, audit first to surfac
 
 ```bash
 nohup ./.hephaestus/loop.sh 30 autopilot.log &
+HEPH_HARNESS=opencode nohup ./.hephaestus/loop.sh 30 autopilot-oc.log &
 ```
 
-`loop.sh` runs `/autopilot` in a fresh session every N minutes. Clean context each time — no bloat. Project-scoped lockfile prevents overlap. Survives crashes. Runs with `--dangerously-skip-permissions` — scope what's allowed in your `settings.local.json`.
+`loop.sh` runs `/autopilot` in a fresh session every N minutes. Clean context each time — no bloat. Project-scoped lockfile prevents overlap. Survives crashes. Claude path uses `--dangerously-skip-permissions`; OpenCode path uses `opencode run --auto --command autopilot` (start from the project root so `.opencode/` loads). Default harness is Claude; set `HEPH_HARNESS=opencode` for OpenCode.
 
 ### Forking
 
@@ -382,6 +396,7 @@ Fork hephaestus to customize commands for your org while still pulling upstream 
 - `.ai/workflows/` and `.claude/agents/` — the core workflow and agent files
 - `.claude/commands/` — generated Claude adapters; update via `scripts/sync-agent-adapters.sh`
 - `.opencode/commands/` and `.opencode/agents/` — generated OpenCode adapters; update via `scripts/sync-opencode-adapters.sh`
+- `.agents/skills/` and `.codex/agents/` — generated Codex adapters; update via `scripts/sync-codex-adapters.sh`
 - `install.sh`, `update.sh`, `uninstall.sh` — the install tooling
 - `.claude-plugin/plugin.json` — the plugin manifest
 
@@ -395,7 +410,7 @@ git merge upstream/master
 
 ## Contributing
 
-PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the gates and conventions. The short version: edit canonical sources (`.ai/workflows/`, `.claude/agents/`), never generated adapters; run `./tests/run.sh` and both `--check` scripts. Adapter generators for new harnesses are especially welcome — see `scripts/sync-opencode-adapters.sh` for the pattern.
+PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the gates and conventions. The short version: edit canonical sources (`.ai/workflows/`, `.claude/agents/`), never generated adapters; run `./tests/run.sh` and the Claude/OpenCode/Codex `--check` scripts. Adapter generators for new harnesses are especially welcome — see `scripts/sync-opencode-adapters.sh` / `scripts/sync-codex-adapters.sh` for the pattern.
 
 ## License
 

@@ -71,6 +71,24 @@ assert_contains "error mentions claude"    "$output" "claude"
 
 # ─────────────────────────────────────────────────────────────────────────────
 
+begin_test "fails when HEPH_HARNESS=opencode and opencode missing"
+output=$(env PATH="/usr/bin:/bin" HEPH_HARNESS=opencode bash "$LOOP_SH" 1 2>&1)
+exit_code=$?
+assert_eq   "exits non-zero"                1 "$exit_code"
+assert_contains "error mentions opencode"   "$output" "opencode"
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "rejects unknown HEPH_HARNESS"
+setup_mock_claude
+output=$(env PATH="$MOCK_DIR:$PATH" HEPH_HARNESS=gemini bash "$LOOP_SH" 1 2>&1)
+exit_code=$?
+assert_eq   "exits non-zero"               1 "$exit_code"
+assert_contains "error mentions HEPH_HARNESS" "$output" "HEPH_HARNESS"
+teardown_mock
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 begin_test "creates lockfile and writes PID"
 setup_mock_claude
 
@@ -181,6 +199,7 @@ sleep 1
 BANNER=$(cat "$BANNER_FILE")
 
 assert_contains "banner shows 30 min interval"  "$BANNER" "Interval : 30 min"
+assert_contains "banner shows default harness"  "$BANNER" "Harness  : claude"
 assert_contains "banner shows default log path"  "$BANNER" "/tmp/hephaestus-autopilot.log"
 
 kill_loop "$LOOP_PID"
@@ -189,4 +208,43 @@ teardown_mock
 
 # ─────────────────────────────────────────────────────────────────────────────
 
+begin_test "OpenCode harness runs mock opencode autopilot command"
+MOCK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-loop-test-XXXXXX")
+ARGS_FILE="$MOCK_DIR/last-args"
+# Write mock with absolute args path embedded (no sed / placeholders).
+{
+  echo '#!/usr/bin/env bash'
+  echo "printf '%s\\n' \"\$@\" > \"$ARGS_FILE\""
+  echo 'exit 0'
+} > "$MOCK_DIR/opencode"
+chmod +x "$MOCK_DIR/opencode"
+
+EXPECTED_HASH=$(printf '%s' "$(pwd)" | { shasum 2>/dev/null || sha1sum; } | cut -c1-12)
+EXPECTED_LOCK="/tmp/hephaestus-${EXPECTED_HASH}.lock"
+rm -rf "$EXPECTED_LOCK" 2>/dev/null || true
+
+BANNER_FILE=$(mktemp "${TMPDIR:-/tmp}/heph-banner-XXXXXX")
+env PATH="$MOCK_DIR:$PATH" HEPH_HARNESS=opencode bash "$LOOP_SH" 1 /dev/null > "$BANNER_FILE" 2>&1 &
+LOOP_PID=$!
+# Wait until mock is invoked (session happens before sleep)
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  [ -f "$ARGS_FILE" ] && break
+  sleep 0.2
+done
+
+BANNER=$(cat "$BANNER_FILE")
+assert_contains "banner shows opencode harness" "$BANNER" "Harness  : opencode"
+
+ARGS=$(tr '\n' ' ' < "$ARGS_FILE" 2>/dev/null || echo missing)
+assert_contains "invokes opencode run" "$ARGS" "run"
+assert_contains "uses --command autopilot" "$ARGS" "autopilot"
+assert_contains "auto-approves permissions" "$ARGS" "--auto"
+
+kill_loop "$LOOP_PID"
+rm -f "$BANNER_FILE"
+rm -rf "$MOCK_DIR"
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 print_summary
+

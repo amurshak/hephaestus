@@ -19,5 +19,11 @@ jobs:
         run: ./scripts/sync-agent-adapters.sh --check
       - name: OpenCode adapter drift check
         run: ./scripts/sync-opencode-adapters.sh --check
+      - name: Codex adapter drift check
+        run: ./scripts/sync-codex-adapters.sh --check
       - name: README composition check
         run: bash tests/check_composition.sh
+      - name: Install OpenCode CLI
+        run: npm install -g opencode-ai
+      - name: OpenCode live load check
+        run: bash scripts/verify-opencode-load.sh --require

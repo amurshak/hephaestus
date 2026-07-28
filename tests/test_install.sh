@@ -47,6 +47,22 @@ for cmd in autopilot create-issue critique finish refactor research ship start-i
   assert_symlink_target_contains "OpenCode $cmd.md points to .hephaestus" "$TARGET/.opencode/commands/$cmd.md" ".hephaestus/"
 done
 
+# Codex adapters: skills are dir symlinks (orient excluded), agent roles are file symlinks
+for skill in autopilot create-issue critique finish refactor research ship start-issue test-issue update-docs update-hephaestus worktrees; do
+  assert_symlink       "Codex skill $skill is a symlink"           "$TARGET/.agents/skills/$skill"
+  assert_symlink_valid "Codex skill $skill resolves"               "$TARGET/.agents/skills/$skill"
+  assert_symlink_target_contains "Codex skill $skill points to .hephaestus" "$TARGET/.agents/skills/$skill" ".hephaestus/"
+done
+for agent in coder explorer researcher reviewer tester; do
+  assert_symlink       "Codex agent $agent.toml is a symlink"      "$TARGET/.codex/agents/$agent.toml"
+  assert_symlink_valid "Codex agent $agent.toml resolves"          "$TARGET/.codex/agents/$agent.toml"
+done
+
+# Codex orient skill should be scaffolded as a regular file, not a symlink
+assert_file_exists  "Codex orient SKILL.md exists"          "$TARGET/.agents/skills/orient/SKILL.md"
+assert_not_symlink  "Codex orient dir is not symlink"       "$TARGET/.agents/skills/orient"
+assert_contains     "Codex orient skill has frontmatter"    "$(cat "$TARGET/.agents/skills/orient/SKILL.md")" "name: orient"
+
 # orient.md should be scaffolded as a regular file, not a symlink
 assert_file_exists  "orient.md exists"         "$TARGET/.claude/commands/orient.md"
 assert_not_symlink  "orient.md is not symlink" "$TARGET/.claude/commands/orient.md"
@@ -56,6 +72,12 @@ assert_not_symlink  "OpenCode orient.md is not symlink" "$TARGET/.opencode/comma
 # AGENTS.md should be scaffolded as a regular file, not a symlink
 assert_file_exists  "AGENTS.md exists"         "$TARGET/AGENTS.md"
 assert_not_symlink  "AGENTS.md is not symlink" "$TARGET/AGENTS.md"
+
+# opencode.json should be scaffolded so instructions load AGENTS.md/CLAUDE.md
+assert_file_exists  "opencode.json exists"         "$TARGET/opencode.json"
+assert_not_symlink  "opencode.json is not symlink" "$TARGET/opencode.json"
+assert_contains     "opencode.json loads AGENTS.md"  "$(cat "$TARGET/opencode.json")" "AGENTS.md"
+assert_contains     "opencode.json loads CLAUDE.md"  "$(cat "$TARGET/opencode.json")" "CLAUDE.md"
 
 assert_contains "output mentions health check" "$output" "Health check:"
 teardown_fixture
@@ -312,6 +334,12 @@ assert_eq "OpenCode agent symlink path" "../../.hephaestus/.opencode/agents/code
 
 opencode_cmd_target=$(readlink "$TARGET/.opencode/commands/autopilot.md")
 assert_eq "OpenCode command symlink path" "../../.hephaestus/.opencode/commands/autopilot.md" "$opencode_cmd_target"
+
+codex_skill_target=$(readlink "$TARGET/.agents/skills/autopilot")
+assert_eq "Codex skill symlink path" "../../.hephaestus/.agents/skills/autopilot" "$codex_skill_target"
+
+codex_agent_target=$(readlink "$TARGET/.codex/agents/coder.toml")
+assert_eq "Codex agent symlink path" "../../.hephaestus/.codex/agents/coder.toml" "$codex_agent_target"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
