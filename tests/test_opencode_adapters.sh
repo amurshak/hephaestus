@@ -100,6 +100,21 @@ assert_not_contains "research drops bare subagent" "$(cat "$research")" "researc
 assert_contains "start-issue maps coder spawn" "$(cat "$start")" "@coder"
 assert_not_contains "start-issue drops worktree spawn" "$(cat "$start")" "coder subagents (in worktrees)"
 
+begin_test "OpenCode worktrees spawns opencode, not claude"
+
+worktrees=$(cat "$HEPHAESTUS_ROOT/.opencode/commands/worktrees.md")
+assert_contains "osascript spawn uses opencode --prompt" "$worktrees" 'do script "cd <worktree> && opencode --prompt \"/start-issue <N>\""'
+assert_contains "manual fallback uses opencode --prompt" "$worktrees" 'cd <worktree> && opencode --prompt "/start-issue <N>"'
+assert_contains "summary names OpenCode sessions" "$worktrees" "spawn a seeded OpenCode session"
+
+# Repo-wide guard, frontmatter included — the routing `description:` is built
+# from the localized first body line, so a reflow that pushes a Claude product
+# name past the truncation trips this. Bare "claude" is not a needle:
+# `.claude/` paths are legitimate.
+leaks=$(grep -rnF -e "Claude Code" -e "&& claude " -e "claude -" -e "--permission-mode" \
+  "$HEPHAESTUS_ROOT/.opencode/commands/" "$HEPHAESTUS_ROOT/.opencode/agents/" 2>/dev/null || true)
+assert_eq "no Claude-product leak in any OpenCode adapter" "" "$leaks"
+
 begin_test "opencode.json loads repo instructions"
 
 opencode_json=$(cat "$HEPHAESTUS_ROOT/opencode.json")

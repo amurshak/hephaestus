@@ -68,7 +68,12 @@ opencode_localize_body() {
     -e 's/subagent(s)/agent(s) (Task tool or @mention)/g' \
     -e 's/subagents/agents (Task tool or @mention)/g' \
     -e 's/subagent/agent (Task tool or @mention)/g' \
-    -e 's/TodoWrite/the todo tools/g'
+    -e 's/TodoWrite/the todo tools/g' \
+    -e 's/seeded Claude Code session/seeded OpenCode session/g' \
+    -e 's|claude --permission-mode default |opencode --prompt |g' \
+    -e 's|&& claude "|\&\& opencode --prompt "|g' \
+    -e 's|`--permission-mode default` prevents spawned sessions inheriting plan mode and stalling|`--prompt` seeds the spawned session with the command|g' \
+    -e "s/Claude Code's title rewrites/the TUI's title rewrites/g"
 }
 
 render_opencode_command() {
@@ -85,7 +90,9 @@ render_opencode_command() {
     return 1
   fi
 
-  desc=$(first_body_line "$workflow" "$start")
+  # Localize before truncating — the description is what OpenCode routes on,
+  # so Claude dialect must not survive in it (or ride in on a later reflow).
+  desc=$(first_body_line "$workflow" "$start" | opencode_localize_body)
   desc=$(yaml_quote "${desc:0:180}")
 
   {

@@ -169,7 +169,7 @@ Hephaestus owns the workflow — what order things happen, when to retry, when t
 
 ### Parallelization at three levels
 
-**Within a session**: multiple coder agents work in parallel worktrees for independent tasks; multiple explorer and researcher agents fan out across subsystems simultaneously. **Across issues**: `/worktrees` surveys and reaps finished worktrees, plans a wave of mutually non-conflicting issues under a configurable cap (declare contention hotspots in a `## Worktrees` section of CLAUDE.md), creates a sibling worktree per issue with config propagated and env files single-sourced, and spawns a seeded Claude Code session in each. **Across time**: `loop.sh` runs `/autopilot` in fresh sessions on a timer, each picking up the next issue.
+**Within a session**: multiple coder agents work in parallel worktrees for independent tasks; multiple explorer and researcher agents fan out across subsystems simultaneously. **Across issues**: `/worktrees` surveys and reaps finished worktrees, plans a wave of mutually non-conflicting issues under a configurable cap (declare contention hotspots in a `## Worktrees` section of CLAUDE.md), creates a sibling worktree per issue with config propagated and env files single-sourced, and spawns a seeded agent session in each. **Across time**: `loop.sh` runs `/autopilot` in fresh sessions on a timer, each picking up the next issue.
 
 ### Deterministic failure modes
 
