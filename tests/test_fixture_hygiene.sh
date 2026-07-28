@@ -58,8 +58,15 @@ if [ ! -d "$NODE_MODULES" ]; then
 fi
 touch "$IGNORED_MARKER" "$UNTRACKED_MARKER"
 
-TRACKED_BACKUP=$(mktemp "${TMPDIR:-/tmp}/heph-tracked-XXXXXX")
-cp "$TRACKED_FILE" "$TRACKED_BACKUP"
+# Assign TRACKED_BACKUP only once the copy succeeds: mktemp creates the file, so
+# a failed cp would leave cleanup() restoring zero bytes over a tracked file.
+tmp=$(mktemp "${TMPDIR:-/tmp}/heph-tracked-XXXXXX")
+cp "$TRACKED_FILE" "$tmp" || {
+  rm -f "$tmp"
+  echo "cannot back up $TRACKED_FILE" >&2
+  exit 1
+}
+TRACKED_BACKUP="$tmp"
 printf '\n<!-- heph-fixture-marker -->\n' >> "$TRACKED_FILE"
 
 begin_test "setup_fixture copy respects gitignore"
@@ -84,6 +91,12 @@ assert_file_exists "untracked working-tree file is copied" \
 assert_contains "uncommitted edit under an ignore-all .gitignore is copied" \
   "$(cat "$SOURCE_REPO/.hermes/agents/coder.md" 2>/dev/null)" \
   "heph-fixture-marker"
+
+# rsync drops the last character of an unterminated final line, which turns the
+# last pattern into a different one — under-excluding the artifact it names, or
+# excluding a tracked file that the truncated pattern happens to match.
+assert_eq "exclude list's last line is newline-terminated" \
+  "" "$(tail -c 1 "$FIXTURE_DIR/rsync-excludes")"
 
 teardown_fixture
 

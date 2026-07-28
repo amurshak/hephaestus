@@ -142,15 +142,24 @@ setup_fixture() {
   # .gitignore is `*` plus `!skills/**`.
   #   env -u GIT_CONFIG_GLOBAL — the fixture config set above hides the
   #     developer's core.excludesFile, a common home for a node_modules rule.
+  #     This makes the list machine-dependent by design; the exposure is bounded
+  #     because --others lists only untracked files.
   #   core.quotePath=false     — C-quoted non-ASCII names never match as patterns.
   #   sed escape then anchor   — rsync reads `[`, `*`, `?` in a filename as a
   #     pattern, so an ignored `a[bc].log` would exclude tracked ab.log/ac.log.
+  #   printf '%s\n', not '%s'  — rsync drops the last character of an
+  #     unterminated final line, so a trailing `/README.mdx` would read as
+  #     `/README.md` and exclude the tracked README.md from the copy.
   local ignored
   if ignored=$(env -u GIT_CONFIG_GLOBAL git -c core.quotePath=false \
                  -C "$HEPHAESTUS_ROOT" ls-files --others --ignored \
                  --exclude-standard --directory 2>/dev/null); then
-    printf '%s' "$ignored" | sed 's|[][*?\\]|\\&|g; s|^|/|' \
-      > "$FIXTURE_DIR/rsync-excludes"
+    if [ -n "$ignored" ]; then
+      printf '%s\n' "$ignored" | sed 's|[][*?\\]|\\&|g; s|^|/|' \
+        > "$FIXTURE_DIR/rsync-excludes"
+    else
+      : > "$FIXTURE_DIR/rsync-excludes"
+    fi
   else
     # Degrade to a full copy, but say so — the only other symptom is a suite
     # that quietly goes back to taking 25 minutes.
