@@ -65,6 +65,15 @@ bash "$FIXTURE2/scripts/sync-agent-adapters.sh" >/dev/null 2>&1
 assert_exit_code "sync fails on unparseable source" 1 "$?"
 assert_file_exists "sync keeps adapter of unparseable source" "$FIXTURE2/.claude/commands/ship.md"
 
+begin_test "plugin manifest agents list matches .claude/agents/ contents"
+
+# plugin.json must enumerate agent files individually (Claude Code's plugin
+# schema rejects directory paths for agents), so the list can drift when
+# agents are added or removed. Lock it to the directory contents.
+manifest_agents=$(grep -oE '\./\.claude/agents/[a-z-]+\.md' "$HEPHAESTUS_ROOT/.claude-plugin/plugin.json" | sed 's|.*/||' | sort)
+dir_agents=$(ls "$HEPHAESTUS_ROOT/.claude/agents/" | grep '\.md$' | sort)
+assert_eq "plugin.json agents == .claude/agents/*.md" "$dir_agents" "$manifest_agents"
+
 begin_test "all canonical workflows declare adapter metadata"
 
 missing=""
