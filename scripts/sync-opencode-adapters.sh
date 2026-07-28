@@ -40,6 +40,28 @@ body_start_line() {
   awk '/^---$/ { if (++f == 2) { print NR + 1; exit } }' "$file"
 }
 
+# Trim to OpenCode's description budget. LC_ALL is pinned so the cut lands
+# identically whether the caller's locale counts bytes or characters — otherwise
+# --check reports drift on machines that merely differ in $LANG. Words are
+# dropped whole, so a multibyte character can never be split and the description
+# never ends mid-word (OpenCode routes on it).
+truncate_desc() {
+  LC_ALL=C awk -v max=180 '
+    { if (length($0) <= max) { print; exit }
+      out = ""
+      n = split($0, w, " ")
+      for (i = 1; i <= n; i++) {
+        cand = (out == "" ? w[i] : out " " w[i])
+        if (length(cand) > max) break
+        out = cand
+      }
+      # A first word longer than max fits nothing; keep it whole rather than
+      # emit a bare ellipsis — over budget beats a description-less command.
+      if (out == "") out = w[1]
+      print out "…"
+    }'
+}
+
 yaml_quote() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
@@ -92,8 +114,8 @@ render_opencode_command() {
 
   # Localize before truncating — the description is what OpenCode routes on,
   # so Claude dialect must not survive in it (or ride in on a later reflow).
-  desc=$(first_body_line "$workflow" "$start" | opencode_localize_body)
-  desc=$(yaml_quote "${desc:0:180}")
+  desc=$(first_body_line "$workflow" "$start" | opencode_localize_body | truncate_desc)
+  desc=$(yaml_quote "$desc")
 
   {
     echo "---"

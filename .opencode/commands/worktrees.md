@@ -1,5 +1,5 @@
 ---
-description: "Orchestrate parallel multi-session development: survey existing worktrees, reap finished ones, plan a wave of non-conflicting issues, create sibling worktrees, and spawn a seeded O"
+description: "Orchestrate parallel multi-session development: survey existing worktrees, reap finished ones, plan a wave of non-conflicting issues, create sibling worktrees, and spawn a seeded…"
 ---
 <!-- requires: none -->
 <!-- chains: none -->
