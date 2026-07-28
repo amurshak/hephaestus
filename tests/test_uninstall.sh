@@ -24,7 +24,7 @@ assert_file_not_exists "coder.md removed"     "$TARGET/.claude/agents/coder.md"
 assert_file_not_exists "reviewer.md removed"  "$TARGET/.claude/agents/reviewer.md"
 assert_file_not_exists "autopilot.md removed" "$TARGET/.claude/commands/autopilot.md"
 assert_file_not_exists "ship.md removed"      "$TARGET/.claude/commands/ship.md"
-assert_file_not_exists "OpenCode coder.md removed"     "$TARGET/.opencode/agent/coder.md"
+assert_file_not_exists "OpenCode coder.md removed"     "$TARGET/.opencode/agents/coder.md"
 assert_file_not_exists "OpenCode autopilot.md removed" "$TARGET/.opencode/commands/autopilot.md"
 
 # .hephaestus submodule should be removed
@@ -120,19 +120,19 @@ TARGET=$(create_target)
 # Install
 bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 assert_symlink "after install: coder.md linked" "$TARGET/.claude/agents/coder.md"
-assert_symlink "after install: OpenCode coder.md linked" "$TARGET/.opencode/agent/coder.md"
+assert_symlink "after install: OpenCode coder.md linked" "$TARGET/.opencode/agents/coder.md"
 
 # Uninstall
 bash "$SOURCE_REPO/uninstall.sh" "$TARGET" >/dev/null 2>&1
 assert_file_not_exists "after uninstall: coder.md gone" "$TARGET/.claude/agents/coder.md"
-assert_file_not_exists "after uninstall: OpenCode coder.md gone" "$TARGET/.opencode/agent/coder.md"
+assert_file_not_exists "after uninstall: OpenCode coder.md gone" "$TARGET/.opencode/agents/coder.md"
 
 # Reinstall
 bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
 assert_symlink       "after reinstall: coder.md linked again" "$TARGET/.claude/agents/coder.md"
 assert_symlink_valid "after reinstall: coder.md resolves"     "$TARGET/.claude/agents/coder.md"
-assert_symlink       "after reinstall: OpenCode coder.md linked again" "$TARGET/.opencode/agent/coder.md"
-assert_symlink_valid "after reinstall: OpenCode coder.md resolves"     "$TARGET/.opencode/agent/coder.md"
+assert_symlink       "after reinstall: OpenCode coder.md linked again" "$TARGET/.opencode/agents/coder.md"
+assert_symlink_valid "after reinstall: OpenCode coder.md resolves"     "$TARGET/.opencode/agents/coder.md"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────

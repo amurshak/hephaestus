@@ -259,17 +259,17 @@ echo ""
 
 # ── 4. OpenCode agents ───────────────────────────────────────────────────────
 if [ "$AUDIT_MODE" != true ]; then
-  mkdir -p .opencode/agent
+  mkdir -p .opencode/agents
 fi
 echo "OpenCode agents:"
 if [ "$AUDIT_MODE" = true ]; then
   printf "  %-25s %-12s %s\n" "Name" "Status" "Details"
   printf "  %-25s %-12s %s\n" "----" "------" "-------"
 fi
-for f in "$HEPH_SRC"/.opencode/agent/*.md; do
+for f in "$HEPH_SRC"/.opencode/agents/*.md; do
   [ -e "$f" ] || continue
   name=$(basename "$f")
-  link_item "../../.hephaestus/.opencode/agent/$name" "$f" ".opencode/agent/$name" "$name"
+  link_item "../../.hephaestus/.opencode/agents/$name" "$f" ".opencode/agents/$name" "$name"
 done
 echo ""
 
@@ -299,7 +299,7 @@ echo ""
 
 # ── 6. Name collision check ─────────────────────────────────────────────────
 COLLISIONS_FOUND=false
-for target_dir_label in ".claude/commands:.claude/commands" ".claude/agents:.claude/agents" ".opencode/commands:.opencode/commands" ".opencode/agent:.opencode/agent"; do
+for target_dir_label in ".claude/commands:.claude/commands" ".claude/agents:.claude/agents" ".opencode/commands:.opencode/commands" ".opencode/agents:.opencode/agents"; do
   target_dir="${target_dir_label%%:*}"
   label="${target_dir_label##*:}"
   heph_dir="$HEPH_SRC/$label"
@@ -348,7 +348,7 @@ detect_stale_links() {
 STALE_FOUND=false
 detect_stale_links ".claude/agents"
 detect_stale_links ".claude/commands"
-detect_stale_links ".opencode/agent"
+detect_stale_links ".opencode/agents"
 detect_stale_links ".opencode/commands"
 
 if [ "$STALE_FOUND" = true ]; then
@@ -442,7 +442,7 @@ echo "Health check:"
 # Validate symlinks
 VALID_LINKS=0
 BROKEN_LINKS=0
-for dir in .claude/agents .claude/commands .opencode/agent .opencode/commands; do
+for dir in .claude/agents .claude/commands .opencode/agents .opencode/commands; do
   [ -d "$dir" ] || continue
   for f in "$dir"/*; do
     [ -L "$f" ] || continue
@@ -497,7 +497,7 @@ for cmd_dir in .claude/commands .opencode/commands; do
     for agent in "${agents[@]}"; do
       agent=$(echo "$agent" | tr -d ' ')
       if [ "$cmd_dir" = ".opencode/commands" ]; then
-        agent_path=".opencode/agent/${agent}.md"
+        agent_path=".opencode/agents/${agent}.md"
       else
         agent_path=".claude/agents/${agent}.md"
       fi

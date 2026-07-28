@@ -18,7 +18,7 @@ output=$(bash "$SOURCE_REPO/install.sh" "$TARGET" 2>&1)
 assert_dir_exists   ".hephaestus submodule created"  "$TARGET/.hephaestus"
 assert_dir_exists   ".claude/agents/ created"        "$TARGET/.claude/agents"
 assert_dir_exists   ".claude/commands/ created"      "$TARGET/.claude/commands"
-assert_dir_exists   ".opencode/agent/ created"       "$TARGET/.opencode/agent"
+assert_dir_exists   ".opencode/agents/ created"       "$TARGET/.opencode/agents"
 assert_dir_exists   ".opencode/commands/ created"    "$TARGET/.opencode/commands"
 
 # All 5 agents should be symlinked
@@ -37,9 +37,9 @@ done
 
 # OpenCode adapters should also be symlinked
 for agent in coder explorer researcher reviewer tester; do
-  assert_symlink       "OpenCode $agent.md is a symlink"                    "$TARGET/.opencode/agent/$agent.md"
-  assert_symlink_valid "OpenCode $agent.md symlink resolves"                "$TARGET/.opencode/agent/$agent.md"
-  assert_symlink_target_contains "OpenCode $agent.md points to .hephaestus" "$TARGET/.opencode/agent/$agent.md" ".hephaestus/"
+  assert_symlink       "OpenCode $agent.md is a symlink"                    "$TARGET/.opencode/agents/$agent.md"
+  assert_symlink_valid "OpenCode $agent.md symlink resolves"                "$TARGET/.opencode/agents/$agent.md"
+  assert_symlink_target_contains "OpenCode $agent.md points to .hephaestus" "$TARGET/.opencode/agents/$agent.md" ".hephaestus/"
 done
 for cmd in autopilot create-issue critique finish refactor research ship start-issue test-issue update-docs update-hephaestus; do
   assert_symlink       "OpenCode $cmd.md is a symlink"                    "$TARGET/.opencode/commands/$cmd.md"
@@ -296,8 +296,8 @@ assert_eq "agent symlink path" "../../.hephaestus/.claude/agents/coder.md" "$age
 cmd_target=$(readlink "$TARGET/.claude/commands/autopilot.md")
 assert_eq "command symlink path" "../../.hephaestus/.claude/commands/autopilot.md" "$cmd_target"
 
-opencode_agent_target=$(readlink "$TARGET/.opencode/agent/coder.md")
-assert_eq "OpenCode agent symlink path" "../../.hephaestus/.opencode/agent/coder.md" "$opencode_agent_target"
+opencode_agent_target=$(readlink "$TARGET/.opencode/agents/coder.md")
+assert_eq "OpenCode agent symlink path" "../../.hephaestus/.opencode/agents/coder.md" "$opencode_agent_target"
 
 opencode_cmd_target=$(readlink "$TARGET/.opencode/commands/autopilot.md")
 assert_eq "OpenCode command symlink path" "../../.hephaestus/.opencode/commands/autopilot.md" "$opencode_cmd_target"

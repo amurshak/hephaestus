@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKFLOWS_DIR="$ROOT/.ai/workflows"
 CLAUDE_AGENTS_DIR="$ROOT/.claude/agents"
 OPENCODE_COMMANDS_DIR="$ROOT/.opencode/commands"
-OPENCODE_AGENTS_DIR="$ROOT/.opencode/agent"
+OPENCODE_AGENTS_DIR="$ROOT/.opencode/agents"
 MODE="${1:-sync}"
 
 if [ "$MODE" != "sync" ] && [ "$MODE" != "--check" ]; then

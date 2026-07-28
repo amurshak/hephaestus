@@ -323,7 +323,7 @@ Fork hephaestus to customize commands for your org while still pulling upstream 
 **Will conflict if modified** — actively developed upstream:
 - `.ai/workflows/` and `.claude/agents/` — the core workflow and agent files
 - `.claude/commands/` — generated Claude adapters; update via `scripts/sync-agent-adapters.sh`
-- `.opencode/commands/` and `.opencode/agent/` — generated OpenCode adapters; update via `scripts/sync-opencode-adapters.sh`
+- `.opencode/commands/` and `.opencode/agents/` — generated OpenCode adapters; update via `scripts/sync-opencode-adapters.sh`
 - `install.sh`, `update.sh`, `uninstall.sh` — the install tooling
 - `.claude-plugin/plugin.json` — the plugin manifest
 

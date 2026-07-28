@@ -1,5 +1,6 @@
 {
   "name": "heph",
+  "version": "2.0.0",
   "description": "Generic software development workflow pattern — orient → plan → critique → implement → review → test → ship → finish, with bounded retries at every gate. One command (/autopilot), eight phases, five subagents.",
   "author": {
     "name": "Alex Murshak"

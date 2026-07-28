@@ -56,24 +56,24 @@ if stale_output=$(bash "$FIXTURE2/scripts/sync-opencode-adapters.sh" --check 2>&
   fail "OpenCode check should detect orphaned adapters" "exited 0, output: $stale_output"
 else
   assert_contains "check names stale command adapter" "$stale_output" ".opencode/commands/research.md"
-  assert_contains "check names stale agent adapter" "$stale_output" ".opencode/agent/tester.md"
+  assert_contains "check names stale agent adapter" "$stale_output" ".opencode/agents/tester.md"
 fi
 
 sync_output=$(bash "$FIXTURE2/scripts/sync-opencode-adapters.sh" 2>&1)
 assert_contains "sync reports stale adapter removal" "$sync_output" "removed stale OpenCode adapter"
 assert_file_not_exists "sync removes orphaned command adapter" "$FIXTURE2/.opencode/commands/research.md"
-assert_file_not_exists "sync removes orphaned agent adapter" "$FIXTURE2/.opencode/agent/tester.md"
+assert_file_not_exists "sync removes orphaned agent adapter" "$FIXTURE2/.opencode/agents/tester.md"
 
 sed -i.bak '/^name:/d' "$FIXTURE2/.claude/agents/coder.md"
 bash "$FIXTURE2/scripts/sync-opencode-adapters.sh" >/dev/null 2>&1
 assert_exit_code "sync fails on unparseable source" 1 "$?"
-assert_file_exists "sync keeps adapter of unparseable source" "$FIXTURE2/.opencode/agent/coder.md"
+assert_file_exists "sync keeps adapter of unparseable source" "$FIXTURE2/.opencode/agents/coder.md"
 
 begin_test "OpenCode agent adapters enforce edit permissions"
 
-coder="$HEPHAESTUS_ROOT/.opencode/agent/coder.md"
-reviewer="$HEPHAESTUS_ROOT/.opencode/agent/reviewer.md"
-researcher="$HEPHAESTUS_ROOT/.opencode/agent/researcher.md"
+coder="$HEPHAESTUS_ROOT/.opencode/agents/coder.md"
+reviewer="$HEPHAESTUS_ROOT/.opencode/agents/reviewer.md"
+researcher="$HEPHAESTUS_ROOT/.opencode/agents/researcher.md"
 
 assert_contains "coder can edit" "$(cat "$coder")" "  edit: allow"
 assert_contains "coder description warns orchestrator about isolation" "$(grep '^description:' "$coder")" "NOTE: OpenCode has no worktree isolation"

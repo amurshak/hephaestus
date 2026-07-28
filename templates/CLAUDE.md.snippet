@@ -14,7 +14,7 @@ npm run build
 
 ## Hephaestus Commands
 
-Shared commands from the [hephaestus](https://github.com/amurshak/hephaestus) submodule:
+Shared commands from [hephaestus](https://github.com/amurshak/hephaestus) (plugin installs use the `/heph:` prefix, e.g. `/heph:autopilot`):
 
 | Command | What it does |
 |---|---|
@@ -27,7 +27,7 @@ Shared commands from the [hephaestus](https://github.com/amurshak/hephaestus) su
 | `/critique` | Adversarial review — code or strategy |
 | `/create-issue` | Codebase-informed issue creation with labels |
 | `/test-issue` | Run quality gates, verify acceptance criteria |
-| `/update-docs` | Sync CLAUDE.md, CHANGELOG with recent work |
+| `/update-docs` | Sync CLAUDE.md, CHANGELOG, README with recent work |
 | `/update-hephaestus` | Update hephaestus submodule to latest version |
 | `/orient` | Cold-start: repo state, open issues, next action |
 
@@ -43,8 +43,6 @@ Shared commands from the [hephaestus](https://github.com/amurshak/hephaestus) su
 
 ## Updating Hephaestus
 
-```bash
-.hephaestus/update.sh
-```
-
-This pulls the latest and re-runs install.sh to pick up new commands and agents.
+- Submodule install: `.hephaestus/update.sh` — pulls the latest and re-runs install.sh to pick up new commands and agents.
+- Plugin install: `/plugin marketplace update hephaestus`.
+- Manual copy: re-copy the files from the hephaestus repo.

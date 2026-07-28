@@ -1,0 +1,20 @@
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Integration tests
+        run: ./tests/run.sh
+      - name: Claude adapter drift check
+        run: ./scripts/sync-agent-adapters.sh --check
+      - name: OpenCode adapter drift check
+        run: ./scripts/sync-opencode-adapters.sh --check
+      - name: README composition check
+        run: bash tests/check_composition.sh
