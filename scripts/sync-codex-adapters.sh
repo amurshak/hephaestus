@@ -240,7 +240,11 @@ check_stale_agents() {
     case " $expected_agents " in
       *" $base "*) continue ;;
     esac
-    if [ "$MODE" = "--check" ]; then
+    # Only sweep files this generator wrote, matching check_stale_skills.
+    if ! grep -q "generated from .claude/agents/" "$adapter"; then
+      echo "ERR: unexpected non-generated file $adapter in .codex/agents — move it or remove it manually" >&2
+      rc=1
+    elif [ "$MODE" = "--check" ]; then
       echo "ERR: stale Codex agent adapter $adapter (no matching source in $CLAUDE_AGENTS_DIR)" >&2
       rc=1
     else

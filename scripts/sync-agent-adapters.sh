@@ -94,7 +94,11 @@ for adapter in "$CLAUDE_COMMANDS_DIR"/*.md; do
   case " $expected " in
     *" $base "*) ;;
     *)
-      if [ "$MODE" = "--check" ]; then
+      # Only sweep files this generator wrote. An unmarked file is the user's.
+      if ! grep -q "generated from .ai/workflows/" "$adapter"; then
+        echo "ERR: unexpected non-generated file $adapter in .claude/commands — move it or remove it manually" >&2
+        drift=1
+      elif [ "$MODE" = "--check" ]; then
         echo "ERR: stale Claude adapter $adapter (no matching workflow in $WORKFLOWS_DIR)" >&2
         drift=1
       else
@@ -110,4 +114,6 @@ if [ "$MODE" = "--check" ]; then
   exit "$drift"
 fi
 
+# A reported error must not be masked by a success line (matches Codex/Hermes).
+[ "$drift" -ne 0 ] && exit 1
 echo "✓ agent adapters generated"

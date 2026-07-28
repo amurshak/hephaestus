@@ -96,4 +96,31 @@ else
   fail "workflow metadata is incomplete" "$missing"
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "hand-written files in .claude/commands survive the stale sweep"
+
+FIXTURE_OWN=$(mktemp -d "${TMPDIR:-/tmp}/heph-adapters-XXXXXX")
+trap 'rm -rf "$FIXTURE" "$FIXTURE2" "$FIXTURE_OWN"' EXIT
+
+cp -R "$HEPHAESTUS_ROOT/.ai" "$FIXTURE_OWN/.ai"
+cp -R "$HEPHAESTUS_ROOT/.claude" "$FIXTURE_OWN/.claude"
+mkdir -p "$FIXTURE_OWN/scripts"
+cp "$HEPHAESTUS_ROOT/scripts/sync-agent-adapters.sh" "$FIXTURE_OWN/scripts/sync-agent-adapters.sh"
+
+# A user's own command carries no generated-from marker, so it is not ours to delete.
+printf -- '---\ndescription: my own command\n---\nbody\n' > "$FIXTURE_OWN/.claude/commands/my-own.md"
+
+if own_check=$(bash "$FIXTURE_OWN/scripts/sync-agent-adapters.sh" --check 2>&1); then
+  fail "check should flag the unexpected file" "exited 0: $own_check"
+else
+  assert_contains "check names the file"      "$own_check" "my-own.md"
+  assert_contains "check says non-generated"  "$own_check" "unexpected non-generated file"
+fi
+
+own_sync=$(bash "$FIXTURE_OWN/scripts/sync-agent-adapters.sh" 2>&1)
+assert_exit_code   "sync exits non-zero rather than claiming success" 1 "$?"
+assert_file_exists "hand-written command survives sync" "$FIXTURE_OWN/.claude/commands/my-own.md"
+assert_not_contains "sync never reports removing it" "$own_sync" "removed stale Claude adapter $FIXTURE_OWN/.claude/commands/my-own.md"
+
 print_summary

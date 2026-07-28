@@ -238,4 +238,26 @@ assert_exit_code "verifier fails when unwired" 1 "$?"
 assert_contains "remediation names the project skills dir" "$unwired_out" "$PROJ/.hermes/skills"
 assert_not_contains "remediation never names the submodule dir" "$unwired_out" ".hephaestus/.hermes/skills"
 
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "hand-written files in .hermes/agents survive the stale sweep"
+
+FIXTURE_OWN=$(mktemp -d "${TMPDIR:-/tmp}/heph-hermes-XXXXXX")
+copy_fixture "$FIXTURE_OWN"
+
+# The case from the issue: a personal note dropped in the delegate-brief dir.
+echo 'my notes' > "$FIXTURE_OWN/.hermes/agents/my-notes.md"
+
+if own_check=$(bash "$FIXTURE_OWN/scripts/sync-hermes-adapters.sh" --check 2>&1); then
+  fail "check should flag the unexpected file" "exited 0: $own_check"
+else
+  assert_contains "check names the file"     "$own_check" "my-notes.md"
+  assert_contains "check says non-generated" "$own_check" "unexpected non-generated file"
+fi
+
+bash "$FIXTURE_OWN/scripts/sync-hermes-adapters.sh" >/dev/null 2>&1
+assert_exit_code   "sync exits non-zero" 1 "$?"
+assert_file_exists "hand-written note survives sync" "$FIXTURE_OWN/.hermes/agents/my-notes.md"
+rm -rf "$FIXTURE_OWN"
+
 print_summary

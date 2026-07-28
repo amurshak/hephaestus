@@ -134,5 +134,36 @@ else
   fail "verify-opencode-load.sh exited non-zero" "$verify_output"
 fi
 
-print_summary
+# ─────────────────────────────────────────────────────────────────────────────
 
+begin_test "hand-written files in .opencode dirs survive the stale sweep"
+
+FIXTURE_OWN=$(mktemp -d "${TMPDIR:-/tmp}/heph-opencode-XXXXXX")
+
+cp -R "$HEPHAESTUS_ROOT/.ai" "$FIXTURE_OWN/.ai"
+cp -R "$HEPHAESTUS_ROOT/.claude" "$FIXTURE_OWN/.claude"
+cp -R "$HEPHAESTUS_ROOT/.opencode" "$FIXTURE_OWN/.opencode"
+rm -rf "$FIXTURE_OWN/.opencode/node_modules"
+mkdir -p "$FIXTURE_OWN/scripts"
+cp "$HEPHAESTUS_ROOT/scripts/sync-opencode-adapters.sh" "$FIXTURE_OWN/scripts/sync-opencode-adapters.sh"
+cp "$HEPHAESTUS_ROOT/scripts/models.sh" "$FIXTURE_OWN/scripts/models.sh"
+
+# Both swept dirs: a user command and a user agent, neither carrying a marker.
+printf -- '---\ndescription: my own command\n---\nbody\n' > "$FIXTURE_OWN/.opencode/commands/my-own.md"
+printf -- '---\ndescription: my own agent\n---\nbody\n'   > "$FIXTURE_OWN/.opencode/agents/my-own.md"
+
+if own_check=$(bash "$FIXTURE_OWN/scripts/sync-opencode-adapters.sh" --check 2>&1); then
+  fail "check should flag the unexpected files" "exited 0: $own_check"
+else
+  assert_contains "check names the command dir" "$own_check" ".opencode/commands"
+  assert_contains "check names the agent dir"   "$own_check" ".opencode/agents"
+  assert_contains "check says non-generated"    "$own_check" "unexpected non-generated file"
+fi
+
+bash "$FIXTURE_OWN/scripts/sync-opencode-adapters.sh" >/dev/null 2>&1
+assert_exit_code   "sync exits non-zero rather than claiming success" 1 "$?"
+assert_file_exists "hand-written command survives" "$FIXTURE_OWN/.opencode/commands/my-own.md"
+assert_file_exists "hand-written agent survives"   "$FIXTURE_OWN/.opencode/agents/my-own.md"
+rm -rf "$FIXTURE_OWN"
+
+print_summary
