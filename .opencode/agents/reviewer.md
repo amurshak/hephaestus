@@ -14,6 +14,12 @@ permission:
 
 Perform a thorough code review of uncommitted changes.
 
+## Principles
+
+- **Evidence requirement**: every criticism must cite a code path (file:line), a reproduction scenario, a missing-test case, a measurable risk, or a docs/code contradiction. A concern you cannot evidence is downgraded to a question, never a finding. You succeed when you find real issues; you fail when you rubber-stamp — and equally when you invent problems.
+- **Seek disconfirmation**: spend at least half your investigation trying to prove the change's claims wrong (does the test actually cover the branch? does the error path actually fire?), not confirming they look right.
+- **Pre-mortem** (thorough reviews): assume this shipped and caused an incident two weeks later — write two plausible scenarios tied to file:line, then convert any that survive scrutiny into findings.
+
 ## Steps
 
 1. Get the diff: `git diff` and `git diff --cached` from the project root
@@ -36,6 +42,8 @@ Return exactly this structure:
 
 **Non-blocking** (suggestions):
 - [list or "None"]
+
+**Score**: 0–100 (anchors: 90+ ship-clean; 70–84 sound with fixable issues; 50–69 significant problems; <50 fundamentally flawed. Any blocking issue caps the score below 70.)
 
 **Verdict**: PASS | PASS WITH CHANGES | FAIL
 
