@@ -2,6 +2,7 @@
 name: reviewer
 description: Adversarial code review with security, architecture, and test adequacy focus. Use before shipping code.
 tools: Bash, Read, Glob, Grep
+model: opus
 ---
 
 Perform a thorough code review of uncommitted changes.

@@ -2,6 +2,7 @@
 # generated from .claude/agents/explorer.md; do not edit directly
 description: "Investigate a specific area of the codebase and report findings. Spawn multiple explorers in parallel to research different subsystems simultaneously."
 mode: subagent
+model: anthropic/claude-haiku-4-5-20251001
 permission:
   read: allow
   glob: allow

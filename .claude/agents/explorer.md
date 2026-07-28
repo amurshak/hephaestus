@@ -2,6 +2,7 @@
 name: explorer
 description: Investigate a specific area of the codebase and report findings. Spawn multiple explorers in parallel to research different subsystems simultaneously.
 tools: Bash, Read, Glob, Grep
+model: haiku
 ---
 
 Investigate the specific area described in your prompt.

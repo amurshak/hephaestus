@@ -23,6 +23,10 @@ if [ "$MODE" != "sync" ] && [ "$MODE" != "--check" ]; then
   exit 2
 fi
 
+# shellcheck source=scripts/models.sh
+. "$ROOT/scripts/models.sh"
+models_load || exit 1
+
 field() {
   local file=$1 key=$2
   awk -F': *' -v key="$key" '
@@ -133,18 +137,22 @@ render_permission() {
 
 render_opencode_agent() {
   local agent=$1
-  local name description tools isolation start
+  local name description tools isolation tier model start
 
   name=$(field "$agent" "name")
   description=$(field "$agent" "description")
   tools=$(field "$agent" "tools")
   isolation=$(field "$agent" "isolation")
+  tier=$(field "$agent" "model")
   start=$(body_start_line "$agent")
 
   if [ -z "$name" ] || [ -z "$description" ] || [ -z "$tools" ] || [ -z "$start" ]; then
     echo "ERR: invalid Claude agent frontmatter in $agent" >&2
     return 1
   fi
+
+  models_validate_tier "$tier" "$agent" || return 1
+  model=$(models_lookup "opencode" "$tier" "model")
 
   # OpenCode has no worktree isolation; surface that where the orchestrator
   # decides to parallelize (description) and where the agent runs (body).
@@ -158,6 +166,7 @@ render_opencode_agent() {
     echo "# generated from .claude/agents/${name}.md; do not edit directly"
     echo "description: \"$description\""
     echo "mode: subagent"
+    [ -n "$model" ] && echo "model: $model"
     render_permission "$tools"
     echo "---"
     echo ""

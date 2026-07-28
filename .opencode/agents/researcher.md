@@ -2,6 +2,7 @@
 # generated from .claude/agents/researcher.md; do not edit directly
 description: "Research a topic using web search and return findings. Spawn multiple researchers in parallel for different aspects of a complex question."
 mode: subagent
+model: anthropic/claude-sonnet-5
 permission:
   read: allow
   glob: allow

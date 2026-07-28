@@ -1,6 +1,7 @@
 # generated from .claude/agents/tester.md; do not edit directly
 name = "tester"
 description = "Run tests and return structured results. Use after writing or modifying code."
+model_reasoning_effort = "low"
 sandbox_mode = "workspace-write"
 developer_instructions = '''
 

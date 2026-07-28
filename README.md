@@ -75,17 +75,29 @@ The core of Hephaestus is composed of five commands spread across eight internal
 
 Five roles, stratified by capability through least-privilege tool access:
 
-| Agent | Edit tools | Web access | Shell access | Isolation |
-|-------|------------|------------|-------------|-----------|
-| **coder** | Yes | No | Yes | worktree |
-| **reviewer** | No | No | Yes (instructed read-only) | none |
-| **tester** | No | No | Yes (instructed read-only) | none |
-| **explorer** | No | No | Yes (instructed read-only) | none |
-| **researcher** | No | Yes | No | none |
+| Agent | Edit tools | Web access | Shell access | Isolation | Model tier |
+|-------|------------|------------|-------------|-----------|------------|
+| **coder** | Yes | No | Yes | worktree | sonnet |
+| **reviewer** | No | No | Yes (instructed read-only) | none | opus |
+| **tester** | No | No | Yes (instructed read-only) | none | haiku |
+| **explorer** | No | No | Yes (instructed read-only) | none | haiku |
+| **researcher** | No | Yes | No | none | sonnet |
 
 The coder is the only agent granted edit tools; it runs in an isolated git worktree so parallel coders don't interfere. The reviewer, tester, and explorer have no edit tools and are instructed to treat their shell as read-only — a convention, not a sandbox, since an unrestricted shell can write. The researcher can access the web but has no shell at all. Tool grants bound most of the blast radius; the shell-bearing agents rely on instruction for the rest.
 
 Every agent returns structured output — typed fields and verdicts, not prose. This turns agent invocations into function calls the orchestrating command can branch on.
+
+#### Model tiers
+
+Roles differ in what it costs to get them wrong, so they run on different models. Adversarial review is the job that must not miss a real bug; a read-only file search is not. Agents declare a harness-neutral tier — `opus`, `sonnet`, `haiku`, or `inherit` — and [`.ai/models.conf`](.ai/models.conf) says what each tier means for a harness that needs a concrete value:
+
+| Harness | Rendered as |
+|---------|-------------|
+| Claude Code | the tier name, natively |
+| OpenCode | `model: <provider>/<model-id>` |
+| Codex | `model_reasoning_effort` (a pinnable `model` if you want one) |
+
+To run the roles on another provider, repoint the mapping — not the tiers. Drop a `~/.hephaestus/models.conf` to change it for every project, or point `$HEPHAESTUS_MODELS` at a file for one run; layers merge per key, so naming a single tier leaves the rest at their shipped defaults. Generator `--check` reads the shipped file alone, so a personal override never turns the drift gate red for everyone else.
 
 ---
 

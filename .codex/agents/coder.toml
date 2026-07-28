@@ -1,6 +1,7 @@
 # generated from .claude/agents/coder.md; do not edit directly
 name = "coder"
 description = "Implement a focused coding task in isolation. Spawn multiple coders in parallel for independent changes across different files or modules. NOTE: Codex has no worktree isolation — parallel coder agents share one working tree; serialize file-modifying tasks."
+model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = '''
 > **No worktree isolation.** The Claude version of this agent runs in an isolated git worktree; Codex has no equivalent. Parallel coder agents edit the same working tree — serialize file-modifying tasks.
