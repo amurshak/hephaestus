@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- **`## Worktrees` config for this repo's own `/worktrees` runs**: declares `max: 3` and serializes `install.sh` + `README.md`, the two files where adapter, installer, and distribution work collides semantically. `CHANGELOG.md` is deliberately excluded — `/finish` requires an entry on every PR, so listing it would make every pair of issues conflict and pin effective concurrency at 1.
+
 ### Added
 - **Harness-agnostic model assignment** (#132): agents declare a neutral tier (`model: opus | sonnet | haiku | inherit`) in `.claude/agents/*.md`, and `.ai/models.conf` maps tiers to what each harness needs — OpenCode gets `model: provider/model-id`, Codex gets `model_reasoning_effort` (with an optional pinned `model`), Claude Code takes the tier name natively. Tiers are assigned by role cost: reviewer `opus`, coder and researcher `sonnet`, explorer and tester `haiku`. `scripts/models.sh` layers overrides per key from `~/.hephaestus/models.conf` (user level), a project `.ai/models.conf`, and `$HEPHAESTUS_MODELS`; generator `--check` reads the shipped file alone so committed adapters stay reproducible across machines, and an active override announces itself on stderr. An unknown tier fails generation rather than emitting a bad adapter. Covered by `tests/test_model_assignment.sh`.
 - **Codex adapter generator** (#102): `scripts/sync-codex-adapters.sh` emits Codex skills (`.agents/skills/<name>/SKILL.md`) from `.ai/workflows/` and Codex agent roles (`.codex/agents/<name>.toml`) from `.claude/agents/`, with sync + `--check`, stale-adapter detection, unparseable-source guard, and TOML-delimiter rejection. `install.sh` / `update.sh` / `uninstall.sh` symlink skills and agent roles (orient skill scaffolded project-specific). Covered by `tests/test_codex_adapters.sh` plus install/uninstall lifecycle checks. Returns Codex via generated adapters after the hand-maintained layer was removed for sync drift.
