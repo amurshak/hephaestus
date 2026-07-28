@@ -139,7 +139,12 @@ assert_contains "start skill maps todo tool" "$(cat "$start")" "the todo tool"
 assert_not_contains "start skill drops TodoWrite" "$(cat "$start")" "TodoWrite"
 assert_contains "start skill maps coder delegates" "$(cat "$start")" "coder delegates"
 assert_not_contains "start skill drops worktree subagent wording" "$(cat "$start")" "coder subagents (in worktrees)"
-assert_contains "refactor skill warns no worktree isolation" "$(cat "$refactor")" "Hermes has no worktree isolation"
+assert_contains "refactor skill warns no per-child worktree" "$(cat "$refactor")" "no per-child worktree"
+# Verified against Hermes v0.15.1: delegate_task builds the child from a fresh
+# conversation and passes only a workspace *hint* in its system prompt — cwd is
+# not inherited, so the orchestrator must hand over absolute paths.
+assert_contains "refactor skill says cwd is not inherited" "$(cat "$refactor")" "not your working directory"
+assert_contains "refactor skill demands absolute paths" "$(cat "$refactor")" "absolute paths"
 assert_contains "research skill maps researcher delegates" "$(cat "$research")" "researcher delegates"
 assert_not_contains "research skill drops subagent wording" "$(cat "$research")" "researcher subagents"
 assert_not_contains "orient skill has no delegation note" "$(cat "$orient")" "Delegate to \`delegate_task\`"
@@ -160,6 +165,13 @@ assert_contains "reviewer is marked read-only" "$(cat "$reviewer")" "**Read-only
 assert_not_contains "reviewer has no isolation warning" "$(cat "$reviewer")" "No worktree isolation"
 assert_contains "researcher gets web toolset" "$(cat "$researcher")" '["file", "web"]'
 assert_contains "researcher is marked read-only" "$(cat "$researcher")" "**Read-only**"
+# Verified against Hermes v0.15.1 (tools/delegate_tool.py): requested child
+# toolsets are intersected with the parent's and anything missing is dropped
+# silently — a researcher delegate in a session without `web` loses web_search
+# with no error, so the brief must say so rather than claim plain "narrowing".
+assert_contains "brief warns toolsets are intersected" "$(cat "$researcher")" "intersected with yours, silently"
+assert_contains "brief warns the drop is silent" "$(cat "$coder")" "dropped with no error"
+assert_contains "brief says cwd is not inherited" "$(cat "$coder")" "**No inherited cwd**"
 
 begin_test "Hermes delegate briefs render model tiers from models.conf"
 
@@ -182,8 +194,18 @@ done
 begin_test "Hermes worktrees skill spawns hermes, not claude"
 
 worktrees=$(cat "$SKILLS/worktrees/SKILL.md")
-assert_contains "osascript spawn uses hermes" "$worktrees" 'do script "cd <worktree> && hermes chat -q \"/start-issue <N>\""'
-assert_contains "manual fallback uses hermes" "$worktrees" 'cd <worktree> && hermes chat -q "/start-issue <N>"'
+# Verified against Hermes v0.15.1: `hermes chat -q` calls cli.chat() directly
+# (cli.py:15733) and never reaches process_command(), so a leading-slash prompt
+# is NOT dispatched as a skill — it arrives at the model as literal text. The
+# spawn therefore preloads the skill with `-s` (which errors loudly on an
+# unknown skill) instead of relying on `/start-issue` resolving.
+assert_contains "osascript spawn uses hermes" "$worktrees" 'do script "cd <worktree> && hermes chat -s hephaestus/start-issue -q \"Run the start-issue workflow for issue <N>.\""'
+assert_contains "manual fallback uses hermes" "$worktrees" 'cd <worktree> && hermes chat -s hephaestus/start-issue -q "Run the start-issue workflow for issue <N>."'
+# Deliberately broader than /start-issue: `-q` swallows ANY leading-slash
+# prompt as literal text, so no skill may be spawned that way.
+assert_not_contains "spawn never passes a bare slash command to -q" "$worktrees" '-q \"/'
+assert_not_contains "manual fallback never passes a bare slash command" "$worktrees" '-q "/'
+assert_contains "spawn explains why -s is required" "$worktrees" "never dispatched in \`-q\` mode"
 assert_contains "summary names Hermes sessions" "$worktrees" "spawn a seeded Hermes session"
 
 # Repo-wide guard, frontmatter included — the `description:` is built from the
@@ -210,6 +232,11 @@ ln -s "$HEPHAESTUS_ROOT" "$PROJ/.hephaestus"
 for a in coder explorer reviewer tester researcher; do
   cp "$AGENTS/$a.md" "$PROJ/.hermes/agents/$a.md"
 done
+# The verifier checks the identifier `/worktrees` spawns with
+# (`hermes chat -s hephaestus/start-issue`), so the fixture carries the skill
+# at that path exactly as an install would.
+mkdir -p "$PROJ/.hermes/skills/hephaestus/start-issue"
+cp "$SKILLS/start-issue/SKILL.md" "$PROJ/.hermes/skills/hephaestus/start-issue/SKILL.md"
 
 # Stub `hermes` so the check runs without a real install. `config path` points at
 # a config wired to the PROJECT skills dir — what install.sh tells the user to add.
@@ -237,6 +264,15 @@ unwired_out=$(cd "$PROJ" && PATH="$FIXTURE4/bin:$PATH" bash .hephaestus/scripts/
 assert_exit_code "verifier fails when unwired" 1 "$?"
 assert_contains "remediation names the project skills dir" "$unwired_out" "$PROJ/.hermes/skills"
 assert_not_contains "remediation never names the submodule dir" "$unwired_out" ".hephaestus/.hermes/skills"
+
+# Wired, but the skill the /worktrees spawn preloads is absent. `hermes chat -s
+# hephaestus/start-issue` would abort every spawned session, so the verifier
+# must fail rather than report a healthy install.
+printf 'skills:\n  external_dirs:\n    - %s/.hermes/skills\n' "$PROJ" > "$FIXTURE4/config.yaml"
+rm -rf "$PROJ/.hermes/skills/hephaestus/start-issue"
+noskill_out=$(cd "$PROJ" && PATH="$FIXTURE4/bin:$PATH" bash .hephaestus/scripts/verify-hermes-load.sh 2>&1)
+assert_exit_code "verifier fails when the preload identifier is missing" 1 "$?"
+assert_contains "names the missing identifier" "$noskill_out" "no skill at hephaestus/start-issue"
 
 # ─────────────────────────────────────────────────────────────────────────────
 

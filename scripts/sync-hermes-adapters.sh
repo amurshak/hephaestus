@@ -77,6 +77,13 @@ truncate_desc() {
 }
 
 # Rewrite Claude-dialect body text for Hermes mechanics.
+#
+# Spawn commands are localized per skill, never generically. `hermes chat -q`
+# bypasses the slash dispatcher, so a generic `claude "<prompt>"` → `hermes chat
+# -q "<prompt>"` rule would quietly turn any `/<skill>` spawn into literal text
+# the model never acts on. Left unmatched instead, a new Claude-form spawn keeps
+# the word `claude` and trips the leak guard in tests/test_hermes_adapters.sh —
+# loud, and pointing at the line that needs its own `-s` rule.
 hermes_localize_body() {
   sed \
     -e 's/parallel coder subagents (in worktrees)/parallel coder delegates via `delegate_task` (serialize file edits; Hermes delegates share one working tree)/g' \
@@ -97,9 +104,9 @@ hermes_localize_body() {
     -e 's/subagent/delegate/g' \
     -e 's/TodoWrite/the todo tool/g' \
     -e 's/seeded Claude Code session/seeded Hermes session/g' \
-    -e 's|claude --permission-mode default |hermes chat -q |g' \
-    -e 's|&& claude "|\&\& hermes chat -q "|g' \
-    -e 's|`--permission-mode default` prevents spawned sessions inheriting plan mode and stalling|`-q` seeds the spawned session with the command|g' \
+    -e 's|claude --permission-mode default \\"/start-issue <N>\\"|hermes chat -s hephaestus/start-issue -q \\"Run the start-issue workflow for issue <N>.\\"|g' \
+    -e 's|claude "/start-issue <N>"|hermes chat -s hephaestus/start-issue -q "Run the start-issue workflow for issue <N>."|g' \
+    -e 's|`--permission-mode default` prevents spawned sessions inheriting plan mode and stalling|`-s` preloads the skill, because a bare `/start-issue` is never dispatched in `-q` mode — it reaches the model as literal text|g' \
     -e "s/Claude Code's title rewrites/the TUI's title rewrites/g"
 }
 
@@ -153,7 +160,7 @@ render_hermes_skill() {
     echo ""
     echo "> **Hermes:** this skill is the \`/${name}\` adapter."
     if [ "$requires" != "none" ]; then
-      echo "> Delegate to \`delegate_task\` for the roles this workflow needs (${requires}); each role's toolsets, cap and prompt are in \`.hermes/agents/<role>.md\`. A delegate inherits **none** of your conversation — put every file path, constraint and prior finding it needs in \`context\`. Hermes has no worktree isolation, so parallel delegates share one working tree: serialize file-modifying work."
+      echo "> Delegate to \`delegate_task\` for the roles this workflow needs (${requires}); each role's toolsets, cap and prompt are in \`.hermes/agents/<role>.md\`. A delegate inherits **none** of your conversation and **not your working directory** — give \`context\` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work."
     fi
     if [ "$chains" != "none" ]; then
       echo "> For chained workflows (${chains}), invoke the matching skill (\`/<workflow>\`) when it is installed; otherwise read and follow \`.hermes/skills/hephaestus/<workflow>/SKILL.md\`."
@@ -216,8 +223,9 @@ render_hermes_agent() {
     echo "              toolsets: ${toolsets}, role: \"leaf\")"
     echo "\`\`\`"
     echo ""
-    echo "- **Toolsets**: \`${toolsets}\` — narrowing only. A delegate can never gain a toolset the parent lacks."
+    echo "- **Toolsets**: \`${toolsets}\` — intersected with yours, silently. A toolset you lack is dropped with no error, so confirm the session holds these before delegating."
     echo "- **Role**: \`leaf\` — cannot delegate further, and Hermes already blocks \`memory\`, \`clarify\`, \`send_message\` and \`cronjob\` for children."
+    echo "- **No inherited cwd**: the child gets only a workspace *hint* in its system prompt. Put the absolute repo or worktree path in \`context\`."
     if [ -n "$model" ]; then
       echo "- **Model tier**: \`${tier}\` → \`${model}\`. Advisory: Hermes applies one global \`delegation.model\`, so set it from the highest tier a workflow uses."
     else
@@ -227,7 +235,7 @@ render_hermes_agent() {
       echo "- **Read-only**: the Claude role grants no edit tools. Hermes's \`file\` toolset does include writes, so state the constraint in \`context\` — this delegate reports findings, it does not change files."
     fi
     if [ "$isolation" = "worktree" ]; then
-      echo "- **No worktree isolation**: the Claude version runs in an isolated git worktree; Hermes has no equivalent. Parallel ${name} delegates edit the same working tree — serialize file-modifying tasks."
+      echo "- **No worktree isolation**: the Claude version runs in an isolated git worktree; \`delegate_task\` has no per-child equivalent (session-level \`hermes chat -w\` is the closest). Parallel ${name} delegates edit the same working tree — serialize file-modifying tasks."
     fi
     echo ""
     echo "## Prompt"
