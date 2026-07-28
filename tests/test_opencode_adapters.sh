@@ -23,6 +23,7 @@ cp -R "$HEPHAESTUS_ROOT/.claude" "$FIXTURE/.claude"
 cp -R "$HEPHAESTUS_ROOT/.opencode" "$FIXTURE/.opencode"
 mkdir -p "$FIXTURE/scripts"
 cp "$HEPHAESTUS_ROOT/scripts/sync-opencode-adapters.sh" "$FIXTURE/scripts/sync-opencode-adapters.sh"
+cp "$HEPHAESTUS_ROOT/scripts/models.sh" "$FIXTURE/scripts/models.sh"
 
 sed -i.bak 's/Run the full autonomous pipeline/Run the drifted autonomous pipeline/' \
   "$FIXTURE/.opencode/commands/autopilot.md"
@@ -48,6 +49,7 @@ cp -R "$HEPHAESTUS_ROOT/.claude" "$FIXTURE2/.claude"
 cp -R "$HEPHAESTUS_ROOT/.opencode" "$FIXTURE2/.opencode"
 mkdir -p "$FIXTURE2/scripts"
 cp "$HEPHAESTUS_ROOT/scripts/sync-opencode-adapters.sh" "$FIXTURE2/scripts/sync-opencode-adapters.sh"
+cp "$HEPHAESTUS_ROOT/scripts/models.sh" "$FIXTURE2/scripts/models.sh"
 
 rm "$FIXTURE2/.ai/workflows/research.md"
 rm "$FIXTURE2/.claude/agents/tester.md"

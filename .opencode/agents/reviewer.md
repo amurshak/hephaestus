@@ -2,6 +2,7 @@
 # generated from .claude/agents/reviewer.md; do not edit directly
 description: "Adversarial code review with security, architecture, and test adequacy focus. Use before shipping code."
 mode: subagent
+model: anthropic/claude-opus-5
 permission:
   read: allow
   glob: allow

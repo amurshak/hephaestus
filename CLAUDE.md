@@ -78,10 +78,12 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 
 Five agent roles, stratified by least-privilege tool access. Coder is the only agent that can modify files (runs in `isolation: worktree` for safe parallel edits). Reviewer, tester, and explorer are read-only. Researcher has web access but no shell.
 
-- Agents declare allowed tools and isolation mode in YAML frontmatter
+- Agents declare allowed tools, isolation mode, and model tier in YAML frontmatter
 - All agents return structured output (files changed, status, verdict) — never raw verbose logs
 - Reviewer verdicts: PASS / PASS WITH CHANGES / FAIL
 - General critique verdicts: SOUND / NEEDS REFINEMENT / RETHINK
+
+**Model tiers** — every agent declares `model: opus | sonnet | haiku | inherit`. The tier is harness-neutral; `.ai/models.conf` says what it means per harness (OpenCode gets a `provider/model-id`, Codex gets `model_reasoning_effort`, Claude Code takes the tier name as-is). Assign by what the role costs to get wrong: reviewer `opus`, coder and researcher `sonnet`, explorer and tester `haiku`. Override the mapping — not the tiers — in `~/.hephaestus/models.conf` (user level, every project) or `$HEPHAESTUS_MODELS`; layers merge per key. Generator `--check` ignores overrides so committed adapters stay reproducible across machines.
 
 ## Autonomy Conventions
 
@@ -123,7 +125,7 @@ When the user gives feedback about how commands, agents, or workflows should beh
 ## Editing Guidelines
 
 When modifying agents or commands:
-- Preserve the YAML frontmatter format in agent files (name, description, tools, isolation)
+- Preserve the YAML frontmatter format in agent files (name, description, tools, model, isolation)
 - Edit canonical workflow specs in `.ai/workflows/`, not generated `.claude/commands/` adapters.
 - Do not hand-edit `.opencode/commands/` or `.opencode/agents/`; regenerate them with `./scripts/sync-opencode-adapters.sh`.
 - Do not hand-edit `.agents/skills/*/SKILL.md` or `.codex/agents/`; regenerate them with `./scripts/sync-codex-adapters.sh`.

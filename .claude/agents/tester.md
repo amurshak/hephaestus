@@ -2,6 +2,7 @@
 name: tester
 description: Run tests and return structured results. Use after writing or modifying code.
 tools: Bash, Read, Glob, Grep
+model: haiku
 ---
 
 Run tests for the project and return a structured summary.

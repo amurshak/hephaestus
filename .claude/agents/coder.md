@@ -2,6 +2,7 @@
 name: coder
 description: Implement a focused coding task in isolation. Spawn multiple coders in parallel for independent changes across different files or modules.
 tools: Bash, Read, Edit, Write, Glob, Grep
+model: sonnet
 isolation: worktree
 ---
 

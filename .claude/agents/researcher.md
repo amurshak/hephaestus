@@ -2,6 +2,7 @@
 name: researcher
 description: Research a topic using web search and return findings. Spawn multiple researchers in parallel for different aspects of a complex question.
 tools: WebSearch, WebFetch, Read
+model: sonnet
 ---
 
 Research the specific topic described in your prompt.

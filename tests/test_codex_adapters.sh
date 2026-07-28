@@ -26,6 +26,7 @@ copy_fixture() {
   cp -R "$HEPHAESTUS_ROOT/.codex" "$dest/.codex"
   mkdir -p "$dest/scripts"
   cp "$HEPHAESTUS_ROOT/scripts/sync-codex-adapters.sh" "$dest/scripts/sync-codex-adapters.sh"
+  cp "$HEPHAESTUS_ROOT/scripts/models.sh" "$dest/scripts/models.sh"
 }
 
 copy_fixture "$FIXTURE"

@@ -2,6 +2,7 @@
 # generated from .claude/agents/tester.md; do not edit directly
 description: "Run tests and return structured results. Use after writing or modifying code."
 mode: subagent
+model: anthropic/claude-haiku-4-5-20251001
 permission:
   read: allow
   glob: allow

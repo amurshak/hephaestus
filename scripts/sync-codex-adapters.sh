@@ -21,6 +21,10 @@ if [ "$MODE" != "sync" ] && [ "$MODE" != "--check" ]; then
   exit 2
 fi
 
+# shellcheck source=scripts/models.sh
+. "$ROOT/scripts/models.sh"
+models_load || exit 1
+
 field() {
   local file=$1 key=$2
   awk -F': *' -v key="$key" '
@@ -127,18 +131,23 @@ render_sandbox_mode() {
 
 render_codex_agent() {
   local agent=$1
-  local name description tools isolation start
+  local name description tools isolation tier model effort start
 
   name=$(field "$agent" "name")
   description=$(field "$agent" "description")
   tools=$(field "$agent" "tools")
   isolation=$(field "$agent" "isolation")
+  tier=$(field "$agent" "model")
   start=$(body_start_line "$agent")
 
   if [ -z "$name" ] || [ -z "$description" ] || [ -z "$tools" ] || [ -z "$start" ]; then
     echo "ERR: invalid Claude agent frontmatter in $agent" >&2
     return 1
   fi
+
+  models_validate_tier "$tier" "$agent" || return 1
+  model=$(models_lookup "codex" "$tier" "model")
+  effort=$(models_lookup "codex" "$tier" "effort")
 
   # developer_instructions is a TOML literal multiline string — a body containing
   # its delimiter cannot be rendered safely.
@@ -158,6 +167,8 @@ render_codex_agent() {
     echo "# generated from .claude/agents/${name}.md; do not edit directly"
     echo "name = \"${name}\""
     echo "description = \"${description}\""
+    [ -n "$model" ] && echo "model = \"${model}\""
+    [ -n "$effort" ] && echo "model_reasoning_effort = \"${effort}\""
     echo "sandbox_mode = \"$(render_sandbox_mode "$tools")\""
     echo "developer_instructions = '''"
     if [ "$isolation" = "worktree" ]; then

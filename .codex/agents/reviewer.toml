@@ -1,6 +1,7 @@
 # generated from .claude/agents/reviewer.md; do not edit directly
 name = "reviewer"
 description = "Adversarial code review with security, architecture, and test adequacy focus. Use before shipping code."
+model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = '''
 
