@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- **Risk-adaptive scored critique** (#110): `/critique`'s code mode now scores diff risk (auth/secrets +2; untested code, cross-boundary, workflow files, migrations +1 each) and maps it to review depth — L1 focused, L2 thorough with pre-mortem, L2+Double (two independent reviewers, lower score wins). Docs-only diffs auto-pass without spawning a reviewer. Reviewers return 0–100 scores mapped onto the existing verdicts (PASS ≥85, PASS WITH CHANGES 70–84, FAIL <70; blocking issues always cap at FAIL); plan critique scores dimensions 1–10 (SOUND ≥80). The reviewer agent gains an evidence requirement (uncited concerns become questions, not findings), a disconfirmation quota, and a pre-mortem protocol. All four sibling workflow implementations converged on scored critique independently — adopted from that evidence.
 - **Ship evidence gate** (#112): before creating the PR, `/ship` verifies the composed body contains no unchecked `- [ ]` items or placeholder text, and that every checked quality-gate line corresponds to a gate actually run this session. Adopted from the nhi lineage's Evidence Gate.
 - **Critic calibration in `/finish`** (#113): the retrospective now records whether the pre-ship critique verdict held up post-merge (accurate / false-negative / false-positive, from post-merge fix commits and related issues) as a searchable line in the issue comment. Adopted from BaseCoMVP's calibration loop, translated to repo-as-memory.
 
