@@ -105,6 +105,20 @@ for skill in autopilot start-issue ship finish critique; do
   esac
 done
 
+# ── Preload identifier ───────────────────────────────────────────────────────
+# `/worktrees` spawns sessions with `hermes chat -s hephaestus/start-issue -q`.
+# `-s` is load-bearing: a bare `/start-issue` handed to `-q` is never dispatched
+# as a skill (single-query mode bypasses the slash dispatcher and sends it to
+# the model as literal text), so the identifier must resolve. Asserted on the
+# layout rather than by running `hermes chat`, which would bill an inference
+# call; Hermes resolves `-s <category>/<skill>` against this exact path.
+if [ ! -f "$SKILLS_DIR/hephaestus/start-issue/SKILL.md" ]; then
+  echo "ERR: no skill at hephaestus/start-issue —" >&2
+  echo "     'hermes chat -s hephaestus/start-issue' cannot resolve, so the" >&2
+  echo "     /worktrees spawn would start sessions with no skill loaded." >&2
+  fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
   exit 1
 fi

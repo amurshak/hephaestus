@@ -62,11 +62,11 @@ macOS: one batch of `osascript` Terminal launches, each:
 ```
 tell application "Terminal"
   activate
-  do script "cd <worktree> && hermes chat -q \"/start-issue <N>\""
+  do script "cd <worktree> && hermes chat -s hephaestus/start-issue -q \"Run the start-issue workflow for issue <N>.\""
   set custom title of front window to "issue-<N>"
 end tell
 ```
-`activate` is required (windows can silently fail to appear without it); the custom title survives the TUI's title rewrites; `-q` seeds the spawned session with the command. Non-macOS or on failure: print the `cd <worktree> && hermes chat -q "/start-issue <N>"` commands for manual launch and continue.
+`activate` is required (windows can silently fail to appear without it); the custom title survives the TUI's title rewrites; `-s` preloads the skill, because a bare `/start-issue` is never dispatched in `-q` mode — it reaches the model as literal text; `-q` then runs it non-interactively, the form the Hermes kanban worker lanes use. Non-macOS or on failure: print the `cd <worktree> && hermes chat -s hephaestus/start-issue -q "Run the start-issue workflow for issue <N>."` commands for manual launch and continue.
 
 ## Step 7 — Report
 

@@ -11,8 +11,9 @@ delegate_task(goal: "<the task>", context: "<this prompt + everything the delega
               toolsets: ["terminal", "file"], role: "leaf")
 ```
 
-- **Toolsets**: `["terminal", "file"]` — narrowing only. A delegate can never gain a toolset the parent lacks.
+- **Toolsets**: `["terminal", "file"]` — intersected with yours, silently. A toolset you lack is dropped with no error, so confirm the session holds these before delegating.
 - **Role**: `leaf` — cannot delegate further, and Hermes already blocks `memory`, `clarify`, `send_message` and `cronjob` for children.
+- **No inherited cwd**: the child gets only a workspace *hint* in its system prompt. Put the absolute repo or worktree path in `context`.
 - **Model tier**: `opus` → `anthropic/claude-opus-5`. Advisory: Hermes applies one global `delegation.model`, so set it from the highest tier a workflow uses.
 - **Read-only**: the Claude role grants no edit tools. Hermes's `file` toolset does include writes, so state the constraint in `context` — this delegate reports findings, it does not change files.
 
