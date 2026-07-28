@@ -63,6 +63,23 @@ assert_file_exists  "Codex orient SKILL.md exists"          "$TARGET/.agents/ski
 assert_not_symlink  "Codex orient dir is not symlink"       "$TARGET/.agents/skills/orient"
 assert_contains     "Codex orient skill has frontmatter"    "$(cat "$TARGET/.agents/skills/orient/SKILL.md")" "name: orient"
 
+# Hermes adapters: skills are dir symlinks under the hephaestus category (orient excluded)
+for skill in autopilot create-issue critique finish refactor research ship start-issue test-issue update-docs update-hephaestus worktrees; do
+  assert_symlink       "Hermes skill $skill is a symlink"           "$TARGET/.hermes/skills/hephaestus/$skill"
+  assert_symlink_valid "Hermes skill $skill resolves"               "$TARGET/.hermes/skills/hephaestus/$skill"
+  assert_symlink_target_contains "Hermes skill $skill points to .hephaestus" "$TARGET/.hermes/skills/hephaestus/$skill" ".hephaestus/"
+done
+for agent in coder explorer researcher reviewer tester; do
+  assert_symlink       "Hermes brief $agent.md is a symlink"        "$TARGET/.hermes/agents/$agent.md"
+  assert_symlink_valid "Hermes brief $agent.md resolves"            "$TARGET/.hermes/agents/$agent.md"
+done
+
+# Hermes orient skill should be scaffolded as a regular file, not a symlink
+assert_file_exists  "Hermes orient SKILL.md exists"         "$TARGET/.hermes/skills/hephaestus/orient/SKILL.md"
+assert_not_symlink  "Hermes orient dir is not symlink"      "$TARGET/.hermes/skills/hephaestus/orient"
+assert_contains     "Hermes orient skill has frontmatter"   "$(cat "$TARGET/.hermes/skills/hephaestus/orient/SKILL.md")" "name: orient"
+assert_contains     "Hermes orient skill has category"      "$(cat "$TARGET/.hermes/skills/hephaestus/orient/SKILL.md")" "category: hephaestus"
+
 # orient.md should be scaffolded as a regular file, not a symlink
 assert_file_exists  "orient.md exists"         "$TARGET/.claude/commands/orient.md"
 assert_not_symlink  "orient.md is not symlink" "$TARGET/.claude/commands/orient.md"
@@ -340,6 +357,12 @@ assert_eq "Codex skill symlink path" "../../.hephaestus/.agents/skills/autopilot
 
 codex_agent_target=$(readlink "$TARGET/.codex/agents/coder.toml")
 assert_eq "Codex agent symlink path" "../../.hephaestus/.codex/agents/coder.toml" "$codex_agent_target"
+
+hermes_skill_target=$(readlink "$TARGET/.hermes/skills/hephaestus/autopilot")
+assert_eq "Hermes skill symlink path" "../../../.hephaestus/.hermes/skills/hephaestus/autopilot" "$hermes_skill_target"
+
+hermes_agent_target=$(readlink "$TARGET/.hermes/agents/coder.md")
+assert_eq "Hermes brief symlink path" "../../.hephaestus/.hermes/agents/coder.md" "$hermes_agent_target"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
