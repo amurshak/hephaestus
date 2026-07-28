@@ -1,6 +1,6 @@
 ---
 name: create-issue
-description: "Create a GitHub issue for. Use for /create-issue requests."
+description: "Create a GitHub issue for: <argument> Use for /create-issue requests."
 ---
 <!-- requires: explorer -->
 <!-- chains: none -->

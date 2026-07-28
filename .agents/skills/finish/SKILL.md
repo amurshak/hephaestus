@@ -1,6 +1,6 @@
 ---
 name: finish
-description: "Finish and close issue. Run autonomously. Use for /finish requests."
+description: "Finish and close issue <argument>. Run autonomously. Use for /finish requests."
 ---
 <!-- requires: none -->
 <!-- chains: /update-docs -->

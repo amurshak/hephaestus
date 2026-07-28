@@ -1,6 +1,6 @@
 ---
 name: refactor
-description: "Refactor the target specified in. Run autonomously — do not pause for plan approval. Use for /refactor requests."
+description: "Refactor the target specified in <argument>. Run autonomously — do not pause for plan approval. Use for /refactor requests."
 ---
 <!-- requires: coder, explorer -->
 <!-- chains: /ship, /finish -->

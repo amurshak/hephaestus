@@ -1,6 +1,6 @@
 ---
 name: research
-description: "Conduct thorough research on. Use for /research requests."
+description: "Conduct thorough research on: <argument> Use for /research requests."
 ---
 <!-- requires: researcher, explorer -->
 <!-- chains: none -->

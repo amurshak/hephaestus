@@ -1,6 +1,6 @@
 ---
 name: test-issue
-description: "Test the current implementation. Issue number (optional). Use for /test-issue requests."
+description: "Test the current implementation. Issue number (optional): <argument> Use for /test-issue requests."
 ---
 <!-- requires: tester -->
 <!-- chains: none -->

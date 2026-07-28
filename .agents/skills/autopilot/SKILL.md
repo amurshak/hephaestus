@@ -1,6 +1,6 @@
 ---
 name: autopilot
-description: "Run the full autonomous pipeline for issue. No human intervention required. Use for /autopilot requests."
+description: "Run the full autonomous pipeline for issue <argument>. No human intervention required. Use for /autopilot requests."
 ---
 <!-- requires: explorer -->
 <!-- chains: /start-issue, /ship, /finish -->

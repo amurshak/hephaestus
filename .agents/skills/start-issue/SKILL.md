@@ -1,6 +1,6 @@
 ---
 name: start-issue
-description: "Start working on issue. Run autonomously through the full plan-critique-implement cycle. Use for /start-issue requests."
+description: "Start working on issue <argument>. Run autonomously through the full plan-critique-implement cycle. Use for /start-issue requests."
 ---
 <!-- requires: coder, explorer -->
 <!-- chains: /test-issue -->

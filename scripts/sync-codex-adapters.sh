@@ -58,11 +58,16 @@ render_codex_skill() {
     return 1
   fi
 
-  # Codex skill descriptions drive implicit invocation — drop the unsubstituted
-  # $ARGUMENTS placeholder and anchor the slash-command name for matching.
+  # Codex skill descriptions drive implicit invocation — swap the unsubstituted
+  # $ARGUMENTS placeholder for a readable token, truncate on a word boundary,
+  # and anchor the slash-command name for matching.
   desc=$(first_body_line "$workflow" "$start")
-  desc=$(printf '%s' "$desc" | sed 's/ *\$ARGUMENTS//g; s/[:,] *$/./; s/  */ /g')
-  desc=$(quote_escape "${desc:0:180} Use for /${name} requests.")
+  desc=$(printf '%s' "$desc" | sed 's/\$ARGUMENTS/<argument>/g; s/  */ /g')
+  if [ "${#desc}" -gt 180 ]; then
+    desc="${desc:0:180}"
+    desc="${desc% *}…"
+  fi
+  desc=$(quote_escape "$desc Use for /${name} requests.")
 
   {
     echo "---"
@@ -250,4 +255,5 @@ if [ "$MODE" = "--check" ]; then
   exit "$drift"
 fi
 
+[ "$drift" -ne 0 ] && exit 1
 echo "✓ Codex adapters generated"

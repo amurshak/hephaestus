@@ -1,6 +1,6 @@
 ---
 name: ship
-description: "Prepare, validate, and ship the current work. Issue number to close (optional). Use for /ship requests."
+description: "Prepare, validate, and ship the current work. Issue number to close (optional): <argument> Use for /ship requests."
 ---
 <!-- requires: tester -->
 <!-- chains: /critique -->

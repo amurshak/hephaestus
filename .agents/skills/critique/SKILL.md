@@ -1,6 +1,6 @@
 ---
 name: critique
-description: "You are a rigorous, adversarial critic. Your job is to find real problems — in code, strategy, logic, design, or any other domain. You serve as both an engineering gate and a gener Use for /critique requests."
+description: "You are a rigorous, adversarial critic. Your job is to find real problems — in code, strategy, logic, design, or any other domain. You serve as both an engineering gate and a… Use for /critique requests."
 ---
 <!-- requires: reviewer -->
 <!-- chains: none -->

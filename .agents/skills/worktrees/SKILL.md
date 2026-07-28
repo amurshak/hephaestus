@@ -1,6 +1,6 @@
 ---
 name: worktrees
-description: "Orchestrate parallel multi-session development: survey existing worktrees, reap finished ones, plan a wave of non-conflicting issues, create sibling worktrees, and spawn a seeded C Use for /worktrees requests."
+description: "Orchestrate parallel multi-session development: survey existing worktrees, reap finished ones, plan a wave of non-conflicting issues, create sibling worktrees, and spawn a seeded… Use for /worktrees requests."
 ---
 <!-- requires: none -->
 <!-- chains: none -->
