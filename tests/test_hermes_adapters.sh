@@ -179,6 +179,21 @@ for ag in "$HEPHAESTUS_ROOT"/.claude/agents/*.md; do
   assert_file_exists "delegate brief for @$name" "$AGENTS/$name.md"
 done
 
+begin_test "Hermes worktrees skill spawns hermes, not claude"
+
+worktrees=$(cat "$SKILLS/worktrees/SKILL.md")
+assert_contains "osascript spawn uses hermes" "$worktrees" 'do script "cd <worktree> && hermes chat -q \"/start-issue <N>\""'
+assert_contains "manual fallback uses hermes" "$worktrees" 'cd <worktree> && hermes chat -q "/start-issue <N>"'
+assert_contains "summary names Hermes sessions" "$worktrees" "spawn a seeded Hermes session"
+
+# Repo-wide guard, frontmatter included — the `description:` is built from the
+# localized first body line, so a reflow that pushes a Claude product name past
+# the truncation trips this. Bare "claude" is not a needle: `.claude/` paths are
+# legitimate, and models.conf maps tiers to anthropic/claude-* model ids.
+leaks=$(grep -rnF -e "Claude Code" -e "&& claude " -e "--permission-mode" \
+  "$SKILLS" "$AGENTS" 2>/dev/null || true)
+assert_eq "no Claude-product leak in any Hermes adapter" "" "$leaks"
+
 begin_test "verify-hermes-load.sh resolves the project, not the submodule"
 
 # Regression guard: run as `bash .hephaestus/scripts/verify-hermes-load.sh` — the

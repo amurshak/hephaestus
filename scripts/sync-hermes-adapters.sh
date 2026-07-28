@@ -95,7 +95,12 @@ hermes_localize_body() {
     -e 's/subagent(s)/delegate(s)/g' \
     -e 's/subagents/delegates/g' \
     -e 's/subagent/delegate/g' \
-    -e 's/TodoWrite/the todo tool/g'
+    -e 's/TodoWrite/the todo tool/g' \
+    -e 's/seeded Claude Code session/seeded Hermes session/g' \
+    -e 's|claude --permission-mode default |hermes chat -q |g' \
+    -e 's|&& claude "|\&\& hermes chat -q "|g' \
+    -e 's|`--permission-mode default` prevents spawned sessions inheriting plan mode and stalling|`-q` seeds the spawned session with the command|g' \
+    -e "s/Claude Code's title rewrites/the TUI's title rewrites/g"
 }
 
 # "/a, /b" → "[a, b]"; "none" → "[]". Feeds metadata.hermes.related_skills.
