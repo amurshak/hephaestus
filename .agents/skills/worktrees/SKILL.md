@@ -55,11 +55,11 @@ macOS: one batch of `osascript` Terminal launches, each:
 ```
 tell application "Terminal"
   activate
-  do script "cd <worktree> && claude --permission-mode default \"/start-issue <N>\""
+  do script "cd <worktree> && codex \"/start-issue <N>\""
   set custom title of front window to "issue-<N>"
 end tell
 ```
-`activate` is required (windows can silently fail to appear without it); the custom title survives Claude Code's title rewrites; `--permission-mode default` prevents spawned sessions inheriting plan mode and stalling. Non-macOS or on failure: print the `cd <worktree> && claude "/start-issue <N>"` commands for manual launch and continue.
+`activate` is required (windows can silently fail to appear without it); the custom title survives the TUI's title rewrites; the positional prompt seeds the spawned session with the command. Non-macOS or on failure: print the `cd <worktree> && codex "/start-issue <N>"` commands for manual launch and continue.
 
 ## Step 7 — Report
 

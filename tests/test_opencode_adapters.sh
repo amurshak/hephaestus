@@ -100,6 +100,15 @@ assert_not_contains "research drops bare subagent" "$(cat "$research")" "researc
 assert_contains "start-issue maps coder spawn" "$(cat "$start")" "@coder"
 assert_not_contains "start-issue drops worktree spawn" "$(cat "$start")" "coder subagents (in worktrees)"
 
+begin_test "OpenCode worktrees spawns opencode, not claude"
+
+worktrees=$(cat "$HEPHAESTUS_ROOT/.opencode/commands/worktrees.md")
+assert_contains "osascript spawn uses opencode --prompt" "$worktrees" 'do script "cd <worktree> && opencode --prompt \"/start-issue <N>\""'
+assert_contains "manual fallback uses opencode --prompt" "$worktrees" 'cd <worktree> && opencode --prompt "/start-issue <N>"'
+assert_not_contains "spawn drops claude binary" "$worktrees" "&& claude "
+assert_not_contains "spawn drops Claude-only flag" "$worktrees" "--permission-mode"
+assert_not_contains "rationale drops Claude Code reference" "$worktrees" "Claude Code's title rewrites"
+
 begin_test "opencode.json loads repo instructions"
 
 opencode_json=$(cat "$HEPHAESTUS_ROOT/opencode.json")

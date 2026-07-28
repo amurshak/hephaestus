@@ -144,4 +144,13 @@ assert_contains "refactor skill warns no worktree isolation" "$(cat "$refactor")
 assert_contains "research skill maps researcher role agents" "$(cat "$research")" "researcher role agents"
 assert_not_contains "research skill drops subagent wording" "$(cat "$research")" "researcher subagents"
 
+begin_test "Codex worktrees skill spawns codex, not claude"
+
+worktrees=$(cat "$HEPHAESTUS_ROOT/.agents/skills/worktrees/SKILL.md")
+assert_contains "osascript spawn uses codex" "$worktrees" 'do script "cd <worktree> && codex \"/start-issue <N>\""'
+assert_contains "manual fallback uses codex" "$worktrees" 'cd <worktree> && codex "/start-issue <N>"'
+assert_not_contains "spawn drops claude binary" "$worktrees" "&& claude "
+assert_not_contains "spawn drops Claude-only flag" "$worktrees" "--permission-mode"
+assert_not_contains "rationale drops Claude Code reference" "$worktrees" "Claude Code's title rewrites"
+
 print_summary

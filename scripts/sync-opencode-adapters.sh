@@ -68,7 +68,11 @@ opencode_localize_body() {
     -e 's/subagent(s)/agent(s) (Task tool or @mention)/g' \
     -e 's/subagents/agents (Task tool or @mention)/g' \
     -e 's/subagent/agent (Task tool or @mention)/g' \
-    -e 's/TodoWrite/the todo tools/g'
+    -e 's/TodoWrite/the todo tools/g' \
+    -e 's|claude --permission-mode default |opencode --prompt |g' \
+    -e 's|&& claude "|\&\& opencode --prompt "|g' \
+    -e 's|`--permission-mode default` prevents spawned sessions inheriting plan mode and stalling|`--prompt` seeds the spawned session with the command|g' \
+    -e "s/Claude Code's title rewrites/the TUI's title rewrites/g"
 }
 
 render_opencode_command() {
