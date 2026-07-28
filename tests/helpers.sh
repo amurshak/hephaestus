@@ -135,7 +135,15 @@ setup_fixture() {
 
   # Sync uncommitted working tree changes into the fixture so tests always
   # run against the current code, not just the last committed version.
-  rsync -a --exclude='.git' "$HEPHAESTUS_ROOT/" "$FIXTURE_DIR/source/"
+  # Gitignored paths are excluded: a developer checkout can hold ~60MB of build
+  # artifacts (.opencode/node_modules) that would be copied once per fixture.
+  # The list comes from git, not an rsync `--filter=':- .gitignore'` — rsync
+  # cannot read git's negation syntax and would drop all of .hermes/, whose
+  # .gitignore is `*` plus `!skills/**`.
+  git -C "$HEPHAESTUS_ROOT" ls-files --others --ignored --exclude-standard \
+    --directory 2>/dev/null | sed 's|^|/|' > "$FIXTURE_DIR/rsync-excludes"
+  rsync -a --exclude='.git' --exclude-from="$FIXTURE_DIR/rsync-excludes" \
+    "$HEPHAESTUS_ROOT/" "$FIXTURE_DIR/source/"
   git -C "$FIXTURE_DIR/source" -c user.email="test@test.com" -c user.name="Test" \
     add -A 2>/dev/null
   git -C "$FIXTURE_DIR/source" -c user.email="test@test.com" -c user.name="Test" \
