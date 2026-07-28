@@ -19,7 +19,7 @@ Or run the whole loop as one command:
 /autopilot
 ```
 
-The core is a set of harness-neutral workflow specs (`.ai/workflows/`) and agent definitions — plain markdown files. Per-harness support is *generated adapters* from those specs: Claude Code, [OpenCode](https://opencode.ai), Codex, and [Hermes](https://github.com/NousResearch/hermes-agent) adapters ship today; new harnesses are a ~200-line generator script away.
+The core is a set of harness-neutral workflow specs (`.ai/workflows/`) and agent definitions — plain markdown files. Per-harness support is *generated adapters* from those specs: Claude Code, [OpenCode](https://opencode.ai), Codex, [Hermes](https://github.com/NousResearch/hermes-agent), and [Cursor](https://cursor.com) adapters ship today; new harnesses are a ~200-line generator script away.
 
 ## Install
 
@@ -32,7 +32,7 @@ In Claude Code:
 
 That's it — commands appear under `/heph:` (`/heph:autopilot`, `/heph:ship`, …). For OpenCode, Codex, Hermes, manual copy, or the script install (one install, every project — plus headless mode and forking), see [Get started](#get-started).
 
-**Requirements:** [Claude Code](https://claude.com/claude-code), [OpenCode](https://opencode.ai), [Codex](https://openai.com/codex), or [Hermes](https://github.com/NousResearch/hermes-agent) · [`gh` CLI](https://cli.github.com) authenticated (workflows drive GitHub issues and PRs) · git.
+**Requirements:** [Claude Code](https://claude.com/claude-code), [OpenCode](https://opencode.ai), [Codex](https://openai.com/codex), [Hermes](https://github.com/NousResearch/hermes-agent), or [Cursor](https://cursor.com) · [`gh` CLI](https://cli.github.com) authenticated (workflows drive GitHub issues and PRs) · git.
 
 Hephaestus is an OODA loop — observe, orient, decide, act — for software. Boyd designed OODA for fighter pilots: cycle faster than the opponent and you win. Software has the opposite problem. Shipping too fast costs more than slowing down. So this loop puts most of its weight on Orient. Plans face adversarial review before code begins. Code faces adversarial review before it ships. Retries are bounded so nothing spirals.
 
@@ -96,6 +96,7 @@ Roles differ in what it costs to get them wrong, so they run on different models
 | Claude Code | the tier name, natively |
 | OpenCode | `model: <provider>/<model-id>` |
 | Codex | `model_reasoning_effort` (a pinnable `model` if you want one) |
+| Cursor | `model`, unset by default — Cursor's model namespace churns per release, so tiers inherit until you pin them |
 | Hermes | `model: <provider>/<model-id>`, advisory — Hermes applies one global `delegation.model` |
 
 To run the roles on another provider, repoint the mapping — not the tiers. Drop a `~/.hephaestus/models.conf` to change it for every project, or point `$HEPHAESTUS_MODELS` at a file for one run; layers merge per key, so naming a single tier leaves the rest at their shipped defaults. Generator `--check` reads the shipped file alone, so a personal override never turns the drift gate red for everyone else.
@@ -166,7 +167,7 @@ Thirteen commands, but the delivery spine is `/autopilot` and the three commands
 
 ### Separation of orchestration from configuration
 
-Hephaestus owns the workflow — what order things happen, when to retry, when to stop. Canonical workflows live in `.ai/workflows/` with frontmatter for `name`, `requires`, and `chains`; `.claude/commands/`, `.opencode/commands/`, `.agents/skills/*/SKILL.md`, and `.hermes/skills/hephaestus/*/SKILL.md` are generated adapters checked by the matching `scripts/sync-*-adapters.sh --check`. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific command hephaestus ever creates is a scaffold for `orient`, which it then refuses to overwrite.
+Hephaestus owns the workflow — what order things happen, when to retry, when to stop. Canonical workflows live in `.ai/workflows/` with frontmatter for `name`, `requires`, and `chains`; `.claude/commands/`, `.opencode/commands/`, `.agents/skills/*/SKILL.md`, `.hermes/skills/hephaestus/*/SKILL.md`, and `.cursor/` are generated adapters checked by the matching `scripts/sync-*-adapters.sh --check`. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific command hephaestus ever creates is a scaffold for `orient`, which it then refuses to overwrite.
 
 ### Parallelization at three levels
 
@@ -308,9 +309,31 @@ cp -R hephaestus/.codex/agents your-project/.codex/
 # Hermes:
 mkdir -p your-project/.hermes
 cp -R hephaestus/.hermes/skills hephaestus/.hermes/agents your-project/.hermes/
+# Cursor:
+mkdir -p your-project/.cursor/rules
+cp -R hephaestus/.cursor/commands hephaestus/.cursor/agents your-project/.cursor/
+cp hephaestus/.cursor/rules/hephaestus.mdc your-project/.cursor/rules/
 ```
 
 No update story — re-copy when you want the latest, or use `install.sh --vendor` to get the same committed copies with a manifest that makes updates and removal exact.
+
+### Cursor usage
+
+Three adapter families, all generated by `scripts/sync-cursor-adapters.sh`:
+
+| Path | What it is |
+|------|------------|
+| `.cursor/commands/*.md` | Slash commands — `/autopilot`, `/ship`, … |
+| `.cursor/agents/*.md` | Subagents — `coder`, `reviewer`, `explorer`, `tester`, `researcher` |
+| `.cursor/rules/hephaestus.mdc` | Always-apply rule carrying the chain graph and the Claude→Cursor mapping |
+
+Cursor's own mechanics shape them:
+
+- **Commands are injected verbatim.** Cursor strips YAML frontmatter only from imported `.claude/commands` files, so these adapters carry none and lead with the workflow's own opening line — what Cursor shows as the hover preview. `$ARGUMENTS` and `$1`… *are* substituted, so those placeholders survive.
+- **`readonly: true` where it is free.** Cursor honours the key (it maps to a READONLY permission mode), so `researcher` gets it. Whether READONLY also withholds the terminal is undocumented, so `reviewer`, `tester`, and `explorer` — which need a working shell — keep the default mode and carry the restriction as instruction, exactly as they do under Claude Code. `tools:` is *not* an access control in Cursor: it is rendered to the model as prose.
+- **No worktree isolation.** Parallel `coder` runs share one working tree, so file-modifying tasks must be serialized. The adapters say so in both the subagent description (where the orchestrator decides to parallelize) and the body.
+
+`.cursor/rules/` is shared with your own project rules. Hephaestus only ever writes and reclaims `hephaestus.mdc`, and the manifest makes that exact — a rule it did not write is never touched.
 
 ### OpenCode usage (cwd is the product)
 
@@ -470,6 +493,7 @@ Fork hephaestus to customize commands for your org while still pulling upstream 
 - `.opencode/commands/` and `.opencode/agents/` — generated OpenCode adapters; update via `scripts/sync-opencode-adapters.sh`
 - `.agents/skills/` and `.codex/agents/` — generated Codex adapters; update via `scripts/sync-codex-adapters.sh`
 - `.hermes/skills/` and `.hermes/agents/` — generated Hermes adapters; update via `scripts/sync-hermes-adapters.sh`
+- `.cursor/commands/`, `.cursor/agents/`, `.cursor/rules/hephaestus.mdc` — generated Cursor adapters; update via `scripts/sync-cursor-adapters.sh`
 - `install.sh`, `update.sh`, `uninstall.sh` — the install tooling
 - `.claude-plugin/plugin.json` — the plugin manifest
 
@@ -483,7 +507,7 @@ git merge upstream/master
 
 ## Contributing
 
-PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the gates and conventions. The short version: edit canonical sources (`.ai/workflows/`, `.claude/agents/`), never generated adapters; run `./tests/run.sh` and every `scripts/sync-*-adapters.sh --check`. Adapter generators for new harnesses are especially welcome — see `scripts/sync-opencode-adapters.sh` / `scripts/sync-codex-adapters.sh` / `scripts/sync-hermes-adapters.sh` for the pattern.
+PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the gates and conventions. The short version: edit canonical sources (`.ai/workflows/`, `.claude/agents/`), never generated adapters; run `./tests/run.sh` and every `scripts/sync-*-adapters.sh --check`. Adapter generators for new harnesses are especially welcome — see `scripts/sync-opencode-adapters.sh` / `scripts/sync-codex-adapters.sh` / `scripts/sync-hermes-adapters.sh` / `scripts/sync-cursor-adapters.sh` for the pattern.
 
 ## License
 

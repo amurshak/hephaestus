@@ -2,11 +2,13 @@
 
 ## Ground rules
 
-- **Edit canonical sources, never generated adapters.** Workflows live in `.ai/workflows/`, agents in `.claude/agents/`. Everything in `.claude/commands/`, `.opencode/`, `.agents/skills/`, and `.codex/agents/` is generated — regenerate with:
+- **Edit canonical sources, never generated adapters.** Workflows live in `.ai/workflows/`, agents in `.claude/agents/`. Everything in `.claude/commands/`, `.opencode/`, `.agents/skills/`, `.codex/agents/`, `.hermes/`, and `.cursor/` is generated — regenerate with:
   ```bash
   ./scripts/sync-agent-adapters.sh
   ./scripts/sync-opencode-adapters.sh
   ./scripts/sync-codex-adapters.sh
+  ./scripts/sync-hermes-adapters.sh
+  ./scripts/sync-cursor-adapters.sh
   ```
 - **Run the gates before submitting:**
   ```bash
@@ -14,6 +16,8 @@
   ./scripts/sync-agent-adapters.sh --check     # Claude adapter drift
   ./scripts/sync-opencode-adapters.sh --check  # OpenCode adapter drift
   ./scripts/sync-codex-adapters.sh --check     # Codex adapter drift
+  ./scripts/sync-hermes-adapters.sh --check    # Hermes adapter drift
+  ./scripts/sync-cursor-adapters.sh --check    # Cursor adapter drift
   bash tests/check_composition.sh              # README composition drift
   ./scripts/collect-changelog.sh --check       # changelog fragment names
   bash scripts/verify-opencode-load.sh         # optional live OpenCode load (skips if CLI absent)
@@ -24,7 +28,7 @@
 
 ## What we most want
 
-**Adapter generators for new harnesses.** The pattern is `scripts/sync-opencode-adapters.sh` / `scripts/sync-codex-adapters.sh`: a generator that emits your harness's format from the canonical specs, with sync + `--check` modes, stale-adapter detection, and tests mirroring `tests/test_opencode_adapters.sh`. Open roadmap issues track Cursor and Hermes.
+**Adapter generators for new harnesses.** The pattern is `scripts/sync-opencode-adapters.sh` / `scripts/sync-codex-adapters.sh` / `scripts/sync-cursor-adapters.sh`: a generator that emits your harness's format from the canonical specs, with sync + `--check` modes, stale-adapter detection, and tests mirroring `tests/test_opencode_adapters.sh`.
 
 ## Conduct
 

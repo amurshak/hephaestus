@@ -60,14 +60,17 @@ rm -f "$MANIFEST"
 
 # Drop directories the adapters left empty; keep any holding project files.
 if [ "$MODE" = vendor ]; then
-  for d in .claude/commands .claude/agents .opencode/commands .opencode/agents \
+  for d in .cursor/commands .cursor/agents .cursor/rules .cursor \
+           .claude/commands .claude/agents .opencode/commands .opencode/agents \
            .agents/skills .codex/agents .hermes/skills/hephaestus .hermes/skills \
            .hermes/agents .claude .opencode .agents .codex; do
     rmdir "$TARGET/$d" 2>/dev/null || true
   done
 else
   rmdir "$(dirname "$MANIFEST")" 2>/dev/null || true
-  for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/commands" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/agents" \
+  for d in "${CURSOR_HOME:-$HOME/.cursor}/commands" "${CURSOR_HOME:-$HOME/.cursor}/agents" \
+           "${CURSOR_HOME:-$HOME/.cursor}/rules" \
+           "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/commands" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/agents" \
            "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/commands" "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/agents" \
            "${CODEX_HOME:-$HOME/.codex}/skills" "${CODEX_HOME:-$HOME/.codex}/agents" \
            "${HERMES_HOME:-$HOME/.hermes}/skills/hephaestus" "${HERMES_HOME:-$HOME/.hermes}/agents"; do
@@ -79,6 +82,7 @@ echo ""
 echo "Done. Removed $REMOVED file(s)."
 echo ""
 echo "Kept (project-owned):"
-echo "  - orient (.claude/commands/, .opencode/commands/, .agents/skills/orient/, .hermes/skills/hephaestus/orient/)"
+echo "  - orient (.claude/commands/, .opencode/commands/, .cursor/commands/, .agents/skills/orient/, .hermes/skills/hephaestus/orient/)"
+echo "  - your own .cursor/rules/*.mdc"
 echo "  - AGENTS.md, opencode.json, CLAUDE.md"
 echo "  - .claude/hooks/, .claude/settings.local.json"

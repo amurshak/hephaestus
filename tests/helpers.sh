@@ -179,17 +179,18 @@ create_legacy_install() {
 }
 
 # Redirect every harness config dir into the fixture so a user-level install
-# under test can never touch the developer's real ~/.claude, ~/.codex, or
-# ~/.config/opencode. Call after setup_fixture; teardown_fixture restores HOME.
+# under test can never touch the developer's real ~/.claude, ~/.codex, ~/.cursor,
+# or ~/.config/opencode. Call after setup_fixture; teardown_fixture restores HOME.
 sandbox_home() {
   SANDBOX_HOME="$FIXTURE_DIR/home"
   mkdir -p "$SANDBOX_HOME"
   export HOME="$SANDBOX_HOME"
-  unset CLAUDE_CONFIG_DIR XDG_CONFIG_HOME CODEX_HOME HERMES_HOME XDG_STATE_HOME
+  unset CLAUDE_CONFIG_DIR XDG_CONFIG_HOME CODEX_HOME HERMES_HOME CURSOR_HOME XDG_STATE_HOME
   CLAUDE_DIR="$SANDBOX_HOME/.claude"
   OPENCODE_DIR="$SANDBOX_HOME/.config/opencode"
   CODEX_DIR="$SANDBOX_HOME/.codex"
   HERMES_DIR="$SANDBOX_HOME/.hermes"
+  CURSOR_DIR="$SANDBOX_HOME/.cursor"
   USER_MANIFEST="$SANDBOX_HOME/.local/state/hephaestus/manifest"
 }
 
@@ -210,7 +211,8 @@ teardown_fixture() {
     rm -rf "$FIXTURE_DIR"
   fi
   unset FIXTURE_DIR REMOTE_REPO SOURCE_REPO GIT_CONFIG_GLOBAL \
-        SANDBOX_HOME CLAUDE_DIR OPENCODE_DIR CODEX_DIR HERMES_DIR USER_MANIFEST 2>/dev/null || true
+        SANDBOX_HOME CLAUDE_DIR OPENCODE_DIR CODEX_DIR HERMES_DIR CURSOR_DIR \
+        USER_MANIFEST 2>/dev/null || true
 }
 
 # ── Test lifecycle ───────────────────────────────────────────────────────────
