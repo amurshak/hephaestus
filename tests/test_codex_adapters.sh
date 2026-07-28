@@ -155,7 +155,7 @@ assert_contains "summary names Codex sessions" "$worktrees" "spawn a seeded Code
 # from the localized first body line, so a reflow that pushes a Claude product
 # name past the truncation trips this. Bare "claude" is not a needle:
 # `.claude/` paths are legitimate.
-leaks=$(grep -rnF -e "Claude Code" -e "&& claude " -e "claude --" \
+leaks=$(grep -rnF -e "Claude Code" -e "&& claude " -e "claude -" -e "--permission-mode" \
   "$HEPHAESTUS_ROOT/.agents/skills/" "$HEPHAESTUS_ROOT/.codex/agents/" 2>/dev/null || true)
 assert_eq "no Claude-product leak in any Codex adapter" "" "$leaks"
 

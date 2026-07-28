@@ -111,7 +111,7 @@ assert_contains "summary names OpenCode sessions" "$worktrees" "spawn a seeded O
 # from the localized first body line, so a reflow that pushes a Claude product
 # name past the truncation trips this. Bare "claude" is not a needle:
 # `.claude/` paths are legitimate.
-leaks=$(grep -rnF -e "Claude Code" -e "&& claude " -e "claude --" \
+leaks=$(grep -rnF -e "Claude Code" -e "&& claude " -e "claude -" -e "--permission-mode" \
   "$HEPHAESTUS_ROOT/.opencode/commands/" "$HEPHAESTUS_ROOT/.opencode/agents/" 2>/dev/null || true)
 assert_eq "no Claude-product leak in any OpenCode adapter" "" "$leaks"
 
