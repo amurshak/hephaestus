@@ -1,5 +1,5 @@
 ---
-description: "Orchestrate parallel multi-session development: survey existing worktrees, reap finished ones, plan a wave of non-conflicting issues, create sibling worktrees, and spawn a seeded C"
+description: "Orchestrate parallel multi-session development: survey existing worktrees, reap finished ones, plan a wave of non-conflicting issues, create sibling worktrees, and spawn a seeded O"
 ---
 <!-- requires: none -->
 <!-- chains: none -->
@@ -7,7 +7,7 @@ description: "Orchestrate parallel multi-session development: survey existing wo
 
 > **OpenCode:** start from the project root that contains `.opencode/`. Spawn role agents with the Task tool or @mentions when required.
 
-Orchestrate parallel multi-session development: survey existing worktrees, reap finished ones, plan a wave of non-conflicting issues, create sibling worktrees, and spawn a seeded Claude Code session per issue. Run autonomously.
+Orchestrate parallel multi-session development: survey existing worktrees, reap finished ones, plan a wave of non-conflicting issues, create sibling worktrees, and spawn a seeded OpenCode session per issue. Run autonomously.
 
 Modes from `$ARGUMENTS`: no args = full cycle (survey → reap → plan → create → spawn). `status` = survey report only. `cleanup` = survey + reap only.
 

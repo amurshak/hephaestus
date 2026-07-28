@@ -10,7 +10,7 @@ description: "Orchestrate parallel multi-session development: survey existing wo
 
 > Codex does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
 
-Orchestrate parallel multi-session development: survey existing worktrees, reap finished ones, plan a wave of non-conflicting issues, create sibling worktrees, and spawn a seeded Claude Code session per issue. Run autonomously.
+Orchestrate parallel multi-session development: survey existing worktrees, reap finished ones, plan a wave of non-conflicting issues, create sibling worktrees, and spawn a seeded Codex session per issue. Run autonomously.
 
 Modes from `$ARGUMENTS`: no args = full cycle (survey → reap → plan → create → spawn). `status` = survey report only. `cleanup` = survey + reap only.
 

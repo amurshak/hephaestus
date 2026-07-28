@@ -149,8 +149,14 @@ begin_test "Codex worktrees skill spawns codex, not claude"
 worktrees=$(cat "$HEPHAESTUS_ROOT/.agents/skills/worktrees/SKILL.md")
 assert_contains "osascript spawn uses codex" "$worktrees" 'do script "cd <worktree> && codex \"/start-issue <N>\""'
 assert_contains "manual fallback uses codex" "$worktrees" 'cd <worktree> && codex "/start-issue <N>"'
-assert_not_contains "spawn drops claude binary" "$worktrees" "&& claude "
-assert_not_contains "spawn drops Claude-only flag" "$worktrees" "--permission-mode"
-assert_not_contains "rationale drops Claude Code reference" "$worktrees" "Claude Code's title rewrites"
+assert_contains "summary names Codex sessions" "$worktrees" "spawn a seeded Codex session"
+
+# Repo-wide guard, frontmatter included — the routing `description:` is built
+# from the localized first body line, so a reflow that pushes a Claude product
+# name past the truncation trips this. Bare "claude" is not a needle:
+# `.claude/` paths are legitimate.
+leaks=$(grep -rnF -e "Claude Code" -e "&& claude " -e "claude --" \
+  "$HEPHAESTUS_ROOT/.agents/skills/" "$HEPHAESTUS_ROOT/.codex/agents/" 2>/dev/null || true)
+assert_eq "no Claude-product leak in any Codex adapter" "" "$leaks"
 
 print_summary

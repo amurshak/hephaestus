@@ -68,6 +68,7 @@ codex_localize_body() {
     -e 's/subagents/role agents/g' \
     -e 's/subagent/role agent/g' \
     -e 's/TodoWrite/the plan tool/g' \
+    -e 's/seeded Claude Code session/seeded Codex session/g' \
     -e 's|claude --permission-mode default |codex |g' \
     -e 's|&& claude "|\&\& codex "|g' \
     -e 's|`--permission-mode default` prevents spawned sessions inheriting plan mode and stalling|the positional prompt seeds the spawned session with the command|g' \
@@ -88,10 +89,10 @@ render_codex_skill() {
     return 1
   fi
 
-  # Codex skill descriptions drive implicit invocation — swap the unsubstituted
-  # $ARGUMENTS placeholder for a readable token, truncate on a word boundary,
-  # and anchor the slash-command name for matching.
-  desc=$(first_body_line "$workflow" "$start")
+  # Codex skill descriptions drive implicit invocation — localize the dialect,
+  # swap the unsubstituted $ARGUMENTS placeholder for a readable token, truncate
+  # on a word boundary, and anchor the slash-command name for matching.
+  desc=$(first_body_line "$workflow" "$start" | codex_localize_body)
   desc=$(printf '%s' "$desc" | sed 's/\$ARGUMENTS/<argument>/g; s/  */ /g')
   if [ "${#desc}" -gt 180 ]; then
     desc="${desc:0:180}"
