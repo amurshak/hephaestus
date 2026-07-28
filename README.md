@@ -321,9 +321,9 @@ Hermes is not a command-file harness. Its extension surface is a skills system, 
      external_dirs:
        - /path/to/your-project/.hermes/skills
    ```
-   Or start Hermes with `HERMES_HOME=/path/to/your-project/.hermes` for a fully project-scoped profile.
-3. Verify: `bash scripts/verify-hermes-load.sh` — it checks the wiring, then confirms the skills appear in `hermes skills list`.
-4. Invoke as `/autopilot`, `/ship`, `/finish`, … External dirs are read-only to Hermes, so its self-improving skill writes land in `~/.hermes/skills` and can never mutate a generated adapter out of sync.
+   `HERMES_HOME=/path/to/your-project/.hermes` also works and needs no config edit, but it makes the repo Hermes's whole profile home — `config.yaml`, credentials, session transcripts and memories land in your working tree, and `.hermes/skills` becomes writable. Commit only `.hermes/skills` and `.hermes/agents` if you go that route. `external_dirs` is the recommended path.
+3. Verify: `bash scripts/verify-hermes-load.sh` (or `bash .hephaestus/scripts/verify-hermes-load.sh` after a submodule install) — it checks the wiring, then confirms the skills appear in `hermes skills list`.
+4. Invoke as `/autopilot`, `/ship`, `/finish`, … Under `external_dirs` the package is read-only to Hermes, so its self-improving skill writes land in `~/.hermes/skills` and cannot mutate a generated adapter out of sync; the generator's `--check` catches it if they ever do.
 5. Role work uses `delegate_task`. Each brief in `.hermes/agents/` gives the `toolsets` to pass (`["terminal", "file"]` for coder, `["file", "web"]` for researcher) and the prompt to send as `context`. Two Hermes specifics: a delegate inherits **none** of the parent conversation, so everything it needs goes in `context`; and there is no worktree isolation, so parallel coder delegates share one working tree — serialize file-modifying work.
 
 **Two doctrines to keep straight.** Hermes's persistent memory (`~/.hermes/memories/`) is profile-scoped, capped, and frozen into the system prompt at session start — it is not repo state. Hephaestus keeps the repo canonical: issues, PRs, and git history are the memory that survives a machine change. Use Hermes memory for durable preferences, not for what a workflow decided. Likewise the kanban toolset is a local board with no GitHub issue sync, so GitHub issues remain the work queue; kanban is optional scratch space for a single session's fan-out.

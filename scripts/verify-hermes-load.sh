@@ -10,16 +10,33 @@
 #
 # Usage (from hephaestus root or an installed project):
 #   bash scripts/verify-hermes-load.sh
-#   bash scripts/verify-hermes-load.sh --require
+#   bash .hephaestus/scripts/verify-hermes-load.sh
+#   bash scripts/verify-hermes-load.sh --require /path/to/project
 
 set -uo pipefail
 
 REQUIRE=0
 if [ "${1:-}" = "--require" ]; then
   REQUIRE=1
+  shift
 fi
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Verify the *project's* skills, not the submodule's. Run from an installed
+# project the script lives at <project>/.hephaestus/scripts/, and it is
+# <project>/.hermes/skills that install.sh links and tells the user to wire —
+# the submodule copy has no project-specific orient. Prefer the directory the
+# user ran from, since `cd`-resolving the script path follows a symlinked
+# .hephaestus back into the shared checkout. An explicit argument wins.
+if [ -n "${1:-}" ]; then
+  ROOT="$(cd "$1" && pwd)" || exit 1
+elif [ -d "$PWD/.hermes/skills" ]; then
+  ROOT="$PWD"
+elif [ "$(basename "$SRC")" = ".hephaestus" ]; then
+  ROOT="$(cd "$SRC/.." && pwd)"
+else
+  ROOT="$SRC"
+fi
 cd "$ROOT" || exit 1
 SKILLS_DIR="$ROOT/.hermes/skills"
 

@@ -54,6 +54,24 @@ first_body_line() {
   awk -v start="$start" 'NR >= start && NF { print; exit }' "$file"
 }
 
+# Trim to Hermes's recommended description length. LC_ALL is pinned so the cut
+# lands identically whether the caller's locale counts bytes or characters —
+# otherwise --check reports drift on machines that merely differ in $LANG. Words
+# are dropped whole, so a multibyte character can never be split mid-sequence.
+truncate_desc() {
+  LC_ALL=C awk -v max=60 '
+    { if (length($0) <= max) { print; exit }
+      out = ""
+      n = split($0, w, " ")
+      for (i = 1; i <= n; i++) {
+        cand = (out == "" ? w[i] : out " " w[i])
+        if (length(cand) > max) break
+        out = cand
+      }
+      print out "…"
+    }'
+}
+
 # Rewrite Claude-dialect body text for Hermes mechanics.
 hermes_localize_body() {
   sed \
@@ -104,11 +122,7 @@ render_hermes_skill() {
   # the first body line is trimmed on a word boundary. The name is the literal
   # slash command, so the description carries no invocation anchor.
   desc=$(first_body_line "$workflow" "$start")
-  desc=$(printf '%s' "$desc" | sed 's/\$ARGUMENTS/<argument>/g; s/  */ /g')
-  if [ "${#desc}" -gt 60 ]; then
-    desc="${desc:0:60}"
-    desc="${desc% *}…"
-  fi
+  desc=$(printf '%s' "$desc" | sed 's/\$ARGUMENTS/<argument>/g; s/  */ /g' | truncate_desc)
   desc=$(quote_escape "$desc")
   related=$(render_related_skills "$chains")
 
