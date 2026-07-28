@@ -37,6 +37,34 @@ else
   fi
 fi
 
+begin_test "adapter check detects stale adapter after source deletion"
+
+FIXTURE2=$(mktemp -d "${TMPDIR:-/tmp}/heph-adapters-XXXXXX")
+trap 'rm -rf "$FIXTURE" "$FIXTURE2"' EXIT
+
+cp -R "$HEPHAESTUS_ROOT/.ai" "$FIXTURE2/.ai"
+cp -R "$HEPHAESTUS_ROOT/.claude" "$FIXTURE2/.claude"
+mkdir -p "$FIXTURE2/scripts"
+cp "$HEPHAESTUS_ROOT/scripts/sync-agent-adapters.sh" "$FIXTURE2/scripts/sync-agent-adapters.sh"
+
+rm "$FIXTURE2/.ai/workflows/research.md"
+
+if stale_output=$(bash "$FIXTURE2/scripts/sync-agent-adapters.sh" --check 2>&1); then
+  fail "adapter check should detect orphaned adapter" "exited 0, output: $stale_output"
+else
+  assert_contains "adapter check names the stale adapter" "$stale_output" "stale Claude adapter"
+  assert_contains "stale adapter path includes research.md" "$stale_output" "research.md"
+fi
+
+sync_output=$(bash "$FIXTURE2/scripts/sync-agent-adapters.sh" 2>&1)
+assert_contains "sync reports stale adapter removal" "$sync_output" "removed stale Claude adapter"
+assert_file_not_exists "sync removes the orphaned adapter" "$FIXTURE2/.claude/commands/research.md"
+
+sed -i.bak '/^name:/d' "$FIXTURE2/.ai/workflows/ship.md"
+bash "$FIXTURE2/scripts/sync-agent-adapters.sh" >/dev/null 2>&1
+assert_exit_code "sync fails on unparseable source" 1 "$?"
+assert_file_exists "sync keeps adapter of unparseable source" "$FIXTURE2/.claude/commands/ship.md"
+
 begin_test "all canonical workflows declare adapter metadata"
 
 missing=""
