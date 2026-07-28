@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 2.1.0 — 2026-07-28
+
+Adoptions from a cross-check against sibling implementations of the same workflow pattern (one public — [claude-code-core-workflow](https://github.com/amurshak/claude-code-core-workflow) — and several private production lineages). Where multiple lineages independently evolved the same mechanism, that convergence drove adoption.
 
 ### Added
 - **`/worktrees` — parallel multi-session orchestration** (#109): survey existing issue worktrees, auto-reap merged+clean ones (never dirty or unpushed), wave-plan the largest mutually non-conflicting set of open issues under a configurable cap (`## Worktrees` section in CLAUDE.md: `max`, `serialize_paths` hotspots, `setup`), create sibling worktrees with config propagation and single-sourced env symlinks, and spawn a seeded Claude Code session per issue (macOS Terminal automation with manual-command fallback). Extends parallelization to three levels: within-issue (coder subagents), across-issues (worktree sessions), across-time (`loop.sh`). Synthesized from two sibling implementations — one contributed proven worktree mechanics, the other wave/dependency scheduling.
