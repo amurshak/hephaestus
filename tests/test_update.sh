@@ -49,6 +49,8 @@ rc=$?
 assert_exit_code "exits 0"               0 "$rc"
 assert_contains  "already up to date"    "$output" "Already up to date"
 assert_contains  "commit hint includes OpenCode" "$output" "git add .hephaestus .claude .opencode"
+assert_contains  "commit hint scopes Hermes to generated dirs" "$output" ".hermes/skills .hermes/agents"
+assert_not_contains "commit hint never stages the whole .hermes profile" "$output" ".codex .hermes &&"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────

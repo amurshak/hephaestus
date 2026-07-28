@@ -123,6 +123,8 @@ assert_symlink "after install: coder.md linked" "$TARGET/.claude/agents/coder.md
 assert_symlink "after install: OpenCode coder.md linked" "$TARGET/.opencode/agents/coder.md"
 assert_symlink "after install: Codex ship skill linked" "$TARGET/.agents/skills/ship"
 assert_symlink "after install: Codex coder.toml linked" "$TARGET/.codex/agents/coder.toml"
+assert_symlink "after install: Hermes ship skill linked" "$TARGET/.hermes/skills/hephaestus/ship"
+assert_symlink "after install: Hermes coder brief linked" "$TARGET/.hermes/agents/coder.md"
 
 # Uninstall
 bash "$SOURCE_REPO/uninstall.sh" "$TARGET" >/dev/null 2>&1
@@ -131,6 +133,9 @@ assert_file_not_exists "after uninstall: OpenCode coder.md gone" "$TARGET/.openc
 assert_file_not_exists "after uninstall: Codex ship skill gone" "$TARGET/.agents/skills/ship"
 assert_file_not_exists "after uninstall: Codex coder.toml gone" "$TARGET/.codex/agents/coder.toml"
 assert_file_exists     "after uninstall: Codex orient skill preserved" "$TARGET/.agents/skills/orient/SKILL.md"
+assert_file_not_exists "after uninstall: Hermes ship skill gone" "$TARGET/.hermes/skills/hephaestus/ship"
+assert_file_not_exists "after uninstall: Hermes coder brief gone" "$TARGET/.hermes/agents/coder.md"
+assert_file_exists     "after uninstall: Hermes orient skill preserved" "$TARGET/.hermes/skills/hephaestus/orient/SKILL.md"
 
 # Reinstall
 bash "$SOURCE_REPO/install.sh" "$TARGET" >/dev/null 2>&1
@@ -140,6 +145,8 @@ assert_symlink       "after reinstall: OpenCode coder.md linked again" "$TARGET/
 assert_symlink_valid "after reinstall: OpenCode coder.md resolves"     "$TARGET/.opencode/agents/coder.md"
 assert_symlink       "after reinstall: Codex ship skill linked again" "$TARGET/.agents/skills/ship"
 assert_symlink_valid "after reinstall: Codex ship skill resolves"     "$TARGET/.agents/skills/ship"
+assert_symlink       "after reinstall: Hermes ship skill linked again" "$TARGET/.hermes/skills/hephaestus/ship"
+assert_symlink_valid "after reinstall: Hermes ship skill resolves"     "$TARGET/.hermes/skills/hephaestus/ship"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
