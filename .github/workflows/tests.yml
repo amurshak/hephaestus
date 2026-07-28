@@ -21,6 +21,8 @@ jobs:
         run: ./scripts/sync-opencode-adapters.sh --check
       - name: Codex adapter drift check
         run: ./scripts/sync-codex-adapters.sh --check
+      - name: Cursor adapter drift check
+        run: ./scripts/sync-cursor-adapters.sh --check
       - name: Hermes adapter drift check
         run: ./scripts/sync-hermes-adapters.sh --check
       - name: README composition check

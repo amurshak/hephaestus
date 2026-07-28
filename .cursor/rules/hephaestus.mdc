@@ -1,0 +1,28 @@
+---
+description: Hephaestus delivery workflow — how its commands, subagents, and chains work in this project
+alwaysApply: true
+---
+<!-- generated from .ai/workflows/ and .claude/agents/; do not edit directly -->
+
+# Hephaestus
+
+Delivery runs a fixed loop — orient, plan, critique, implement, review, test, ship, finish. Slash commands in `.cursor/commands/` drive it; the subagents in `.cursor/agents/` absorb the verbose work. Quality gates, retry limits, and autonomy rules live in `CLAUDE.md` — read it there rather than assuming.
+
+## Chains
+
+A command that chains another must load that command's file and follow it — never paraphrase it from memory.
+
+| Command | Chains |
+| --- | --- |
+| /autopilot | /start-issue, /ship, /finish |
+| /finish | /update-docs |
+| /refactor | /ship, /finish |
+| /ship | /critique |
+| /start-issue | /test-issue |
+
+## Cursor mapping
+
+- **Subagents, no worktrees.** Under Claude Code the `coder` agent runs in an isolated git worktree. Cursor subagents share one working tree — serialize file-modifying tasks.
+- **Least privilege is only partly enforced.** `researcher` carries `readonly: true`, which Cursor enforces. `reviewer`, `tester`, and `explorer` need a working shell, so they run unrestricted and must decline to modify files on instruction alone — `tools:` is prose to Cursor, not an access control.
+- **Commands are injected verbatim.** Cursor strips YAML frontmatter only from imported `.claude/commands` files, so these adapters carry none. `$ARGUMENTS` and `$1`… are substituted.
+- **Never hand-edit `.cursor/`.** Edit `.ai/workflows/` and `.claude/agents/` in the hephaestus repo (`.hephaestus/` when installed as a submodule), then run `scripts/sync-cursor-adapters.sh`.

@@ -21,7 +21,7 @@ Hephaestus is an implementation of a generic software development workflow patte
 ## Development Commands
 
 - **Test**: `./tests/run.sh` — full integration suite (single file: `bash tests/test_<name>.sh`)
-- **Lint/drift**: `./scripts/sync-agent-adapters.sh --check`, `./scripts/sync-opencode-adapters.sh --check`, `./scripts/sync-codex-adapters.sh --check`, `./scripts/sync-hermes-adapters.sh --check`, `bash tests/check_composition.sh`
+- **Lint/drift**: `./scripts/sync-agent-adapters.sh --check`, `./scripts/sync-opencode-adapters.sh --check`, `./scripts/sync-codex-adapters.sh --check`, `./scripts/sync-hermes-adapters.sh --check`, `./scripts/sync-cursor-adapters.sh --check`, `bash tests/check_composition.sh`
 - **Build**: none (prose + shell; no compile step)
 
 ## Worktrees
@@ -49,14 +49,17 @@ At release, `scripts/collect-changelog.sh <version>` folds every fragment into a
 - `.codex/agents/` — generated Codex agent-role adapters from `.claude/agents/`
 - `.hermes/skills/hephaestus/` — generated Hermes skill adapters for the same canonical workflows
 - `.hermes/agents/` — generated Hermes `delegate_task` briefs from `.claude/agents/`
+- `.cursor/commands/`, `.cursor/agents/` — generated Cursor slash commands and subagents
+- `.cursor/rules/hephaestus.mdc` — generated always-apply Cursor rule (chain graph + Claude→Cursor mapping)
 - `opencode.json` — OpenCode project config that loads `AGENTS.md` and this file as instructions
 - `.claude-plugin/plugin.json` — Plugin manifest for Claude Code marketplace install (declares `commands` and `agents` paths so the plugin loader finds them under `.claude/`)
 - `scripts/sync-agent-adapters.sh` — generates/checks tool-specific adapters from `.ai/workflows/`
 - `scripts/sync-opencode-adapters.sh` — generates/checks OpenCode commands and agent adapters
 - `scripts/sync-codex-adapters.sh` — generates/checks Codex skills and agent-role adapters
 - `scripts/sync-hermes-adapters.sh` — generates/checks Hermes skills and delegate briefs
+- `scripts/sync-cursor-adapters.sh` — generates/checks Cursor commands, subagents, and the project rule
 - `changelog.d/` — one changelog fragment per PR; `scripts/collect-changelog.sh <version>` folds them into CHANGELOG.md at release
-- `install.sh` — Three modes: default symlinks the shared adapters into the harness config dirs (`~/.claude/`, `~/.config/opencode/`, `~/.codex/`, `~/.hermes/`); `--project` scaffolds the files a repo owns; `--vendor` commits the shared set into a repo. Every mode records what it wrote in a manifest. `--migrate` first strips a pre-2.2 `.hephaestus` submodule install from the target repo
+- `install.sh` — Three modes: default symlinks the shared adapters into the harness config dirs (`~/.claude/`, `~/.config/opencode/`, `~/.codex/`, `~/.hermes/`, `~/.cursor/`); `--project` scaffolds the files a repo owns; `--vendor` commits the shared set into a repo. Every mode records what it wrote in a manifest. `--migrate` first strips a pre-2.2 `.hephaestus` submodule install from the target repo
 - `update.sh` — Pulls the clone and re-installs (`--vendor <path>` for a vendored repo)
 - `uninstall.sh` — Removes exactly what the matching manifest records
 
@@ -86,6 +89,7 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 - **OpenCode adapters are generated too**: `.opencode/commands/` comes from `.ai/workflows/`; `.opencode/agents/` comes from `.claude/agents/`. The generator localizes Claude dialect (worktrees/subagents/TodoWrite → Task/`@agent` + serialize edits, and the `/worktrees` spawn CLI → `opencode --prompt`) and injects slash-command chain notes. Run `./scripts/sync-opencode-adapters.sh` after workflow or agent edits and `./scripts/sync-opencode-adapters.sh --check` in quality gates. Verify a live open session loads them with `bash scripts/verify-opencode-load.sh`.
 - **Codex adapters are generated too**: `.agents/skills/*/SKILL.md` comes from `.ai/workflows/`; `.codex/agents/*.toml` comes from `.claude/agents/`. The generator localizes the same Claude dialect, including the `/worktrees` spawn CLI → `codex "<prompt>"`. Run `./scripts/sync-codex-adapters.sh` after workflow or agent edits and `./scripts/sync-codex-adapters.sh --check` in quality gates.
 - **Hermes adapters are generated too**: `.hermes/skills/hephaestus/*/SKILL.md` comes from `.ai/workflows/`; `.hermes/agents/*.md` comes from `.claude/agents/`. The generator localizes the same Claude dialect (worktrees/subagents/TodoWrite → `delegate_task` with per-role `toolsets` + the todo tool + serialize edits, and the `/worktrees` spawn CLI → `hermes chat -q`) and warns that a delegate inherits no parent context. Hermes has no project-local skill discovery, so the files stay inert until the project's `.hermes/skills` is wired — `skills.external_dirs` (recommended) or `HERMES_HOME` — `bash scripts/verify-hermes-load.sh` checks that wiring against a live install. Run `./scripts/sync-hermes-adapters.sh` after workflow or agent edits and `--check` in quality gates.
+- **Cursor adapters are generated too**: `.cursor/commands/` comes from `.ai/workflows/`; `.cursor/agents/` comes from `.claude/agents/`; `.cursor/rules/hephaestus.mdc` is derived from both. Cursor mechanics that shape the output: command files are injected **verbatim** (frontmatter is stripped only for imported `.claude/commands`), so they carry no YAML and lead with the workflow's opening line — Cursor's hover preview; `$ARGUMENTS`/`$1`… *are* substituted; frontmatter values are not unquoted, so they are emitted bare; `readonly: true` is honoured and emitted for agents with no shell and no edit tools, while `tools:` is only rendered to the model as prose and is never an access control. The `/worktrees` spawn CLI localizes to `cursor-agent`. Run `./scripts/sync-cursor-adapters.sh` after workflow or agent edits and `--check` in quality gates.
 - **Commands read the target project's CLAUDE.md** to discover test/lint/build commands. The "Development Commands" section in each installed project drives all quality gates.
 - **`/finish` branches on explicit PR state** before cleanup. Merged PRs complete the full close/cleanup/docs flow; auto-merge-pending and manual-merge-needed PRs preserve the issue and PR branch; closed-unmerged PRs abort finish cleanly.
 - **`/finish` decides docs sync mechanically** from the PR diff: every PR requires CHANGELOG.md; command or installer changes also require README.md; command or agent changes also require CLAUDE.md. If any required doc is missing, `/finish` runs `/update-docs` and logs the missing files.
@@ -105,7 +109,7 @@ Five agent roles, stratified by least-privilege tool access. Coder is the only a
 - Reviewer verdicts: PASS / PASS WITH CHANGES / FAIL
 - General critique verdicts: SOUND / NEEDS REFINEMENT / RETHINK
 
-**Model tiers** — every agent declares `model: opus | sonnet | haiku | inherit`. The tier is harness-neutral; `.ai/models.conf` says what it means per harness (OpenCode gets a `provider/model-id`, Codex gets `model_reasoning_effort`, Hermes gets an advisory `provider/model-id` since it applies one global `delegation.model`, Claude Code takes the tier name as-is). Assign by what the role costs to get wrong: reviewer `opus`, coder and researcher `sonnet`, explorer and tester `haiku`. Override the mapping — not the tiers — in `~/.hephaestus/models.conf` (user level, every project) or `$HEPHAESTUS_MODELS`; layers merge per key. Generator `--check` ignores overrides so committed adapters stay reproducible across machines.
+**Model tiers** — every agent declares `model: opus | sonnet | haiku | inherit`. The tier is harness-neutral; `.ai/models.conf` says what it means per harness (OpenCode gets a `provider/model-id`, Codex gets `model_reasoning_effort`, Cursor ships unset because its model namespace churns per release, Hermes gets an advisory `provider/model-id` since it applies one global `delegation.model`, Claude Code takes the tier name as-is). Assign by what the role costs to get wrong: reviewer `opus`, coder and researcher `sonnet`, explorer and tester `haiku`. Override the mapping — not the tiers — in `~/.hephaestus/models.conf` (user level, every project) or `$HEPHAESTUS_MODELS`; layers merge per key. Generator `--check` ignores overrides so committed adapters stay reproducible across machines.
 
 ## Autonomy Conventions
 
@@ -152,6 +156,7 @@ When modifying agents or commands:
 - Do not hand-edit `.opencode/commands/` or `.opencode/agents/`; regenerate them with `./scripts/sync-opencode-adapters.sh`.
 - Do not hand-edit `.agents/skills/*/SKILL.md` or `.codex/agents/`; regenerate them with `./scripts/sync-codex-adapters.sh`.
 - Do not hand-edit `.hermes/skills/` or `.hermes/agents/`; regenerate them with `./scripts/sync-hermes-adapters.sh`.
+- Do not hand-edit `.cursor/`; regenerate it with `./scripts/sync-cursor-adapters.sh`.
 - Preserve the `$ARGUMENTS` placeholder in workflows that receive user input at invocation.
 - Retry limits are defined in "Core Workflow Pattern" above — commands must reference them, not hardcode
 - Commands that delegate to subagents should specify which agent type to use and what structured output to expect
@@ -159,6 +164,7 @@ When modifying agents or commands:
 - Run `./scripts/sync-opencode-adapters.sh --check` before shipping OpenCode adapter changes
 - Run `./scripts/sync-codex-adapters.sh --check` before shipping Codex adapter changes
 - Run `./scripts/sync-hermes-adapters.sh --check` before shipping Hermes adapter changes
+- Run `./scripts/sync-cursor-adapters.sh --check` before shipping Cursor adapter changes
 - **No bloat**: Replacements must be at least as concise as the original. If the new text is longer without adding information, tighten it. Bloat and drift are the enemies of excellence.
 
 **Workflow metadata** — every `.ai/workflows/*.md` declares its dependencies in frontmatter:
@@ -174,6 +180,8 @@ These are NOT in this repo — each installed project owns them (`install.sh --p
 - `.opencode/commands/orient.md` — OpenCode project-specific context (must be customized if using OpenCode)
 - `.agents/skills/orient/` — Codex project-specific orient skill (must be customized if using Codex)
 - `.hermes/skills/hephaestus/orient/` — Hermes project-specific orient skill (must be customized if using Hermes)
+- `.cursor/commands/orient.md` — Cursor project-specific context (scaffolded, must be customized if using Cursor)
+- `.cursor/rules/*.mdc` other than `hephaestus.mdc` — the project's own Cursor rules; hephaestus never writes or removes them
 - `.claude/hooks/` — lint/test hooks for the project's tech stack
 - `CLAUDE.md` with a "Development Commands" section (test, lint, build commands)
 - `AGENTS.md` — index of available local and shared agents (scaffolded from `templates/AGENTS.md`)

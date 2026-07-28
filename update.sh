@@ -55,5 +55,5 @@ echo "Updated hephaestus: $OLD_VERSION → $NEW_VERSION"
 if [ "$MODE" = vendor ]; then
   echo ""
   echo "Commit the refreshed copy:"
-  echo "  git -C $TARGET add .heph-manifest .claude .opencode .agents .codex .hermes/skills .hermes/agents && git -C $TARGET commit -m 'chore: update hephaestus to $NEW_VERSION'"
+  echo "  git -C $TARGET add .heph-manifest .claude .opencode .agents .codex .cursor .hermes/skills .hermes/agents && git -C $TARGET commit -m 'chore: update hephaestus to $NEW_VERSION'"
 fi

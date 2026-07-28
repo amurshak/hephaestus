@@ -9,7 +9,8 @@ trap teardown_fixture EXIT
 
 AGENTS="coder explorer researcher reviewer tester"
 COMMANDS="autopilot create-issue critique finish refactor research ship start-issue test-issue update-docs update-hephaestus worktrees"
-TOTAL_ADAPTERS=68   # 12 commands + 5 agents, across Claude, OpenCode, Codex, and Hermes
+TOTAL_ADAPTERS=86   # 12 commands + 5 agents across Claude, OpenCode, Codex, Hermes,
+                    # and Cursor; Cursor adds its generated project rule on top
 
 # ── User-level install ───────────────────────────────────────────────────────
 
@@ -23,13 +24,16 @@ for agent in $AGENTS; do
   assert_symlink_valid "OpenCode $agent.md linked" "$OPENCODE_DIR/agents/$agent.md"
   assert_symlink_valid "Codex $agent.toml linked"  "$CODEX_DIR/agents/$agent.toml"
   assert_symlink_valid "Hermes $agent.md linked"   "$HERMES_DIR/agents/$agent.md"
+  assert_symlink_valid "Cursor $agent.md linked"   "$CURSOR_DIR/agents/$agent.md"
 done
 for cmd in $COMMANDS; do
   assert_symlink_valid "Claude $cmd.md linked"   "$CLAUDE_DIR/commands/$cmd.md"
   assert_symlink_valid "OpenCode $cmd.md linked" "$OPENCODE_DIR/commands/$cmd.md"
   assert_symlink_valid "Codex skill $cmd linked" "$CODEX_DIR/skills/$cmd"
   assert_symlink_valid "Hermes skill $cmd linked" "$HERMES_DIR/skills/hephaestus/$cmd"
+  assert_symlink_valid "Cursor $cmd.md linked"    "$CURSOR_DIR/commands/$cmd.md"
 done
+assert_symlink_valid "Cursor rule linked" "$CURSOR_DIR/rules/hephaestus.mdc"
 
 # Symlinks are absolute paths into the clone — they must resolve from anywhere,
 # including a git worktree, which is what the submodule layout could not do.
@@ -42,6 +46,7 @@ assert_file_not_exists "orient.md not installed"       "$CLAUDE_DIR/commands/ori
 assert_file_not_exists "OpenCode orient.md not installed" "$OPENCODE_DIR/commands/orient.md"
 assert_file_not_exists "Codex orient skill not installed" "$CODEX_DIR/skills/orient"
 assert_file_not_exists "Hermes orient skill not installed" "$HERMES_DIR/skills/hephaestus/orient"
+assert_file_not_exists "Cursor orient.md not installed"    "$CURSOR_DIR/commands/orient.md"
 
 assert_file_exists "manifest written"      "$USER_MANIFEST"
 assert_eq "manifest records every adapter" "$TOTAL_ADAPTERS" "$(grep -cv '^#' "$USER_MANIFEST")"
@@ -138,6 +143,8 @@ assert_contains    "Codex orient has frontmatter"  "$(cat "$TARGET/.agents/skill
 assert_file_exists "Hermes orient skill scaffolded" "$TARGET/.hermes/skills/hephaestus/orient/SKILL.md"
 assert_contains    "Hermes orient has category"     "$(cat "$TARGET/.hermes/skills/hephaestus/orient/SKILL.md")" "category: hephaestus"
 assert_file_exists "Hermes .gitignore scaffolded"   "$TARGET/.hermes/.gitignore"
+assert_file_exists "Cursor orient.md scaffolded"   "$TARGET/.cursor/commands/orient.md"
+assert_not_symlink "Cursor orient.md is a real file" "$TARGET/.cursor/commands/orient.md"
 assert_file_exists "AGENTS.md scaffolded"          "$TARGET/AGENTS.md"
 assert_file_exists "opencode.json scaffolded"      "$TARGET/opencode.json"
 assert_contains    "opencode.json loads AGENTS.md" "$(cat "$TARGET/opencode.json")" "AGENTS.md"
@@ -146,6 +153,8 @@ assert_contains    "opencode.json loads CLAUDE.md" "$(cat "$TARGET/opencode.json
 # The shared set belongs at user level — project mode must not copy it in
 assert_file_not_exists "no command adapters copied" "$TARGET/.claude/commands/ship.md"
 assert_file_not_exists "no agent adapters copied"   "$TARGET/.claude/agents/coder.md"
+assert_file_not_exists "no Cursor adapters copied"  "$TARGET/.cursor/commands/ship.md"
+assert_file_not_exists "no Cursor rule copied"      "$TARGET/.cursor/rules/hephaestus.mdc"
 assert_file_not_exists "no manifest written"        "$TARGET/.heph-manifest"
 teardown_fixture
 
@@ -176,6 +185,7 @@ output=$(bash "$SOURCE_REPO/install.sh" --vendor "$TARGET" 2>&1)
 for agent in $AGENTS; do
   assert_not_symlink "Claude $agent.md is a real file" "$TARGET/.claude/agents/$agent.md"
   assert_not_symlink "Codex $agent.toml is a real file" "$TARGET/.codex/agents/$agent.toml"
+  assert_not_symlink "Cursor $agent.md is a real file"  "$TARGET/.cursor/agents/$agent.md"
 done
 for cmd in $COMMANDS; do
   assert_not_symlink "Claude $cmd.md is a real file"   "$TARGET/.claude/commands/$cmd.md"
@@ -183,7 +193,9 @@ for cmd in $COMMANDS; do
   assert_file_exists "Codex skill $cmd copied"         "$TARGET/.agents/skills/$cmd/SKILL.md"
   assert_not_symlink "Codex skill $cmd is a real dir"  "$TARGET/.agents/skills/$cmd"
   assert_file_exists "Hermes skill $cmd copied"        "$TARGET/.hermes/skills/hephaestus/$cmd/SKILL.md"
+  assert_not_symlink "Cursor $cmd.md is a real file"   "$TARGET/.cursor/commands/$cmd.md"
 done
+assert_not_symlink "Cursor rule is a real file" "$TARGET/.cursor/rules/hephaestus.mdc"
 
 assert_file_exists "manifest written"        "$TARGET/.heph-manifest"
 assert_eq "manifest records every adapter"   "$TOTAL_ADAPTERS" "$(grep -cv '^#' "$TARGET/.heph-manifest")"

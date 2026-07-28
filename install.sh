@@ -8,7 +8,7 @@
 #
 #   ./install.sh --project [--audit | --force] [path]
 #       Scaffold the files a project owns: orient (Claude/OpenCode/Codex/
-#       Hermes), AGENTS.md, opencode.json, .hermes/.gitignore. Once per repo.
+#       Hermes/Cursor), AGENTS.md, opencode.json, .hermes/.gitignore. Once per repo.
 #
 #   ./install.sh --vendor [--audit | --force | --clean] [path]
 #       --project, plus a copy of the shared adapters committed into the repo.
@@ -26,7 +26,7 @@
 #   user-level: $XDG_STATE_HOME/hephaestus/manifest   vendored: <project>/.heph-manifest
 #
 # Harness config dirs honor $CLAUDE_CONFIG_DIR, $XDG_CONFIG_HOME, $CODEX_HOME,
-# and $HERMES_HOME.
+# $HERMES_HOME, and $CURSOR_HOME.
 # Idempotent: safe to re-run.
 
 set -euo pipefail
@@ -92,6 +92,7 @@ CLAUDE_HOME="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 OPENCODE_HOME="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 HERMES_HOME_DIR="${HERMES_HOME:-$HOME/.hermes}"
+CURSOR_HOME_DIR="${CURSOR_HOME:-$HOME/.cursor}"
 
 if [ "$MODE" = vendor ]; then
   MANIFEST="$TARGET/.heph-manifest"
@@ -112,6 +113,9 @@ adapter_rows() {
 .codex/agents|$CODEX_HOME_DIR/agents|file
 .hermes/skills/hephaestus|$HERMES_HOME_DIR/skills/hephaestus|dir
 .hermes/agents|$HERMES_HOME_DIR/agents|file
+.cursor/commands|$CURSOR_HOME_DIR/commands|file
+.cursor/agents|$CURSOR_HOME_DIR/agents|file
+.cursor/rules|$CURSOR_HOME_DIR/rules|file
 EOF
   else
     cat <<EOF
@@ -123,6 +127,9 @@ EOF
 .codex/agents|$TARGET/.codex/agents|file
 .hermes/skills/hephaestus|$TARGET/.hermes/skills/hephaestus|dir
 .hermes/agents|$TARGET/.hermes/agents|file
+.cursor/commands|$TARGET/.cursor/commands|file
+.cursor/agents|$TARGET/.cursor/agents|file
+.cursor/rules|$TARGET/.cursor/rules|file
 EOF
   fi
 }
@@ -380,6 +387,7 @@ scaffold_project() {
   echo "Project files:"
   scaffold "$SCRIPT_DIR/templates/orient.md" "$TARGET/.claude/commands/orient.md" "orient.md"
   scaffold "$SCRIPT_DIR/templates/orient.md" "$TARGET/.opencode/commands/orient.md" "opencode orient.md"
+  scaffold "$SCRIPT_DIR/templates/orient.md" "$TARGET/.cursor/commands/orient.md" "cursor orient.md"
 
   if [ -e "$TARGET/.agents/skills/orient/SKILL.md" ]; then
     if [ "$AUDIT_MODE" = true ]; then

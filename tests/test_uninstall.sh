@@ -25,13 +25,16 @@ for agent in $AGENTS; do
   assert_file_not_exists "OpenCode $agent.md removed" "$OPENCODE_DIR/agents/$agent.md"
   assert_file_not_exists "Codex $agent.toml removed"  "$CODEX_DIR/agents/$agent.toml"
   assert_file_not_exists "Hermes $agent.md removed"   "$HERMES_DIR/agents/$agent.md"
+  assert_file_not_exists "Cursor $agent.md removed"   "$CURSOR_DIR/agents/$agent.md"
 done
 assert_file_not_exists "Claude ship.md removed"   "$CLAUDE_DIR/commands/ship.md"
 assert_file_not_exists "OpenCode ship.md removed" "$OPENCODE_DIR/commands/ship.md"
 assert_file_not_exists "Codex ship skill removed" "$CODEX_DIR/skills/ship"
 assert_file_not_exists "Hermes ship skill removed" "$HERMES_DIR/skills/hephaestus/ship"
+assert_file_not_exists "Cursor ship.md removed"   "$CURSOR_DIR/commands/ship.md"
+assert_file_not_exists "Cursor rule removed"      "$CURSOR_DIR/rules/hephaestus.mdc"
 assert_file_not_exists "manifest removed"         "$USER_MANIFEST"
-assert_contains        "reports what it removed"  "$output" "Removed 68 file(s)"
+assert_contains        "reports what it removed"  "$output" "Removed 86 file(s)"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -57,6 +60,8 @@ sandbox_home
 TARGET=$(create_target)
 bash "$SOURCE_REPO/install.sh" --vendor "$TARGET" >/dev/null 2>&1
 echo "local agent" > "$TARGET/.claude/agents/local-agent.md"
+# .cursor/rules is a namespace we share with the project.
+echo "team rule" > "$TARGET/.cursor/rules/team.mdc"
 
 output=$(bash "$SOURCE_REPO/uninstall.sh" --vendor "$TARGET" 2>&1)
 rc=$?
@@ -67,12 +72,17 @@ assert_file_not_exists "coder.md copy removed"     "$TARGET/.claude/agents/coder
 assert_file_not_exists "Codex ship skill removed"  "$TARGET/.agents/skills/ship"
 assert_file_not_exists "Codex coder.toml removed"  "$TARGET/.codex/agents/coder.toml"
 assert_file_not_exists "Hermes ship skill removed" "$TARGET/.hermes/skills/hephaestus/ship"
+assert_file_not_exists "Cursor ship.md removed"   "$TARGET/.cursor/commands/ship.md"
+assert_file_not_exists "Cursor rule removed"      "$TARGET/.cursor/rules/hephaestus.mdc"
 assert_file_not_exists "manifest removed"          "$TARGET/.heph-manifest"
 
 assert_file_exists "orient.md preserved"           "$TARGET/.claude/commands/orient.md"
 assert_file_exists "Codex orient skill preserved"  "$TARGET/.agents/skills/orient/SKILL.md"
 assert_file_exists "Hermes orient skill preserved" "$TARGET/.hermes/skills/hephaestus/orient/SKILL.md"
 assert_file_exists "Hermes .gitignore preserved"   "$TARGET/.hermes/.gitignore"
+assert_file_exists "Cursor orient.md preserved"   "$TARGET/.cursor/commands/orient.md"
+# .cursor/rules is shared with the project's own rules — never ours to remove.
+assert_file_exists "project's own Cursor rule preserved" "$TARGET/.cursor/rules/team.mdc"
 assert_file_exists "AGENTS.md preserved"           "$TARGET/AGENTS.md"
 assert_file_exists "opencode.json preserved"       "$TARGET/opencode.json"
 assert_file_exists "local agent preserved"         "$TARGET/.claude/agents/local-agent.md"
