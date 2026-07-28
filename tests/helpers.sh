@@ -140,8 +140,23 @@ setup_fixture() {
   # The list comes from git, not an rsync `--filter=':- .gitignore'` — rsync
   # cannot read git's negation syntax and would drop all of .hermes/, whose
   # .gitignore is `*` plus `!skills/**`.
-  git -C "$HEPHAESTUS_ROOT" ls-files --others --ignored --exclude-standard \
-    --directory 2>/dev/null | sed 's|^|/|' > "$FIXTURE_DIR/rsync-excludes"
+  #   env -u GIT_CONFIG_GLOBAL — the fixture config set above hides the
+  #     developer's core.excludesFile, a common home for a node_modules rule.
+  #   core.quotePath=false     — C-quoted non-ASCII names never match as patterns.
+  #   sed escape then anchor   — rsync reads `[`, `*`, `?` in a filename as a
+  #     pattern, so an ignored `a[bc].log` would exclude tracked ab.log/ac.log.
+  local ignored
+  if ignored=$(env -u GIT_CONFIG_GLOBAL git -c core.quotePath=false \
+                 -C "$HEPHAESTUS_ROOT" ls-files --others --ignored \
+                 --exclude-standard --directory 2>/dev/null); then
+    printf '%s' "$ignored" | sed 's|[][*?\\]|\\&|g; s|^|/|' \
+      > "$FIXTURE_DIR/rsync-excludes"
+  else
+    # Degrade to a full copy, but say so — the only other symptom is a suite
+    # that quietly goes back to taking 25 minutes.
+    : > "$FIXTURE_DIR/rsync-excludes"
+    echo "  ! git ls-files failed; copying the full working tree" >&2
+  fi
   rsync -a --exclude='.git' --exclude-from="$FIXTURE_DIR/rsync-excludes" \
     "$HEPHAESTUS_ROOT/" "$FIXTURE_DIR/source/"
   git -C "$FIXTURE_DIR/source" -c user.email="test@test.com" -c user.name="Test" \
