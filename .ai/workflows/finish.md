@@ -51,8 +51,9 @@ Steps:
    - What failed during this issue's pipeline (critique rejections, test failures, blocked tasks)?
    - What fixed it (alternative approach, simplified scope, skipped non-critical)?
    - Any reusable insight (e.g., "integration tests needed before refactoring auth module")?
+   - **Critic calibration**: check for post-merge corrections to this PR's files (`git log --oneline -20 -- <files>` since merge, plus open issues referencing them). If fixes landed for problems the pre-ship critique should have caught, add a line `Critique calibration: false-negative — <what was missed>`; if the critique blocked on something that proved fine, `false-positive — <what>`; otherwise `accurate`. Calibration lives in issue comments (repo-as-memory), searchable via `gh search issues "Critique calibration"`.
    - Add as a comment on the closed issue: `gh issue comment <#> --repo <detected-repo> --body "<retrospective>"`
-   - Keep it short — 2-4 sentences. Skip if the pipeline ran cleanly with no failures.
+   - Keep it short — 2-4 sentences plus the calibration line. Skip only if the pipeline ran cleanly AND no post-merge corrections exist.
 
 7. **Update docs** — decide mechanically from the PR diff; do not use model judgment.
    - Determine the changed files: `BASE_SHA=$(gh pr view <pr-number> --repo <detected-repo> --json baseRefOid -q '.baseRefOid'); HEAD_SHA=$(gh pr view <pr-number> --repo <detected-repo> --json headRefOid -q '.headRefOid'); git diff "$BASE_SHA..$HEAD_SHA" --name-only`
