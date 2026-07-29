@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
-# verify-codex-load.sh — Confirm a live Codex CLI loads hephaestus adapters and
-# still accepts the /worktrees Step 6 spawn form.
+# verify-codex-load.sh — Confirm a live Codex CLI still takes the /worktrees
+# spawn form, and that the generated adapters sit where Codex reads them.
 #
-# Codex exposes no skill-listing command, so this settles the two things only a
-# live CLI can: that `codex [OPTIONS] [PROMPT]` still takes a bare positional
-# prompt (Step 6 spawns `codex "/start-issue <N>"`, which seeds a session only
-# while that form holds), and that the generated skills sit in a root Codex
-# reads — $CODEX_HOME/skills for a user install, <project>/.agents/skills for a
-# project install.
+# Two checks, and only the first one is live: Codex exposes no skill-listing
+# command, so the adapters can only be checked on disk.
+#
+#   1. `codex --help` still documents a bare positional prompt. /worktrees
+#      Step 6 spawns `codex "/start-issue <N>"`, which seeds a session only
+#      while that form holds.
+#   2. The generated skills and agent roles are present in a root Codex reads.
+#      Either root counts: $CODEX_HOME/{skills,agents} for a user install, the
+#      project's .agents/skills and .codex/agents when vendored. A `--project`
+#      install scaffolds only .agents/skills/orient and no .codex/agents at all
+#      — the shared set stays in $CODEX_HOME — so each root is chosen by whether
+#      it actually holds the generated files, never by the directory existing.
 #
 # Requires `codex` on PATH. Exit 0 when the CLI is absent so the script can stay
 # in CI optionally; pass --require to fail instead.
@@ -19,18 +25,21 @@
 set -uo pipefail
 
 REQUIRE=0
-if [ "${1:-}" = "--require" ]; then
-  REQUIRE=1
+PROJECT=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --require) REQUIRE=1 ;;
+    *) PROJECT=$1 ;;
+  esac
   shift
-fi
+done
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-if [ -n "${1:-}" ]; then
-  ROOT="$(cd "$1" && pwd)" || exit 1
+if [ -n "$PROJECT" ]; then
+  ROOT="$(cd "$PROJECT" && pwd)" || exit 1
 else
   ROOT="$SRC"
 fi
-cd "$ROOT" || exit 1
 
 if ! command -v codex >/dev/null 2>&1; then
   if [ "$REQUIRE" -eq 1 ]; then
@@ -42,6 +51,19 @@ if ! command -v codex >/dev/null 2>&1; then
 fi
 
 fail=0
+
+# resolve_root <probe-relative-path> <candidate>... → first candidate holding it
+resolve_root() {
+  local probe=$1 root
+  shift
+  for root in "$@"; do
+    if [ -f "$root/$probe" ]; then
+      printf '%s' "$root"
+      return 0
+    fi
+  done
+  return 1
+}
 
 # ── Spawn contract ───────────────────────────────────────────────────────────
 if ! help=$(codex --help 2>&1); then
@@ -58,40 +80,46 @@ case "$help" in
     ;;
 esac
 
+CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
+
 # ── Skills ───────────────────────────────────────────────────────────────────
-CODEX_SKILLS="${CODEX_HOME:-$HOME/.codex}/skills"
-if [ -d "$ROOT/.agents/skills" ]; then
-  SKILLS_DIR="$ROOT/.agents/skills"
-elif [ -d "$CODEX_SKILLS" ]; then
-  SKILLS_DIR="$CODEX_SKILLS"
+if SKILLS_DIR=$(resolve_root "start-issue/SKILL.md" \
+      "$ROOT/.agents/skills" "$CODEX_HOME_DIR/skills"); then
+  for skill in autopilot start-issue ship finish critique; do
+    if [ ! -f "$SKILLS_DIR/$skill/SKILL.md" ]; then
+      echo "ERR: missing Codex skill $SKILLS_DIR/$skill/SKILL.md" >&2
+      fail=1
+    elif ! grep -q "generated from .ai/workflows/$skill.md" "$SKILLS_DIR/$skill/SKILL.md"; then
+      echo "ERR: Codex skill $skill is not generated from .ai/workflows/$skill.md" >&2
+      fail=1
+    fi
+  done
 else
-  echo "ERR: no Codex skills root — expected $ROOT/.agents/skills or $CODEX_SKILLS" >&2
-  exit 1
+  echo "ERR: no Codex skills root holds the generated skills — looked in" >&2
+  echo "     $ROOT/.agents/skills and $CODEX_HOME_DIR/skills" >&2
+  fail=1
 fi
 
-for skill in autopilot start-issue ship finish critique; do
-  if [ ! -f "$SKILLS_DIR/$skill/SKILL.md" ]; then
-    echo "ERR: missing Codex skill $SKILLS_DIR/$skill/SKILL.md" >&2
-    fail=1
-  elif ! grep -q "generated from .ai/workflows/$skill.md" "$SKILLS_DIR/$skill/SKILL.md"; then
-    echo "ERR: Codex skill $skill is not generated from .ai/workflows/$skill.md" >&2
-    fail=1
-  fi
-done
-
 # ── Agent roles ──────────────────────────────────────────────────────────────
-for agent in coder explorer reviewer tester researcher; do
-  if [ ! -f "$ROOT/.codex/agents/$agent.toml" ]; then
-    echo "ERR: missing Codex agent role $ROOT/.codex/agents/$agent.toml" >&2
-    fail=1
-  elif ! grep -q "generated from .claude/agents/$agent.md" "$ROOT/.codex/agents/$agent.toml"; then
-    echo "ERR: Codex agent role $agent is not generated from .claude/agents/$agent.md" >&2
-    fail=1
-  fi
-done
+if AGENTS_DIR=$(resolve_root "coder.toml" \
+      "$ROOT/.codex/agents" "$CODEX_HOME_DIR/agents"); then
+  for agent in coder explorer reviewer tester researcher; do
+    if [ ! -f "$AGENTS_DIR/$agent.toml" ]; then
+      echo "ERR: missing Codex agent role $AGENTS_DIR/$agent.toml" >&2
+      fail=1
+    elif ! grep -q "generated from .claude/agents/$agent.md" "$AGENTS_DIR/$agent.toml"; then
+      echo "ERR: Codex agent role $agent is not generated from .claude/agents/$agent.md" >&2
+      fail=1
+    fi
+  done
+else
+  echo "ERR: no Codex agents root holds the generated roles — looked in" >&2
+  echo "     $ROOT/.codex/agents and $CODEX_HOME_DIR/agents" >&2
+  fail=1
+fi
 
 if [ "$fail" -ne 0 ]; then
   exit 1
 fi
 
-echo "✓ Codex takes the positional-prompt spawn form and loads hephaestus skills and agent roles"
+echo "✓ Codex takes the positional-prompt spawn form; skills and agent roles in place"

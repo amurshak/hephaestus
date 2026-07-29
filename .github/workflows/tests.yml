@@ -31,3 +31,7 @@ jobs:
         run: npm install -g opencode-ai
       - name: OpenCode live load check
         run: bash scripts/verify-opencode-load.sh --require
+      - name: Install Codex CLI
+        run: npm install -g @openai/codex
+      - name: Codex live load check
+        run: bash scripts/verify-codex-load.sh --require

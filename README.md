@@ -347,7 +347,7 @@ Cursor's own mechanics shape them:
 
 1. `install.sh` links the skills into `~/.codex/skills/` (honoring `$CODEX_HOME`) for every project; Codex also reads a project's own `.agents/skills/`, so a vendored or hand-copied install works with no wiring.
 2. Codex has no slash-command registry — `/autopilot`, `/ship`, … are ordinary prompt text that Codex matches to a skill by its description, which every generated skill anchors with `Use for /<name> requests.`
-3. Verify: `bash scripts/verify-codex-load.sh` — it confirms the skills and agent roles are where Codex reads them, and that `codex [OPTIONS] [PROMPT]` still takes the positional prompt that `/worktrees` uses to seed a spawned session.
+3. Verify: `bash scripts/verify-codex-load.sh` (add a project path to check an installed project) — it asks the live CLI whether `codex [OPTIONS] [PROMPT]` still takes the positional prompt `/worktrees` uses to seed a spawned session, then checks the skills and agent roles are present in one of the roots above.
 4. Role work uses the agent roles in `.codex/agents/`. No worktree isolation — serialize file-modifying coder tasks.
 
 ### Hermes usage (a skill package, wired once)
