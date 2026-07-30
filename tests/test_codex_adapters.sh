@@ -161,6 +161,85 @@ assert_eq "no Claude-product leak in any Codex adapter" "" "$leaks"
 
 # ─────────────────────────────────────────────────────────────────────────────
 
+begin_test "verify-codex-load.sh passes when CLI present or skips cleanly"
+
+if verify_output=$(bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" 2>&1); then
+  if command -v codex >/dev/null 2>&1; then
+    assert_contains "live load reports success" "$verify_output" "Codex takes the positional-prompt spawn form"
+  else
+    assert_contains "skips without codex" "$verify_output" "skip: codex not on PATH"
+  fi
+else
+  fail "verify-codex-load.sh exited non-zero" "$verify_output"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "verify-codex-load.sh judges the spawn form and adapter roots"
+
+# A stub `codex` on a scratch PATH makes the checks hermetic: the real CLI is
+# absent on CI, and its presence would otherwise decide what gets asserted.
+STUB_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-codexstub-XXXXXX")
+trap 'rm -rf "$FIXTURE" "$FIXTURE2" "$FIXTURE3" "$FIXTURE4" "$STUB_DIR"' EXIT
+
+make_stub() {  # make_stub <usage-line>
+  printf '#!/bin/sh\necho "Usage: %s"\n' "$1" > "$STUB_DIR/codex"
+  chmod +x "$STUB_DIR/codex"
+}
+
+# --require must fail when the CLI is missing, whatever the argument order.
+mkdir -p "$STUB_DIR/absent-project"
+for order in "flag-first" "path-first"; do
+  if [ "$order" = "flag-first" ]; then
+    set -- --require "$STUB_DIR/absent-project"
+  else
+    set -- "$STUB_DIR/absent-project" --require
+  fi
+  # /usr/bin:/bin keeps dirname/pwd reachable while excluding codex, which
+  # installs to /usr/local/bin, a Homebrew prefix, or an nvm bin dir.
+  out=$(PATH=/usr/bin:/bin bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" "$@" 2>&1)
+  assert_exit_code "--require fails without codex ($order)" 1 "$?"
+  assert_contains  "errors, not skips, without the CLI ($order)" "$out" "ERR: codex not on PATH"
+done
+
+# Unknown flags must not be silently reinterpreted as a project path.
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" --requrie 2>&1)
+assert_exit_code "rejects an unknown flag" 1 "$?"
+assert_contains  "names the unknown flag" "$out" "unknown flag"
+
+# A CLI that dropped the positional prompt breaks /worktrees Step 6 — catch it.
+make_stub "codex [OPTIONS] --prompt <PROMPT>"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" 2>&1)
+assert_exit_code "fails when [PROMPT] is gone"  1 "$?"
+assert_contains  "names the spawn regression" "$out" "no longer documents a positional [PROMPT]"
+
+# A `--project` install scaffolds only .agents/skills/orient and no
+# .codex/agents; the shared set stays in $CODEX_HOME. Must not false-fail.
+make_stub "codex [OPTIONS] [PROMPT]"
+PROJ="$STUB_DIR/proj"
+mkdir -p "$PROJ/.agents/skills/orient"
+echo "scaffolded" > "$PROJ/.agents/skills/orient/SKILL.md"
+mkdir -p "$STUB_DIR/home"
+cp -R "$HEPHAESTUS_ROOT/.agents/skills" "$STUB_DIR/home/skills"
+cp -R "$HEPHAESTUS_ROOT/.codex/agents" "$STUB_DIR/home/agents"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" CODEX_HOME="$STUB_DIR/home" \
+      bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" "$PROJ" 2>&1)
+proj_rc=$?
+assert_exit_code "project-mode install passes" 0 "$proj_rc"
+# Naming the resolved roots is the point: it must have fallen past the
+# scaffold-only project to $CODEX_HOME, not silently accepted the project.
+assert_contains "reports the CODEX_HOME skills root" "$out" "skills:      $STUB_DIR/home/skills"
+assert_contains "reports the CODEX_HOME agents root" "$out" "agent roles: $STUB_DIR/home/agents"
+
+# Neither root holding the set is a real failure, and both roots get named.
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" CODEX_HOME="$STUB_DIR/empty" \
+      bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" "$PROJ" 2>&1)
+assert_exit_code "fails when no root holds the adapters" 1 "$?"
+assert_contains  "names the skills roots" "$out" "no Codex skills root"
+assert_contains  "names the agents roots" "$out" "no Codex agents root"
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 begin_test "hand-written files in .codex/agents survive the stale sweep"
 
 FIXTURE_OWN=$(mktemp -d "${TMPDIR:-/tmp}/heph-codex-XXXXXX")
