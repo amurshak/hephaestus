@@ -281,16 +281,48 @@ assert_file_not_exists "no CHANGELOG.md scaffolded" "$TARGET/CHANGELOG.md"
 assert_eq "their script untouched" "$theirs" "$(cat "$TARGET/scripts/collect-changelog.sh")"
 
 # --force takes over same-named files hephaestus installed — never this one,
-# which would silently retire the project's own release tooling.
+# which would silently retire the project's own release tooling. The adoption is
+# declined whole: scaffolding the other three files around a collect script that
+# will never be installed would point /ship at changelog.d/ with nothing to fold it.
 output=$(bash "$SOURCE_REPO/install.sh" --project --force --changelog-fragments "$TARGET" 2>&1)
-assert_contains "reports the conflict" "$output" "not written by hephaestus"
+assert_contains        "reports the conflict"          "$output" "not written by hephaestus"
+assert_contains        "declines the adoption"         "$output" "adoption declined"
 assert_eq "their script survives --force" "$theirs" "$(cat "$TARGET/scripts/collect-changelog.sh")"
+assert_file_not_exists "no half-scaffolded changelog.d"  "$TARGET/changelog.d"
+assert_file_not_exists "no half-scaffolded CHANGELOG.md" "$TARGET/CHANGELOG.md"
+assert_file_not_exists "no half-scaffolded .gitattributes" "$TARGET/.gitattributes"
 
 # An empty changelog.d/ alone is not adoption either — scriv uses that name.
 TARGET2=$(create_target target2)
 mkdir -p "$TARGET2/changelog.d"
 output=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET2" 2>&1)
 assert_not_contains "changelog.d/ alone is not adoption" "$output" "Changelog fragments:"
+
+# A dangling symlink at the collect path must not abort the run mid-scaffold.
+TARGET3=$(create_target target3)
+mkdir -p "$TARGET3/scripts"
+ln -s /nonexistent/collect-changelog.sh "$TARGET3/scripts/collect-changelog.sh"
+output=$(bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET3" 2>&1)
+assert_exit_code "survives a dangling symlink" 0 $?
+assert_contains  "still reaches the health check" "$output" "Health check:"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "adoption survives a reworded header — the token is what's read"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET" >/dev/null 2>&1
+
+assert_contains "collect script carries the token" \
+  "$(cat "$TARGET/scripts/collect-changelog.sh")" "# hephaestus:collect-changelog"
+
+# Deleting changelog.d/ silently un-adopts, which would send /ship back to
+# editing CHANGELOG.md — the health check has to call that out.
+rm -rf "$TARGET/changelog.d"
+output=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
+assert_contains "flags the missing directory" "$output" "changelog.d/ missing"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────

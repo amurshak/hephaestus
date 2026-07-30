@@ -54,9 +54,13 @@ fi
 echo "Updated hephaestus: $OLD_VERSION → $NEW_VERSION"
 if [ "$MODE" = vendor ]; then
   # Match the paths install.sh just listed — a project that adopted changelog
-  # fragments has more to stage than the adapters.
+  # fragments has more to stage than the adapters. Same two-mark test install.sh
+  # uses: a same-named script we did not write is not an adoption.
   CHANGELOG_PATHS=""
-  [ -d "$TARGET/changelog.d" ] && CHANGELOG_PATHS=" changelog.d scripts/collect-changelog.sh CHANGELOG.md .gitattributes"
+  if [ -d "$TARGET/changelog.d" ] \
+     && grep -q '^# hephaestus:collect-changelog$' "$TARGET/scripts/collect-changelog.sh" 2>/dev/null; then
+    CHANGELOG_PATHS=" changelog.d scripts/collect-changelog.sh CHANGELOG.md .gitattributes"
+  fi
   echo ""
   echo "Commit the refreshed copy:"
   echo "  git -C $TARGET add .heph-manifest .claude .opencode .agents .codex .cursor .hermes/skills .hermes/agents$CHANGELOG_PATHS && git -C $TARGET commit -m 'chore: update hephaestus to $NEW_VERSION'"

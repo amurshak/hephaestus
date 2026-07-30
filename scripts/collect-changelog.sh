@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
+# hephaestus:collect-changelog
 # collect-changelog.sh — Assemble changelog fragments into CHANGELOG.md
+#
+# The line above is a provenance token, not decoration: install.sh reads it to
+# tell its own copy from a project's same-named script, and only ever refreshes
+# its own. Keep it verbatim.
 #
 # Usage:
 #   scripts/collect-changelog.sh <version>   Fold fragments into a released section

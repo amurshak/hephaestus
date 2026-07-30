@@ -455,7 +455,7 @@ Every PR touches `CHANGELOG.md` by construction, so parallel waves conflict on i
 
 It is opt-in because it changes *where* `/ship` writes — everything else the installer scaffolds only adds. Adopting it also scaffolds a `CHANGELOG.md` if you have none and sets `CHANGELOG.md merge=union` in `.gitattributes` as a backstop, leaving an existing `.gitattributes` alone with a note. Later runs, including `update.sh`, recognize the adoption and keep it without the flag. Without it, `/ship` keeps appending to `CHANGELOG.md` as before.
 
-If your repo already has its own `scripts/collect-changelog.sh`, it is left alone — recognition requires both `changelog.d/` and a script hephaestus wrote, so a name collision is never read as adoption and `--force` will not take that file over.
+If your repo already has its own `scripts/collect-changelog.sh`, adoption is declined outright — nothing is scaffolded, and `--force` will not take that file over. Recognition needs both `changelog.d/` and a script carrying hephaestus's provenance token, so a name collision is never mistaken for adoption.
 
 ### Migrating from a submodule install
 

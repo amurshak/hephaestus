@@ -54,7 +54,9 @@ while [[ $# -gt 0 ]]; do
     --clean)   CLEAN_MODE=true; shift ;;
     --migrate) MIGRATE=true; shift ;;
     --changelog-fragments) CHANGELOG_FRAGMENTS=true; shift ;;
-    -h|--help) sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    # Track the header rather than a line range — a hardcoded range silently
+    # truncates --help every time the block grows.
+    -h|--help) awk 'NR>1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$0"; exit 0 ;;
     -*) echo "Error: unknown flag '$1'"; echo "Usage: ./install.sh [--user | --project | --vendor] [--audit | --force | --clean | --migrate | --changelog-fragments] [path]"; exit 1 ;;
     *) break ;;
   esac
@@ -529,25 +531,53 @@ EOF
 # scripts/collect-changelog.sh is not an adopter, and its file is never ours
 # to replace. scriv claims changelog.d/ but ships no such script, so the pair
 # excludes it too.
-COLLECT_MARKER='^# collect-changelog\.sh — Assemble changelog fragments'
+COLLECT_MARKER='^# hephaestus:collect-changelog$'
+
+# ours <file> — true when <file> carries the provenance token.
+collect_is_ours() { [ -f "$1" ] && grep -q "$COLLECT_MARKER" "$1" 2>/dev/null; }
 
 changelog_adopted() {
-  [ -d "$TARGET/changelog.d" ] && [ -f "$TARGET/scripts/collect-changelog.sh" ] \
-    && grep -q "$COLLECT_MARKER" "$TARGET/scripts/collect-changelog.sh" 2>/dev/null
+  [ -d "$TARGET/changelog.d" ] && collect_is_ours "$TARGET/scripts/collect-changelog.sh"
 }
 
 scaffold_changelog() {
+  local src="$SCRIPT_DIR/scripts/collect-changelog.sh"
+  local dest="$TARGET/scripts/collect-changelog.sh"
+  local label="collect-changelog.sh" status
+
+  if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then status=new
+  elif cmp -s "$src" "$dest" 2>/dev/null; then  status=current
+  elif collect_is_ours "$dest"; then            status=stale
+  else                                          status=foreign
+  fi
+
   echo "Changelog fragments:"
+
+  # A same-named script we did not write means the project already has release
+  # tooling there. Refuse the whole adoption rather than scaffolding the other
+  # three files around a collect script that will never be installed — that
+  # half-state points /ship at changelog.d/ with nothing able to fold it.
+  if [ "$status" = foreign ]; then
+    echo "  [skip] $label is yours, not written by hephaestus — adoption declined."
+    echo "         Nothing was scaffolded. Move your script aside to adopt fragments."
+    echo ""
+    return 0
+  fi
 
   # scriv also uses changelog.d/ with its own filename convention. Say so rather
   # than quietly dropping our README into someone else's fragment directory.
   if [ -d "$TARGET/changelog.d" ] && [ ! -f "$TARGET/changelog.d/README.md" ] \
      && [ -n "$(ls -A "$TARGET/changelog.d" 2>/dev/null)" ]; then
     echo "  [warn] changelog.d/ already holds files — another tool may own it."
+    echo "         collect-changelog.sh --check rejects filenames other than <id>.<category>.md."
   fi
 
-  scaffold_text "$TARGET/changelog.d/README.md" "changelog.d/README.md" "how to write a fragment" \
-    < "$SCRIPT_DIR/changelog.d/README.md"
+  if [ ! -f "$SCRIPT_DIR/changelog.d/README.md" ]; then
+    echo "  [skip] changelog.d/README.md (missing from this clone)"
+  else
+    scaffold_text "$TARGET/changelog.d/README.md" "changelog.d/README.md" "how to write a fragment" \
+      < "$SCRIPT_DIR/changelog.d/README.md"
+  fi
 
   scaffold_text "$TARGET/CHANGELOG.md" "CHANGELOG.md" "fragments are folded in here at release" <<'EOF'
 # Changelog
@@ -567,26 +597,17 @@ EOF
     echo "  [warn] CHANGELOG.md has no '## Unreleased' heading — add one, or the release fold fails."
   fi
 
-  # collect-changelog.sh is code, not a customization point — refresh it when it
-  # drifts from the clone. --force does the overwrite, as it does everywhere else.
-  local src="$SCRIPT_DIR/scripts/collect-changelog.sh"
-  local dest="$TARGET/scripts/collect-changelog.sh"
-  local label="collect-changelog.sh" status
-  if [ ! -e "$dest" ]; then                            status=new
-  elif cmp -s "$src" "$dest"; then                     status=current
-  elif grep -q "$COLLECT_MARKER" "$dest" 2>/dev/null;  then status=stale
-  else                                                 status=foreign
-  fi
-
+  # Our own copy is code, not a customization point — refresh it when it drifts
+  # from the clone. --force does the overwrite, as it does everywhere else.
   if [ "$AUDIT_MODE" = true ]; then
     case "$status" in
       new)     printf "  %-25s %-12s %s\n" "$label" "missing" "will copy from the clone" ;;
       current) printf "  %-25s %-12s %s\n" "$label" "current" "matches this clone" ;;
       stale)   printf "  %-25s %-12s %s\n" "$label" "stale"   "differs from this clone (--force to refresh)" ;;
-      foreign) printf "  %-25s %-12s %s\n" "$label" "conflict" "yours, not written by hephaestus" ;;
     esac
   elif [ "$status" = new ] || { [ "$status" = stale ] && [ "$FORCE_MODE" = true ]; }; then
     mkdir -p "$TARGET/scripts"
+    rm -f "$dest"
     cp "$src" "$dest"
     chmod +x "$dest"
     [ "$status" = new ] \
@@ -594,11 +615,6 @@ EOF
       || echo "  [update] $label"
   elif [ "$status" = stale ]; then
     echo "  [skip] $label (differs from this clone — refresh with --force)"
-  elif [ "$status" = foreign ]; then
-    # Not ours, so --force does not apply: --force takes over a file of the
-    # same name, and taking this one over would silently retire the project's
-    # own release tooling.
-    echo "  [skip] $label (already exists, not written by hephaestus)"
   else
     echo "  [ok] $label (up to date)"
   fi
@@ -663,9 +679,11 @@ health_check() {
     [ -e "$TARGET/.claude/commands/orient.md" ] && echo "  ✓ orient.md present" || echo "  ✗ orient.md missing"
     [ -e "$TARGET/AGENTS.md" ] && echo "  ✓ AGENTS.md present" || echo "  ✗ AGENTS.md missing"
     if changelog_adopted; then
-      [ -d "$TARGET/changelog.d" ] \
-        && echo "  ✓ changelog fragments enabled — /ship writes changelog.d/<id>.<category>.md" \
-        || echo "  ✗ changelog.d/ missing — re-run with --changelog-fragments"
+      echo "  ✓ changelog fragments enabled — /ship writes changelog.d/<id>.<category>.md"
+    elif collect_is_ours "$TARGET/scripts/collect-changelog.sh"; then
+      # Our collect script without changelog.d/ reads as un-adopted, so /ship
+      # would silently go back to editing CHANGELOG.md directly.
+      echo "  ✗ changelog.d/ missing — re-run with --changelog-fragments"
     fi
   fi
 
