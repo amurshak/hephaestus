@@ -453,7 +453,9 @@ Every PR touches `CHANGELOG.md` by construction, so parallel waves conflict on i
 
 `/ship` then writes `changelog.d/<issue-or-slug>.<added|changed|fixed|removed>.md` instead of editing `CHANGELOG.md`; distinct filenames make the conflict structurally impossible. At release, the `scripts/collect-changelog.sh` copy this installs folds every fragment into a dated section and deletes them (`--preview` to dry-run, `--check` to validate names in a quality gate).
 
-It is opt-in because it changes *where* `/ship` writes — everything else the installer scaffolds only adds. Adopting it also scaffolds a `CHANGELOG.md` if you have none and sets `CHANGELOG.md merge=union` in `.gitattributes` as a backstop, leaving an existing `.gitattributes` alone with a note. Later runs, including `update.sh`, detect the adoption and keep it without the flag. Without it, `/ship` keeps appending to `CHANGELOG.md` as before.
+It is opt-in because it changes *where* `/ship` writes — everything else the installer scaffolds only adds. Adopting it also scaffolds a `CHANGELOG.md` if you have none and sets `CHANGELOG.md merge=union` in `.gitattributes` as a backstop, leaving an existing `.gitattributes` alone with a note. Later runs, including `update.sh`, recognize the adoption and keep it without the flag. Without it, `/ship` keeps appending to `CHANGELOG.md` as before.
+
+If your repo already has its own `scripts/collect-changelog.sh`, it is left alone — recognition requires both `changelog.d/` and a script hephaestus wrote, so a name collision is never read as adoption and `--force` will not take that file over.
 
 ### Migrating from a submodule install
 
@@ -474,7 +476,7 @@ It removes the submodule (deinit, `git rm`, the `.git/modules` entry, and `.gitm
 | `install.sh --clean`         | Remove adapters dropped upstream since the last install |
 | `install.sh --migrate <path>` | Convert a pre-2.2 submodule install, then scaffold |
 | `install.sh --project <path>`| Scaffold the project-owned files in a repo |
-| `install.sh --changelog-fragments <path>` | Adopt one changelog entry per PR; add to `--project` or `--vendor` |
+| `install.sh --project --changelog-fragments <path>` | Adopt one changelog entry per PR (also valid with `--vendor`) |
 | `install.sh --vendor <path>` | Commit the shared set into a repo, pinned by `.heph-manifest` |
 | `update.sh` / `update.sh --vendor <path>` | Pull the latest and re-install |
 | `/update-hephaestus`         | The same update, driven from inside your harness |

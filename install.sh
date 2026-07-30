@@ -54,7 +54,7 @@ while [[ $# -gt 0 ]]; do
     --clean)   CLEAN_MODE=true; shift ;;
     --migrate) MIGRATE=true; shift ;;
     --changelog-fragments) CHANGELOG_FRAGMENTS=true; shift ;;
-    -h|--help) sed -n '2,34p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Error: unknown flag '$1'"; echo "Usage: ./install.sh [--user | --project | --vendor] [--audit | --force | --clean | --migrate | --changelog-fragments] [path]"; exit 1 ;;
     *) break ;;
   esac
@@ -520,10 +520,21 @@ EOF
 # One entry per PR as its own file, so parallel branches never edit a shared
 # anchor. Opt-in via --changelog-fragments because it changes where /ship
 # writes — unlike orient or AGENTS.md, which only add. Adoption is then read
-# back from the distributed collect script, so later runs (update.sh included)
-# carry it forward without repeating the flag.
+# back from the repo, so later runs (update.sh included) carry it forward
+# without repeating the flag.
+#
+# Project mode writes no manifest, so adoption has to be inferred — and a path
+# alone is not evidence. Both marks must be present, and the collect script
+# must carry our header before anything overwrites it: a repo with its own
+# scripts/collect-changelog.sh is not an adopter, and its file is never ours
+# to replace. scriv claims changelog.d/ but ships no such script, so the pair
+# excludes it too.
+COLLECT_MARKER='^# collect-changelog\.sh — Assemble changelog fragments'
 
-changelog_adopted() { [ -f "$TARGET/scripts/collect-changelog.sh" ]; }
+changelog_adopted() {
+  [ -d "$TARGET/changelog.d" ] && [ -f "$TARGET/scripts/collect-changelog.sh" ] \
+    && grep -q "$COLLECT_MARKER" "$TARGET/scripts/collect-changelog.sh" 2>/dev/null
+}
 
 scaffold_changelog() {
   echo "Changelog fragments:"
@@ -550,14 +561,21 @@ section by `scripts/collect-changelog.sh <version>` at release.
 ## Unreleased
 EOF
 
+  # collect-changelog.sh splices the new section in at `## Unreleased` and dies
+  # without it. Say so now rather than at release, when it blocks a cut.
+  if [ -f "$TARGET/CHANGELOG.md" ] && ! grep -q '^## Unreleased' "$TARGET/CHANGELOG.md"; then
+    echo "  [warn] CHANGELOG.md has no '## Unreleased' heading — add one, or the release fold fails."
+  fi
+
   # collect-changelog.sh is code, not a customization point — refresh it when it
   # drifts from the clone. --force does the overwrite, as it does everywhere else.
   local src="$SCRIPT_DIR/scripts/collect-changelog.sh"
   local dest="$TARGET/scripts/collect-changelog.sh"
   local label="collect-changelog.sh" status
-  if [ ! -e "$dest" ]; then           status=new
-  elif cmp -s "$src" "$dest"; then    status=current
-  else                                status=stale
+  if [ ! -e "$dest" ]; then                            status=new
+  elif cmp -s "$src" "$dest"; then                     status=current
+  elif grep -q "$COLLECT_MARKER" "$dest" 2>/dev/null;  then status=stale
+  else                                                 status=foreign
   fi
 
   if [ "$AUDIT_MODE" = true ]; then
@@ -565,6 +583,7 @@ EOF
       new)     printf "  %-25s %-12s %s\n" "$label" "missing" "will copy from the clone" ;;
       current) printf "  %-25s %-12s %s\n" "$label" "current" "matches this clone" ;;
       stale)   printf "  %-25s %-12s %s\n" "$label" "stale"   "differs from this clone (--force to refresh)" ;;
+      foreign) printf "  %-25s %-12s %s\n" "$label" "conflict" "yours, not written by hephaestus" ;;
     esac
   elif [ "$status" = new ] || { [ "$status" = stale ] && [ "$FORCE_MODE" = true ]; }; then
     mkdir -p "$TARGET/scripts"
@@ -575,6 +594,11 @@ EOF
       || echo "  [update] $label"
   elif [ "$status" = stale ]; then
     echo "  [skip] $label (differs from this clone — refresh with --force)"
+  elif [ "$status" = foreign ]; then
+    # Not ours, so --force does not apply: --force takes over a file of the
+    # same name, and taking this one over would silently retire the project's
+    # own release tooling.
+    echo "  [skip] $label (already exists, not written by hephaestus)"
   else
     echo "  [ok] $label (up to date)"
   fi

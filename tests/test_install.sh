@@ -264,6 +264,64 @@ teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
 
+begin_test "a project's own collect-changelog.sh is never taken over"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+mkdir -p "$TARGET/scripts"
+printf '#!/bin/sh\n# our own release tooling\nexec scriv collect "$@"\n' > "$TARGET/scripts/collect-changelog.sh"
+theirs="$(cat "$TARGET/scripts/collect-changelog.sh")"
+
+# Same path, different provenance: a name match is not adoption. Without the
+# flag the convention must not appear at all.
+output=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
+assert_not_contains    "not treated as adopted" "$output" "Changelog fragments:"
+assert_file_not_exists "no changelog.d/ scaffolded" "$TARGET/changelog.d"
+assert_file_not_exists "no CHANGELOG.md scaffolded" "$TARGET/CHANGELOG.md"
+assert_eq "their script untouched" "$theirs" "$(cat "$TARGET/scripts/collect-changelog.sh")"
+
+# --force takes over same-named files hephaestus installed — never this one,
+# which would silently retire the project's own release tooling.
+output=$(bash "$SOURCE_REPO/install.sh" --project --force --changelog-fragments "$TARGET" 2>&1)
+assert_contains "reports the conflict" "$output" "not written by hephaestus"
+assert_eq "their script survives --force" "$theirs" "$(cat "$TARGET/scripts/collect-changelog.sh")"
+
+# An empty changelog.d/ alone is not adoption either — scriv uses that name.
+TARGET2=$(create_target target2)
+mkdir -p "$TARGET2/changelog.d"
+output=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET2" 2>&1)
+assert_not_contains "changelog.d/ alone is not adoption" "$output" "Changelog fragments:"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "an existing CHANGELOG.md without ## Unreleased is flagged at adoption"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+printf '# Changelog\n\n## 1.0.0\n- old news\n' > "$TARGET/CHANGELOG.md"
+output=$(bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET" 2>&1)
+
+assert_contains "warns before release time" "$output" "no '## Unreleased' heading"
+assert_contains "CHANGELOG.md left alone"   "$(cat "$TARGET/CHANGELOG.md")" "old news"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "audit mode writes nothing when adopting fragments"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+before=$(cd "$TARGET" && find . -path ./.git -prune -o -print | sort)
+output=$(bash "$SOURCE_REPO/install.sh" --project --audit --changelog-fragments "$TARGET" 2>&1)
+after=$(cd "$TARGET" && find . -path ./.git -prune -o -print | sort)
+
+assert_contains "audit lists the collect script" "$output" "collect-changelog.sh"
+assert_eq       "filesystem unchanged" "$before" "$after"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 begin_test "vendor mode adopts fragments without recording them in the manifest"
 setup_fixture
 sandbox_home
@@ -479,8 +537,11 @@ assert_exit_code "--audit + --clean" 1 $?
 bash "$SOURCE_REPO/install.sh" --invalid >/dev/null 2>&1
 assert_exit_code "unknown flag" 1 $?
 
-bash "$SOURCE_REPO/install.sh" --changelog-fragments >/dev/null 2>&1
+# Assert the message, not just the code — an unknown flag also exits 1, so a
+# bare exit-code check would pass with the feature reverted.
+output=$(bash "$SOURCE_REPO/install.sh" --changelog-fragments 2>&1)
 assert_exit_code "--changelog-fragments without a repo mode" 1 $?
+assert_contains  "says which mode it needs" "$output" "needs --project or --vendor"
 
 bash "$SOURCE_REPO/install.sh" --project "/tmp/nonexistent-heph-test-path" >/dev/null 2>&1
 assert_exit_code "non-existent target" 1 $?
