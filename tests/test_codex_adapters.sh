@@ -180,7 +180,7 @@ begin_test "verify-codex-load.sh judges the spawn form and adapter roots"
 # A stub `codex` on a scratch PATH makes the checks hermetic: the real CLI is
 # absent on CI, and its presence would otherwise decide what gets asserted.
 STUB_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-codexstub-XXXXXX")
-trap 'rm -rf "$FIXTURE" "$STUB_DIR"' EXIT
+trap 'rm -rf "$FIXTURE" "$FIXTURE2" "$FIXTURE3" "$FIXTURE4" "$STUB_DIR"' EXIT
 
 make_stub() {  # make_stub <usage-line>
   printf '#!/bin/sh\necho "Usage: %s"\n' "$1" > "$STUB_DIR/codex"
@@ -195,10 +195,17 @@ for order in "flag-first" "path-first"; do
   else
     set -- "$STUB_DIR/absent-project" --require
   fi
+  # /usr/bin:/bin keeps dirname/pwd reachable while excluding codex, which
+  # installs to /usr/local/bin, a Homebrew prefix, or an nvm bin dir.
   out=$(PATH=/usr/bin:/bin bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" "$@" 2>&1)
   assert_exit_code "--require fails without codex ($order)" 1 "$?"
-  assert_contains  "names the missing CLI ($order)" "$out" "codex not on PATH"
+  assert_contains  "errors, not skips, without the CLI ($order)" "$out" "ERR: codex not on PATH"
 done
+
+# Unknown flags must not be silently reinterpreted as a project path.
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" --requrie 2>&1)
+assert_exit_code "rejects an unknown flag" 1 "$?"
+assert_contains  "names the unknown flag" "$out" "unknown flag"
 
 # A CLI that dropped the positional prompt breaks /worktrees Step 6 — catch it.
 make_stub "codex [OPTIONS] --prompt <PROMPT>"
@@ -218,8 +225,11 @@ cp -R "$HEPHAESTUS_ROOT/.codex/agents" "$STUB_DIR/home/agents"
 out=$(PATH="$STUB_DIR:/usr/bin:/bin" CODEX_HOME="$STUB_DIR/home" \
       bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" "$PROJ" 2>&1)
 proj_rc=$?
-assert_contains "falls back past a scaffold-only project" "$out" "skills and agent roles in place"
 assert_exit_code "project-mode install passes" 0 "$proj_rc"
+# Naming the resolved roots is the point: it must have fallen past the
+# scaffold-only project to $CODEX_HOME, not silently accepted the project.
+assert_contains "reports the CODEX_HOME skills root" "$out" "skills:      $STUB_DIR/home/skills"
+assert_contains "reports the CODEX_HOME agents root" "$out" "agent roles: $STUB_DIR/home/agents"
 
 # Neither root holding the set is a real failure, and both roots get named.
 out=$(PATH="$STUB_DIR:/usr/bin:/bin" CODEX_HOME="$STUB_DIR/empty" \

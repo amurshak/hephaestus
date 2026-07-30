@@ -29,6 +29,7 @@ PROJECT=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --require) REQUIRE=1 ;;
+    -*) echo "Error: unknown flag '$1'" >&2; exit 1 ;;
     *) PROJECT=$1 ;;
   esac
   shift
@@ -122,4 +123,8 @@ if [ "$fail" -ne 0 ]; then
   exit 1
 fi
 
-echo "✓ Codex takes the positional-prompt spawn form; skills and agent roles in place"
+# Name the roots: the fallback is silent, and which one answered decides
+# whether a drifted copy in the other root would be what Codex actually loads.
+echo "✓ Codex takes the positional-prompt spawn form"
+echo "  skills:      $SKILLS_DIR"
+echo "  agent roles: $AGENTS_DIR"
