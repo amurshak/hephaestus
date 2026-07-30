@@ -89,6 +89,25 @@ teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
 
+begin_test "update --vendor carries the changelog convention forward"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+bash "$SOURCE_REPO/install.sh" --vendor --changelog-fragments "$TARGET" >/dev/null 2>&1
+publish_upstream_change
+echo "MY OWN CHANGELOG" > "$TARGET/CHANGELOG.md"
+
+# update.sh re-runs install.sh without the flag; adoption is read from the repo.
+output=$(bash "$SOURCE_REPO/update.sh" --vendor "$TARGET" 2>&1)
+
+assert_contains    "still scaffolds the convention" "$output" "Changelog fragments:"
+assert_file_exists "collect script kept"            "$TARGET/scripts/collect-changelog.sh"
+assert_eq "project's CHANGELOG.md preserved" "MY OWN CHANGELOG" "$(cat "$TARGET/CHANGELOG.md")"
+assert_contains "commit hint lists the changelog paths" "$output" "changelog.d scripts/collect-changelog.sh"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 begin_test "update --vendor without a path exits 1"
 setup_fixture
 sandbox_home
