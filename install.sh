@@ -20,6 +20,11 @@
 #   --clean    Remove adapters dropped upstream since the last install
 #   --migrate  First remove a pre-2.2 `.hephaestus` submodule install from the
 #              target repo, then install. Implies --project unless --vendor.
+#   --changelog-fragments
+#              Adopt one-changelog-entry-per-PR: scaffold changelog.d/, a
+#              CHANGELOG.md if absent, scripts/collect-changelog.sh, and
+#              `CHANGELOG.md merge=union` in .gitattributes. Opt-in, because it
+#              changes where /ship writes. Once adopted, later runs keep it.
 #
 # Every install records what it wrote in a manifest, and reads that manifest on
 # the next run — so re-installing updates its own files, never yours.
@@ -37,6 +42,7 @@ AUDIT_MODE=false
 FORCE_MODE=false
 CLEAN_MODE=false
 MIGRATE=false
+CHANGELOG_FRAGMENTS=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -47,8 +53,9 @@ while [[ $# -gt 0 ]]; do
     --force)   FORCE_MODE=true; shift ;;
     --clean)   CLEAN_MODE=true; shift ;;
     --migrate) MIGRATE=true; shift ;;
-    -h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    -*) echo "Error: unknown flag '$1'"; echo "Usage: ./install.sh [--user | --project | --vendor] [--audit | --force | --clean | --migrate] [path]"; exit 1 ;;
+    --changelog-fragments) CHANGELOG_FRAGMENTS=true; shift ;;
+    -h|--help) sed -n '2,34p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -*) echo "Error: unknown flag '$1'"; echo "Usage: ./install.sh [--user | --project | --vendor] [--audit | --force | --clean | --migrate | --changelog-fragments] [path]"; exit 1 ;;
     *) break ;;
   esac
 done
@@ -64,6 +71,10 @@ if [ "$AUDIT_MODE" = true ] && [ "$FORCE_MODE" = true ]; then
 fi
 if [ "$AUDIT_MODE" = true ] && [ "$CLEAN_MODE" = true ]; then
   echo "Error: --audit and --clean cannot be used together."
+  exit 1
+fi
+if [ "$CHANGELOG_FRAGMENTS" = true ] && [ "$MODE" = user ]; then
+  echo "Error: --changelog-fragments scaffolds a repo, so it needs --project or --vendor."
   exit 1
 fi
 
@@ -383,6 +394,24 @@ scaffold() {
   fi
 }
 
+# scaffold_text <dest> <label> <hint> — like scaffold(), with the body on stdin.
+scaffold_text() {
+  local dest="$1" label="$2" hint="$3"
+  if [ -e "$dest" ] || [ -L "$dest" ]; then
+    if [ "$AUDIT_MODE" = true ]; then
+      printf "  %-25s %-12s %s\n" "$label" "exists" "project-specific (will keep yours)"
+    else
+      echo "  [skip] $label (already exists)"
+    fi
+  elif [ "$AUDIT_MODE" = true ]; then
+    printf "  %-25s %-12s %s\n" "$label" "missing" "will scaffold"
+  else
+    mkdir -p "$(dirname "$dest")"
+    cat > "$dest"
+    echo "  [scaffold] $label ($hint)"
+  fi
+}
+
 scaffold_project() {
   echo "Project files:"
   scaffold "$SCRIPT_DIR/templates/orient.md" "$TARGET/.claude/commands/orient.md" "orient.md"
@@ -487,6 +516,87 @@ EOF
   echo ""
 }
 
+# ── Changelog fragments (opt-in) ─────────────────────────────────────────────
+# One entry per PR as its own file, so parallel branches never edit a shared
+# anchor. Opt-in via --changelog-fragments because it changes where /ship
+# writes — unlike orient or AGENTS.md, which only add. Adoption is then read
+# back from the distributed collect script, so later runs (update.sh included)
+# carry it forward without repeating the flag.
+
+changelog_adopted() { [ -f "$TARGET/scripts/collect-changelog.sh" ]; }
+
+scaffold_changelog() {
+  echo "Changelog fragments:"
+
+  # scriv also uses changelog.d/ with its own filename convention. Say so rather
+  # than quietly dropping our README into someone else's fragment directory.
+  if [ -d "$TARGET/changelog.d" ] && [ ! -f "$TARGET/changelog.d/README.md" ] \
+     && [ -n "$(ls -A "$TARGET/changelog.d" 2>/dev/null)" ]; then
+    echo "  [warn] changelog.d/ already holds files — another tool may own it."
+  fi
+
+  scaffold_text "$TARGET/changelog.d/README.md" "changelog.d/README.md" "how to write a fragment" \
+    < "$SCRIPT_DIR/changelog.d/README.md"
+
+  scaffold_text "$TARGET/CHANGELOG.md" "CHANGELOG.md" "fragments are folded in here at release" <<'EOF'
+# Changelog
+
+All notable changes to this project are documented here, following
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+Entries are written as fragments in `changelog.d/` and folded into a dated
+section by `scripts/collect-changelog.sh <version>` at release.
+
+## Unreleased
+EOF
+
+  # collect-changelog.sh is code, not a customization point — refresh it when it
+  # drifts from the clone. --force does the overwrite, as it does everywhere else.
+  local src="$SCRIPT_DIR/scripts/collect-changelog.sh"
+  local dest="$TARGET/scripts/collect-changelog.sh"
+  local label="collect-changelog.sh" status
+  if [ ! -e "$dest" ]; then           status=new
+  elif cmp -s "$src" "$dest"; then    status=current
+  else                                status=stale
+  fi
+
+  if [ "$AUDIT_MODE" = true ]; then
+    case "$status" in
+      new)     printf "  %-25s %-12s %s\n" "$label" "missing" "will copy from the clone" ;;
+      current) printf "  %-25s %-12s %s\n" "$label" "current" "matches this clone" ;;
+      stale)   printf "  %-25s %-12s %s\n" "$label" "stale"   "differs from this clone (--force to refresh)" ;;
+    esac
+  elif [ "$status" = new ] || { [ "$status" = stale ] && [ "$FORCE_MODE" = true ]; }; then
+    mkdir -p "$TARGET/scripts"
+    cp "$src" "$dest"
+    chmod +x "$dest"
+    [ "$status" = new ] \
+      && echo "  [scaffold] $label (fold at release: scripts/collect-changelog.sh <version>)" \
+      || echo "  [update] $label"
+  elif [ "$status" = stale ]; then
+    echo "  [skip] $label (differs from this clone — refresh with --force)"
+  else
+    echo "  [ok] $label (up to date)"
+  fi
+
+  # A union merge on CHANGELOG.md is the backstop for any direct edit that slips
+  # past the fragment convention. An existing .gitattributes stays the project's.
+  if [ ! -e "$TARGET/.gitattributes" ]; then
+    scaffold_text "$TARGET/.gitattributes" ".gitattributes" "union merge on CHANGELOG.md" <<'EOF'
+CHANGELOG.md merge=union
+EOF
+  elif grep -q '^CHANGELOG\.md[[:space:]]\{1,\}merge=union' "$TARGET/.gitattributes"; then
+    [ "$AUDIT_MODE" = true ] \
+      && printf "  %-25s %-12s %s\n" ".gitattributes" "current" "already sets merge=union" \
+      || echo "  [ok] .gitattributes (already sets CHANGELOG.md merge=union)"
+  else
+    [ "$AUDIT_MODE" = true ] \
+      && printf "  %-25s %-12s %s\n" ".gitattributes" "exists" "add: CHANGELOG.md merge=union" \
+      || echo "  [skip] .gitattributes (yours) — add the backstop: echo 'CHANGELOG.md merge=union' >> .gitattributes"
+  fi
+  echo ""
+}
+
 check_dev_commands() {
   if [ -f "$TARGET/CLAUDE.md" ]; then
     if grep -qiE '^#{2,} .*(development commands|test(s|ing)?|lint(ing)?|build)' "$TARGET/CLAUDE.md"; then
@@ -528,6 +638,11 @@ health_check() {
   if [ "$MODE" != user ]; then
     [ -e "$TARGET/.claude/commands/orient.md" ] && echo "  ✓ orient.md present" || echo "  ✗ orient.md missing"
     [ -e "$TARGET/AGENTS.md" ] && echo "  ✓ AGENTS.md present" || echo "  ✗ AGENTS.md missing"
+    if changelog_adopted; then
+      [ -d "$TARGET/changelog.d" ] \
+        && echo "  ✓ changelog fragments enabled — /ship writes changelog.d/<id>.<category>.md" \
+        || echo "  ✗ changelog.d/ missing — re-run with --changelog-fragments"
+    fi
   fi
 
   # A scaffolded project still needs the shared set from somewhere.
@@ -596,6 +711,9 @@ fi
 
 if [ "$MODE" != user ]; then
   scaffold_project
+  if [ "$CHANGELOG_FRAGMENTS" = true ] || changelog_adopted; then
+    scaffold_changelog
+  fi
   check_dev_commands || true
   echo ""
 fi
@@ -617,10 +735,12 @@ else
   echo "  1. Customize .claude/commands/orient.md (and the OpenCode/Codex copies you use)"
   echo "  2. Add project-specific .claude/hooks/ (lint-on-commit.sh, protect-files.sh)"
   echo "  3. Update AGENTS.md to list newly available agents"
+  CHANGELOG_PATHS=""
+  changelog_adopted && CHANGELOG_PATHS=" changelog.d scripts/collect-changelog.sh CHANGELOG.md .gitattributes"
   if [ "$MODE" = vendor ]; then
-    echo "  4. git add .heph-manifest .claude .opencode .agents .codex .hermes/skills .hermes/agents .hermes/.gitignore opencode.json AGENTS.md && git commit"
+    echo "  4. git add .heph-manifest .claude .opencode .agents .codex .hermes/skills .hermes/agents .hermes/.gitignore opencode.json AGENTS.md$CHANGELOG_PATHS && git commit"
   else
-    echo "  4. git add .claude .opencode .agents .hermes/skills .hermes/.gitignore opencode.json AGENTS.md && git commit"
+    echo "  4. git add .claude .opencode .agents .hermes/skills .hermes/.gitignore opencode.json AGENTS.md$CHANGELOG_PATHS && git commit"
   fi
 fi
 echo ""

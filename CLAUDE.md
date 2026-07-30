@@ -38,6 +38,8 @@ Entries are **fragments**, not direct edits to CHANGELOG.md: `/ship` writes `cha
 
 At release, `scripts/collect-changelog.sh <version>` folds every fragment into a dated `## <version>` section and deletes them (`--preview` to dry-run, `--check` to validate filenames). Hand-written `## Unreleased` content is merged by category, so the transition loses nothing. `.gitattributes` sets `CHANGELOG.md merge=union` as a backstop for any direct edit that slips through.
 
+Target projects adopt the same convention with `install.sh --project --changelog-fragments <path>`, which scaffolds `changelog.d/`, a `CHANGELOG.md` if absent, a copy of `collect-changelog.sh`, and the `.gitattributes` line. It is opt-in — unlike every other scaffold, it changes *where* `/ship` writes — and sticky: later runs detect the adoption from the distributed script and keep it without the flag. `/ship` and `/update-docs` stay conditional on `changelog.d/` existing, so a project that never opts in is unaffected.
+
 ## Repository Structure
 
 - `.claude/agents/` — Subagent definitions (coder, reviewer, tester, explorer, researcher) with tool permissions and structured output contracts
@@ -96,6 +98,7 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 - **Repo detection** is done via `git remote get-url origin` — commands never hardcode repo references.
 - **orient is project-specific** — it is excluded from symlinking in every harness. `install.sh --project` scaffolds a template from `templates/orient.md` that must be customized. The shipped generic `/orient` covers install paths without install.sh (plugin, manual copy): on first run in an unprepared project it bootstraps the operating requirements — infers a Development Commands section from manifests and scaffolds a project orient — additively, never overwriting.
 - **install.sh is idempotent** — re-running refreshes the files it installed and never touches anything else.
+- **Changelog fragments are opt-in, then sticky** — `--changelog-fragments` scaffolds the convention; adoption is read back from `<project>/scripts/collect-changelog.sh`, never from `changelog.d/` (scriv owns that directory name too). That copy is code, not a customization point: it is refreshed when it drifts from the clone, under `--force`.
 - **Ownership is recorded, not inferred** — each install writes a manifest (`$XDG_STATE_HOME/hephaestus/manifest` at user level, `<project>/.heph-manifest` when vendored) listing every path it wrote. Install, update, `--clean`, and uninstall all read it, so a file hephaestus did not write is never modified or removed, and an adapter dropped upstream is detected exactly.
 - **User-level symlinks are absolute** — they point into the clone, so they resolve from any cwd, including a git worktree. (The former submodule layout used relative links into `.hephaestus/`, which dangle in worktrees because `git worktree add` does not populate submodules.)
 - **Never `git add .hermes` wholesale** — under `HERMES_HOME` that directory is Hermes's profile home. Stage `.hermes/skills`, `.hermes/agents`, and `.hermes/.gitignore` only; the scaffolded `.gitignore` is the backstop.
@@ -184,6 +187,7 @@ These are NOT in this repo — each installed project owns them (`install.sh --p
 - `.cursor/rules/*.mdc` other than `hephaestus.mdc` — the project's own Cursor rules; hephaestus never writes or removes them
 - `.claude/hooks/` — lint/test hooks for the project's tech stack
 - `CLAUDE.md` with a "Development Commands" section (test, lint, build commands)
+- `changelog.d/`, `CHANGELOG.md`, `scripts/collect-changelog.sh`, `.gitattributes` — only where the project opted in with `install.sh --changelog-fragments`; all four are project-owned and survive uninstall
 - `AGENTS.md` — index of available local and shared agents (scaffolded from `templates/AGENTS.md`)
 - `.claude/settings.local.json` — project-specific config
 

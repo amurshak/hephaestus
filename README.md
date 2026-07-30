@@ -443,6 +443,18 @@ Teams that want everyone's `/ship` to behave identically — and CI to be reprod
 
 This copies the shared set into the repo, does the `--project` scaffolding, and writes a `.heph-manifest` recording the version and every file it wrote. That manifest is the pin: `update.sh --vendor` refreshes exactly those files, and `uninstall.sh --vendor` removes exactly those files. Plain committed files — no submodule, so nothing to initialize on clone, in CI, or in a git worktree.
 
+### Stop the changelog from conflicting
+
+Every PR touches `CHANGELOG.md` by construction, so parallel waves conflict on it every time. The fix is one file per PR:
+
+```bash
+~/.hephaestus/install.sh --project --changelog-fragments /path/to/your/project
+```
+
+`/ship` then writes `changelog.d/<issue-or-slug>.<added|changed|fixed|removed>.md` instead of editing `CHANGELOG.md`; distinct filenames make the conflict structurally impossible. At release, the `scripts/collect-changelog.sh` copy this installs folds every fragment into a dated section and deletes them (`--preview` to dry-run, `--check` to validate names in a quality gate).
+
+It is opt-in because it changes *where* `/ship` writes — everything else the installer scaffolds only adds. Adopting it also scaffolds a `CHANGELOG.md` if you have none and sets `CHANGELOG.md merge=union` in `.gitattributes` as a backstop, leaving an existing `.gitattributes` alone with a note. Later runs, including `update.sh`, detect the adoption and keep it without the flag. Without it, `/ship` keeps appending to `CHANGELOG.md` as before.
+
 ### Migrating from a submodule install
 
 Installs from before 2.2 put hephaestus in a `.hephaestus` submodule and symlinked every adapter through it. One command converts a repo:
@@ -462,6 +474,7 @@ It removes the submodule (deinit, `git rm`, the `.git/modules` entry, and `.gitm
 | `install.sh --clean`         | Remove adapters dropped upstream since the last install |
 | `install.sh --migrate <path>` | Convert a pre-2.2 submodule install, then scaffold |
 | `install.sh --project <path>`| Scaffold the project-owned files in a repo |
+| `install.sh --changelog-fragments <path>` | Adopt one changelog entry per PR; add to `--project` or `--vendor` |
 | `install.sh --vendor <path>` | Commit the shared set into a repo, pinned by `.heph-manifest` |
 | `update.sh` / `update.sh --vendor <path>` | Pull the latest and re-install |
 | `/update-hephaestus`         | The same update, driven from inside your harness |

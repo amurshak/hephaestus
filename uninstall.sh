@@ -7,7 +7,8 @@
 #
 # Removes exactly what the matching install recorded in its manifest, so files
 # hephaestus never wrote are never touched. Project-owned files always stay:
-# orient (all harnesses), AGENTS.md, opencode.json, .claude/hooks/, CLAUDE.md.
+# orient (all harnesses), AGENTS.md, opencode.json, .claude/hooks/, CLAUDE.md,
+# and the changelog scaffold (changelog.d/, scripts/collect-changelog.sh).
 #
 # Idempotent: safe to run if already uninstalled.
 
@@ -85,4 +86,5 @@ echo "Kept (project-owned):"
 echo "  - orient (.claude/commands/, .opencode/commands/, .cursor/commands/, .agents/skills/orient/, .hermes/skills/hephaestus/orient/)"
 echo "  - your own .cursor/rules/*.mdc"
 echo "  - AGENTS.md, opencode.json, CLAUDE.md"
+echo "  - changelog.d/, CHANGELOG.md, scripts/collect-changelog.sh, .gitattributes"
 echo "  - .claude/hooks/, .claude/settings.local.json"

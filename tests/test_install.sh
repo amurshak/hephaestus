@@ -156,6 +156,12 @@ assert_file_not_exists "no agent adapters copied"   "$TARGET/.claude/agents/code
 assert_file_not_exists "no Cursor adapters copied"  "$TARGET/.cursor/commands/ship.md"
 assert_file_not_exists "no Cursor rule copied"      "$TARGET/.cursor/rules/hephaestus.mdc"
 assert_file_not_exists "no manifest written"        "$TARGET/.heph-manifest"
+
+# Changelog fragments change where /ship writes, so they are opt-in
+assert_file_not_exists "no changelog.d/ by default"      "$TARGET/changelog.d"
+assert_file_not_exists "no collect script by default"    "$TARGET/scripts/collect-changelog.sh"
+assert_file_not_exists "no CHANGELOG.md by default"      "$TARGET/CHANGELOG.md"
+assert_file_not_exists "no .gitattributes by default"    "$TARGET/.gitattributes"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -172,6 +178,111 @@ output=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
 assert_eq "orient.md preserved"  "MY CUSTOM ORIENT" "$(cat "$TARGET/.claude/commands/orient.md")"
 assert_eq "AGENTS.md preserved"  "MY CUSTOM AGENTS" "$(cat "$TARGET/AGENTS.md")"
 assert_contains "reports the skip" "$output" "[skip] orient.md (already exists)"
+teardown_fixture
+
+# ── Changelog fragments (opt-in) ─────────────────────────────────────────────
+
+begin_test "--changelog-fragments scaffolds the fragment convention"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+output=$(bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET" 2>&1)
+
+assert_file_exists "changelog.d/README.md scaffolded" "$TARGET/changelog.d/README.md"
+assert_contains    "README explains the filename"     "$(cat "$TARGET/changelog.d/README.md")" "<id>.<category>.md"
+assert_file_exists "CHANGELOG.md scaffolded"          "$TARGET/CHANGELOG.md"
+assert_contains    "CHANGELOG has Unreleased"         "$(cat "$TARGET/CHANGELOG.md")" "## Unreleased"
+assert_file_exists "collect script distributed"       "$TARGET/scripts/collect-changelog.sh"
+assert_file_exists ".gitattributes scaffolded"        "$TARGET/.gitattributes"
+assert_contains    "union merge on CHANGELOG.md"      "$(cat "$TARGET/.gitattributes")" "CHANGELOG.md merge=union"
+assert_contains    "health check reports adoption"    "$output" "changelog fragments enabled"
+[ -x "$TARGET/scripts/collect-changelog.sh" ] \
+  && pass "collect script is executable" || fail "collect script is executable"
+
+# A copy, not a symlink into the clone — every collaborator and CI must run it.
+assert_not_symlink "collect script is a real file" "$TARGET/scripts/collect-changelog.sh"
+
+# The distributed script must actually fold a release in the target repo.
+printf '**Widget** (#1): added a widget.\n' > "$TARGET/changelog.d/1.added.md"
+bash "$TARGET/scripts/collect-changelog.sh" --check >/dev/null 2>&1
+assert_exit_code "--check validates fragments" 0 $?
+output=$(cd "$TARGET" && bash scripts/collect-changelog.sh 0.1.0 2>&1)
+assert_contains        "folds the fragment"   "$(cat "$TARGET/CHANGELOG.md")" "- **Widget** (#1): added a widget."
+assert_contains        "writes a version section" "$(cat "$TARGET/CHANGELOG.md")" "## 0.1.0 — "
+assert_file_not_exists "fragment consumed"    "$TARGET/changelog.d/1.added.md"
+assert_file_exists     "README survives"      "$TARGET/changelog.d/README.md"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "adoption is sticky — later runs need no flag, and refresh the script"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET" >/dev/null 2>&1
+echo "MY OWN CHANGELOG" > "$TARGET/CHANGELOG.md"
+echo "# drifted" >> "$TARGET/scripts/collect-changelog.sh"
+
+output=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
+assert_contains "keeps scaffolding without the flag" "$output" "Changelog fragments:"
+assert_eq       "CHANGELOG.md preserved" "MY OWN CHANGELOG" "$(cat "$TARGET/CHANGELOG.md")"
+assert_contains "drift reported, not overwritten" "$output" "differs from this clone"
+assert_contains "drift preserved" "$(cat "$TARGET/scripts/collect-changelog.sh")" "# drifted"
+
+# --force refreshes it: the collect script is hephaestus code, not a template.
+output=$(bash "$SOURCE_REPO/install.sh" --project --force "$TARGET" 2>&1)
+assert_contains     "--force updates the script" "$output" "[update] collect-changelog.sh"
+assert_not_contains "drift gone" "$(cat "$TARGET/scripts/collect-changelog.sh")" "# drifted"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "an existing .gitattributes stays the project's"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+echo "*.png binary" > "$TARGET/.gitattributes"
+output=$(bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET" 2>&1)
+
+assert_eq       ".gitattributes untouched" "*.png binary" "$(cat "$TARGET/.gitattributes")"
+assert_contains "prints the backstop hint" "$output" "CHANGELOG.md merge=union"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "a foreign changelog.d/ is flagged, not silently adopted"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+mkdir -p "$TARGET/changelog.d"
+echo "scriv fragment" > "$TARGET/changelog.d/20230101_120000_someone.md"
+output=$(bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET" 2>&1)
+
+assert_contains    "warns about the existing directory" "$output" "another tool may own it"
+assert_file_exists "foreign fragment untouched" "$TARGET/changelog.d/20230101_120000_someone.md"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "vendor mode adopts fragments without recording them in the manifest"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+bash "$SOURCE_REPO/install.sh" --vendor --changelog-fragments "$TARGET" >/dev/null 2>&1
+
+assert_file_exists "changelog.d/README.md scaffolded" "$TARGET/changelog.d/README.md"
+assert_file_exists "collect script distributed"       "$TARGET/scripts/collect-changelog.sh"
+
+# Scaffolds are project-owned: the manifest holds adapters only, so uninstall
+# removes exactly the adapters and leaves the project's changelog alone.
+manifest="$(grep -v '^#' "$TARGET/.heph-manifest")"
+assert_not_contains "manifest omits the collect script" "$manifest" "collect-changelog.sh"
+assert_not_contains "manifest omits changelog.d"        "$manifest" "changelog.d"
+assert_eq "manifest still records adapters only" "$TOTAL_ADAPTERS" "$(grep -cv '^#' "$TARGET/.heph-manifest")"
+
+bash "$SOURCE_REPO/uninstall.sh" --vendor "$TARGET" >/dev/null 2>&1
+assert_file_exists "changelog.d survives uninstall" "$TARGET/changelog.d/README.md"
+assert_file_exists "collect script survives uninstall" "$TARGET/scripts/collect-changelog.sh"
 teardown_fixture
 
 # ── Vendored install ─────────────────────────────────────────────────────────
@@ -367,6 +478,9 @@ assert_exit_code "--audit + --clean" 1 $?
 
 bash "$SOURCE_REPO/install.sh" --invalid >/dev/null 2>&1
 assert_exit_code "unknown flag" 1 $?
+
+bash "$SOURCE_REPO/install.sh" --changelog-fragments >/dev/null 2>&1
+assert_exit_code "--changelog-fragments without a repo mode" 1 $?
 
 bash "$SOURCE_REPO/install.sh" --project "/tmp/nonexistent-heph-test-path" >/dev/null 2>&1
 assert_exit_code "non-existent target" 1 $?
