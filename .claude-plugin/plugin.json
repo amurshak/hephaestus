@@ -1,7 +1,7 @@
 {
   "name": "heph",
   "version": "2.1.0",
-  "description": "Generic software development workflow pattern — orient → plan → critique → implement → review → test → ship → finish, with bounded retries at every gate. One command (/autopilot), eight phases, five subagents.",
+  "description": "An open protocol for agentic software development — orient → plan → critique → implement → review → test → ship → finish, with bounded retries at every gate. One command (/autopilot), eight phases, five subagents. Harness-neutral specs render to Claude Code, OpenCode, Codex, Cursor, and Hermes.",
   "author": {
     "name": "Alex Murshak"
   },
