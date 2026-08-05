@@ -66,11 +66,13 @@ done
 # ── Discovery wiring ─────────────────────────────────────────────────────────
 # Wired either by skills.external_dirs naming this project's .hermes/skills, or
 # by HERMES_HOME pointing at this project's .hermes (whose skills/ is native).
+cfg_path=$(hermes config path 2>/dev/null || true)
+
 wired=0
 if [ -n "${HERMES_HOME:-}" ] && [ "$(cd "$HERMES_HOME" 2>/dev/null && pwd)" = "$ROOT/.hermes" ]; then
   wired=1
   echo "  ✓ HERMES_HOME points at $ROOT/.hermes"
-elif cfg_path=$(hermes config path 2>/dev/null) && [ -f "$cfg_path" ]; then
+elif [ -n "$cfg_path" ] && [ -f "$cfg_path" ]; then
   if grep -qF "$SKILLS_DIR" "$cfg_path"; then
     wired=1
     echo "  ✓ skills.external_dirs names $SKILLS_DIR"
@@ -112,10 +114,66 @@ done
 # the model as literal text), so the identifier must resolve. Asserted on the
 # layout rather than by running `hermes chat`, which would bill an inference
 # call; Hermes resolves `-s <category>/<skill>` against this exact path.
-if [ ! -f "$SKILLS_DIR/hephaestus/start-issue/SKILL.md" ]; then
+#
+# It must resolve to exactly one skill. Hermes refuses to guess between
+# candidates and returns `Unknown skill(s)`, so a second install offering
+# hephaestus/start-issue kills every spawned window just as surely as none does
+# — a state the README's own instructions reach, since a user-level install
+# symlinks ~/.hermes/skills while --vendor writes real copies a project then
+# names in external_dirs. Dedup is by resolved path, matching Hermes: a symlink
+# and its target are one candidate, not a collision.
+
+# Every root Hermes searches: its home skills dir, then each external_dirs entry.
+# Both YAML list forms are read — under-counting here would restore the very
+# false-healthy report this check exists to prevent.
+skill_roots() {
+  printf '%s\n' "${HERMES_HOME:-$HOME/.hermes}/skills"
+  [ -n "$cfg_path" ] && [ -f "$cfg_path" ] || return 0
+  awk '
+    /^[[:space:]]*#/           { next }
+    /^[^[:space:]#]/           { in_s = ($0 ~ /^skills:/); in_e = 0 }
+    in_s && $1 == "external_dirs:" && /\[/ {
+      line = $0; sub(/^[^[]*\[/, "", line); sub(/\].*$/, "", line)
+      n = split(line, a, ",")
+      for (i = 1; i <= n; i++) { gsub(/^[ \t"'\'']+|[ \t"'\'']+$/, "", a[i]); if (a[i] != "") print a[i] }
+      next
+    }
+    in_s && $1 == "external_dirs:" && NF == 1 { in_e = 1; next }
+    in_e && /^[[:space:]]*-/   {
+      line = $0; sub(/^[[:space:]]*-[[:space:]]*/, "", line)
+      gsub(/^["'\'']+|["'\'']+$/, "", line); if (line != "") print line; next
+    }
+    in_e && NF                 { in_e = 0 }
+  ' "$cfg_path"
+}
+
+matches=""
+while IFS= read -r root; do
+  [ -n "$root" ] || continue
+  case "$root" in "~/"*) root="$HOME/${root#\~/}" ;; esac
+  [ -f "$root/hephaestus/start-issue/SKILL.md" ] || continue
+  # pwd -P resolves a symlinked skill dir — what a user-level install creates.
+  resolved=$(cd "$root/hephaestus/start-issue" 2>/dev/null && pwd -P) || continue
+  matches="${matches}${resolved}/SKILL.md"$'\n'
+done <<EOF
+$(skill_roots)
+EOF
+
+matches=$(printf '%s' "$matches" | sort -u)
+match_count=$(printf '%s' "$matches" | grep -c . || true)
+
+if [ "$match_count" -eq 0 ]; then
   echo "ERR: no skill at hephaestus/start-issue —" >&2
   echo "     'hermes chat -s hephaestus/start-issue' cannot resolve, so the" >&2
   echo "     /worktrees spawn would start sessions with no skill loaded." >&2
+  fail=1
+elif [ "$match_count" -gt 1 ]; then
+  echo "ERR: hephaestus/start-issue is ambiguous — $match_count skills claim it:" >&2
+  printf '%s\n' "$matches" | sed 's/^/       /' >&2
+  echo "     Hermes refuses to guess between them, so 'hermes chat -s" >&2
+  echo "     hephaestus/start-issue' aborts and every /worktrees window dies." >&2
+  echo "     Drop one install: uninstall the user-level copy, or remove this" >&2
+  echo "     project's entry from skills.external_dirs." >&2
   fail=1
 fi
 
