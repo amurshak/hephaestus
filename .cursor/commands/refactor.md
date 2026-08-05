@@ -20,14 +20,14 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 1. Create a feature branch: `git checkout -b refactor/<short-description>` where `<short-description>` is a kebab-case summary derived from $ARGUMENTS.
 2. Build a refactoring plan (what changes, what's preserved, expected impact) via the to-do list.
 3. Self-critique the plan (general critique mode): evaluate risks, coupling, test coverage gaps, API contract changes.
-4. Refine and re-critique until verdict reaches **SOUND** (per CLAUDE.md retry limits).
-5. If NEEDS REFINEMENT after all retries: proceed with best version, document caveats in PR. If RETHINK: file follow-up issue and wind down.
+4. Refine and re-critique until verdict reaches **SOUND** (max 3 iterations).
+5. If NEEDS REFINEMENT after 3 iterations: proceed with best version, document caveats in PR. If RETHINK: file follow-up issue and wind down.
 
 ### Phase 3: Implement
 1. Make single, focused changes — one concern per commit
 2. For independent refactoring tasks across different files, use parallel coder subagents (serialize file edits — Cursor subagents share one working tree)
 3. Run tests after each change per the project's CLAUDE.md (test command, lint command)
-4. If tests fail after a change, fix and re-test before proceeding (per CLAUDE.md retry limits)
+4. If tests fail after a change, fix and re-test before proceeding (max 2 cycles)
 
 ### Phase 4: Ship → `/ship`
 

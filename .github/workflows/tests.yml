@@ -27,6 +27,8 @@ jobs:
         run: ./scripts/sync-hermes-adapters.sh --check
       - name: README composition check
         run: bash tests/check_composition.sh
+      - name: Workflow conventions check
+        run: bash tests/check_conventions.sh
       - name: Install OpenCode CLI
         run: npm install -g opencode-ai
       - name: OpenCode live load check

@@ -169,7 +169,9 @@ Thirteen commands, but the delivery spine is `/autopilot` and the three commands
 
 ### Separation of orchestration from configuration
 
-Hephaestus owns the workflow — what order things happen, when to retry, when to stop. Canonical workflows live in `.ai/workflows/` with frontmatter for `name`, `requires`, and `chains`; `.claude/commands/`, `.opencode/commands/`, `.agents/skills/*/SKILL.md`, `.hermes/skills/hephaestus/*/SKILL.md`, and `.cursor/` are generated adapters checked by the matching `scripts/sync-*-adapters.sh --check`. The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover quality gates. The only project-specific command hephaestus ever creates is a scaffold for `orient`, which it then refuses to overwrite.
+Hephaestus owns the workflow — what order things happen, when to retry, when to stop. That behavior is specified once in [`.ai/conventions.md`](.ai/conventions.md) and implemented by the canonical workflows in `.ai/workflows/`; every harness directory is a generated adapter of those (see [CONTRIBUTING.md](CONTRIBUTING.md) for the generators).
+
+The target project owns the specifics — what test command to run, what lint rules to enforce. Commands read the target's `CLAUDE.md` at runtime to discover them; `## Development Commands` is the only section a project must supply. The only command hephaestus ever writes into your repo is a scaffold for `orient`, which it then refuses to overwrite.
 
 ### Parallelization at three levels
 
@@ -507,33 +509,20 @@ HEPH_HARNESS=opencode nohup ~/.hephaestus/loop.sh 30 autopilot-oc.log &
 
 ### Forking
 
-Fork hephaestus to customize commands for your org while still pulling upstream updates.
-
-**Safe to modify** — won't conflict on `git merge upstream/master`:
-- `templates/` — customize scaffolds for your org's conventions
-- `VERSION` — your fork's version track
-
-**Will conflict if modified** — actively developed upstream:
-- `.ai/workflows/` and `.claude/agents/` — the core workflow and agent files
-- `.claude/commands/` — generated Claude adapters; update via `scripts/sync-agent-adapters.sh`
-- `.opencode/commands/` and `.opencode/agents/` — generated OpenCode adapters; update via `scripts/sync-opencode-adapters.sh`
-- `.agents/skills/` and `.codex/agents/` — generated Codex adapters; update via `scripts/sync-codex-adapters.sh`
-- `.hermes/skills/` and `.hermes/agents/` — generated Hermes adapters; update via `scripts/sync-hermes-adapters.sh`
-- `.cursor/commands/`, `.cursor/agents/`, `.cursor/rules/hephaestus.mdc` — generated Cursor adapters; update via `scripts/sync-cursor-adapters.sh`
-- `install.sh`, `update.sh`, `uninstall.sh` — the install tooling
-- `.claude-plugin/plugin.json` — the plugin manifest
-
-```bash
-git remote add upstream https://github.com/amurshak/hephaestus.git
-git fetch upstream
-git merge upstream/master
-```
+Fork hephaestus to customize commands for your org while still pulling upstream updates — which files are safe to edit and which conflict on `git merge upstream/master` is in [CONTRIBUTING.md § Forking](CONTRIBUTING.md#forking).
 
 ---
 
 ## Contributing
 
-PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the gates and conventions. The short version: edit canonical sources (`.ai/workflows/`, `.claude/agents/`), never generated adapters; run `./tests/run.sh` and every `scripts/sync-*-adapters.sh --check`. Adapter generators for new harnesses are especially welcome — see `scripts/sync-opencode-adapters.sh` / `scripts/sync-codex-adapters.sh` / `scripts/sync-hermes-adapters.sh` / `scripts/sync-cursor-adapters.sh` for the pattern.
+This README is the **consumer** surface: installing hephaestus and running it against your project. Two documents cover the other side.
+
+| Document | Covers |
+|---|---|
+| [`.ai/conventions.md`](.ai/conventions.md) | The behavior spec the workflows implement — the loop, retry limits, escalation, verdicts, what your project owns |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Working **on** hephaestus — canonical sources, adapter generators, quality gates, forking |
+
+PRs welcome. The short version: edit canonical sources (`.ai/conventions.md`, `.ai/workflows/`, `.claude/agents/`), never generated adapters; run `./tests/run.sh` and every `scripts/sync-*-adapters.sh --check`. Adapter generators for new harnesses are especially welcome.
 
 ## License
 

@@ -10,6 +10,7 @@
 #
 # Exits 0 if in sync, 1 if drift detected (with diff report on stderr).
 # Invoked by /update-docs and by tests/test_composition.sh.
+# hephaestus:doc-verifier
 
 set -uo pipefail
 # -e omitted intentionally: we collect drift across all checks instead of

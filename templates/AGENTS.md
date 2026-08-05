@@ -24,4 +24,4 @@ See CLAUDE.md "Development Commands" — agents read test/lint/build commands fr
 ## Conventions
 - Agents return structured output (status, files, verdicts) — never raw logs.
 - Only the coder modifies files; review and implementation stay separated.
-- Retry limits and wind-down rules live in CLAUDE.md "Workflow Rules".
+- Retry limits and wind-down rules are carried by the commands themselves. Add a `## Workflow Rules` section to CLAUDE.md only to override them.

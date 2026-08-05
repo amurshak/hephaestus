@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Audience: contributor** — this file is about working **on** hephaestus. Nothing here is true in a project that merely installed it.
+>
+> The product side — the loop, retry limits, escalation, verdicts, and what a target project owns — is [`.ai/conventions.md`](.ai/conventions.md). The reader's test for which side a sentence belongs on: *would it still be true in a project that only installed hephaestus?* Yes → product. No → here.
+
 ## Core Principles
 
 Three ideas shape every design decision:
@@ -20,17 +24,30 @@ Hephaestus is an implementation of a generic software development workflow patte
 
 ## Development Commands
 
+This repo's own quality gates. The heading is a shipped contract — `/ship` and `/test-issue` read it in every installed project — so what it names here is hephaestus's adapter-generation meta-suite, not a template for anyone else's tests.
+
 - **Test**: `./tests/run.sh` — full integration suite (single file: `bash tests/test_<name>.sh`)
-- **Lint/drift**: `./scripts/sync-agent-adapters.sh --check`, `./scripts/sync-opencode-adapters.sh --check`, `./scripts/sync-codex-adapters.sh --check`, `./scripts/sync-hermes-adapters.sh --check`, `./scripts/sync-cursor-adapters.sh --check`, `bash tests/check_composition.sh`
+- **Lint/drift**: `./scripts/sync-agent-adapters.sh --check`, `./scripts/sync-opencode-adapters.sh --check`, `./scripts/sync-codex-adapters.sh --check`, `./scripts/sync-hermes-adapters.sh --check`, `./scripts/sync-cursor-adapters.sh --check`, `bash tests/check_composition.sh`, `bash tests/check_conventions.sh`
 - **Build**: none (prose + shell; no compile step)
+
+## Docs Requirements
+
+The trigger list `/finish` uses here, overriding its defaults:
+
+- **Changelog fragment** — every PR, no exceptions: `changelog.d/<issue-or-slug>.<added|changed|fixed|removed>.md`
+- **README.md** — when the PR changes the consumer surface: `install.sh`, `update.sh`, `uninstall.sh`, `.ai/workflows/*.md`, `.ai/conventions.md`
+- **CLAUDE.md** — when the PR changes the contributor surface: `.claude/agents/*.md`, `scripts/*`, or this file's own conventions
+- **CONTRIBUTING.md** — never required mechanically; update it when the gates or the canonical-source rules change
+
+Generated adapters (`.claude/commands/`, `.opencode/`, `.agents/skills/`, `.hermes/`, `.cursor/`) trigger nothing on their own. They regenerate on every workflow change, so triggering README from them made README a required file on essentially every PR — which is what made it a contention hotspot rather than a documentation rule.
 
 ## Worktrees
 
 - `max:` 3
-- `serialize_paths:` `install.sh`, `README.md`
+- `serialize_paths:` `install.sh`
 - `setup:` none (no deps to install)
 
-`install.sh` and `README.md` are where adapter, installer, and distribution work collides semantically — two issues rewriting install paths or the install section in the same wave conflict in ways a rebase can't resolve. `CHANGELOG.md` is absent because it is no longer contended: entries are written as one-file-per-PR fragments in `changelog.d/` (see below), so parallel branches never touch a shared anchor.
+`install.sh` is where installer and distribution work collides semantically — two issues rewriting install paths in the same wave conflict in ways a rebase can't resolve. `CHANGELOG.md` is absent because it is no longer contended: entries are written as one-file-per-PR fragments in `changelog.d/` (see below), so parallel branches never touch a shared anchor. `README.md` was removed for the same reason — the contributor mechanics moved to CONTRIBUTING.md and the Docs Requirements above stopped requiring it for generated-adapter churn, so it is edited by consumer-surface work only. Do not list a file every PR touches by construction; serializing it pins concurrency at 1. Fix those structurally instead.
 
 ## Changelog
 
@@ -43,6 +60,7 @@ Target projects adopt the same convention with `install.sh --project --changelog
 ## Repository Structure
 
 - `.claude/agents/` — Subagent definitions (coder, reviewer, tester, explorer, researcher) with tool permissions and structured output contracts
+- `.ai/conventions.md` — the product behavior spec the workflows implement; enforced by `tests/check_conventions.sh`
 - `.ai/workflows/` — canonical, tool-neutral workflow specs with `name`, `requires`, and `chains` frontmatter
 - `.claude/commands/` — generated Claude slash-command adapters for the canonical workflows
 - `.opencode/commands/` — generated OpenCode command adapters for the same canonical workflows
@@ -67,23 +85,11 @@ Target projects adopt the same convention with `install.sh --project --changelog
 
 ## Core Workflow Pattern
 
-All delivery commands enforce a deterministic eight-phase loop:
+**The spec is [`.ai/conventions.md`](.ai/conventions.md)** — the eight phases, the retry limits, the escalation ladder, ambiguity handling, verdicts, session checkpoints, and what a target project owns. Read it before changing any workflow; it governs this repo's sessions too.
 
-1. **Orient** — Read the issue, explore relevant code, understand what's needed
-2. **Plan** — Break work into steps via TodoWrite, identify parallelizable tasks
-3. **Critique** — Adversarial evaluation (max 3 iterations until SOUND/PASS)
-4. **Implement** — Parallel coder subagents in worktrees for independent tasks, sequential for dependencies
-5. **Review** — Pre-ship code critique (max 3 iterations)
-6. **Test** — Quality gates per the target project's CLAUDE.md (test, lint, build commands)
-7. **Ship** — PR with quality-gate checklist, squash auto-merge
-8. **Finish** — Close issue, delete merged branches, file follow-ups, update docs
+It is a spec, not a runtime dependency. The workflows are the shipped artifact, so they state each limit at the point of use — an installed project has no `.ai/` directory to read. `bash tests/check_conventions.sh` fails if a workflow states a value the spec does not, so the two cannot drift silently. Change the spec first, then the workflows, then run the check.
 
-**Retry limits** (all commands reference these — do not hardcode separately):
-- Plan-critique loop: max **3** iterations
-- Pre-ship code critique: max **3** iterations
-- Test-fix cycles: max **2** full plan-implement-test cycles
-
-Autonomy-first: commands resolve ambiguity via documented assumptions, recover from failures by trying alternative approaches, and wind down cleanly when limits are reached (commit progress, file follow-up issues). Hard stops are reserved for irreversible risk only (security vulnerabilities, data loss, force-push).
+Never reintroduce a by-name reference like "per CLAUDE.md retry limits": it forced `/orient` to retype the limits into every installed project's CLAUDE.md, which is the hand-maintained duplication this layout exists to prevent.
 
 ## Key Design Constraints
 
@@ -94,9 +100,9 @@ Autonomy-first: commands resolve ambiguity via documented assumptions, recover f
 - **Cursor adapters are generated too**: `.cursor/commands/` comes from `.ai/workflows/`; `.cursor/agents/` comes from `.claude/agents/`; `.cursor/rules/hephaestus.mdc` is derived from both. Cursor mechanics that shape the output: command files are injected **verbatim** (frontmatter is stripped only for imported `.claude/commands`), so they carry no YAML and lead with the workflow's opening line — Cursor's hover preview; `$ARGUMENTS`/`$1`… *are* substituted; frontmatter values are not unquoted, so they are emitted bare; `readonly: true` is honoured and emitted for agents with no shell and no edit tools, while `tools:` is only rendered to the model as prose and is never an access control. The `/worktrees` spawn CLI localizes to `cursor-agent`. Run `./scripts/sync-cursor-adapters.sh` after workflow or agent edits and `--check` in quality gates.
 - **Commands read the target project's CLAUDE.md** to discover test/lint/build commands. The "Development Commands" section in each installed project drives all quality gates.
 - **`/finish` branches on explicit PR state** before cleanup. Merged PRs complete the full close/cleanup/docs flow; auto-merge-pending and manual-merge-needed PRs preserve the issue and PR branch; closed-unmerged PRs abort finish cleanly.
-- **`/finish` decides docs sync mechanically** from the PR diff: every PR requires CHANGELOG.md; command or installer changes also require README.md; command or agent changes also require CLAUDE.md. If any required doc is missing, `/finish` runs `/update-docs` and logs the missing files.
+- **`/finish` decides docs sync mechanically** from the PR diff, against the trigger list in "Docs Requirements" above — that section is the rule for this repo, and it overrides finish.md's defaults whole. If any required doc is missing from the diff, `/finish` runs `/update-docs` and logs the missing files.
 - **Repo detection** is done via `git remote get-url origin` — commands never hardcode repo references.
-- **orient is project-specific** — it is excluded from symlinking in every harness. `install.sh --project` scaffolds a template from `templates/orient.md` that must be customized. The shipped generic `/orient` covers install paths without install.sh (plugin, manual copy): on first run in an unprepared project it bootstraps the operating requirements — infers a Development Commands section from manifests and scaffolds a project orient — additively, never overwriting.
+- **orient is project-specific** — it is excluded from symlinking in every harness. `install.sh --project` scaffolds a template from `templates/orient.md` that must be customized. The shipped generic `/orient` covers install paths without install.sh (plugin, manual copy): on first run in an unprepared project it bootstraps the operating requirements — infers a Development Commands section from manifests and scaffolds a project orient — additively, never overwriting. It skips the bootstrap writes in a repo that defines the workflow rather than consuming it, recognised by `.ai/workflows/` plus a `scripts/sync-*-adapters.sh` generator — `.claude/commands/orient.md` here is the generated consumer adapter, so without the guard `/orient` treats this repo as a target project and offers to scaffold the requirements it authors. The phrasing is deliberately generic: the guard ships to every installed project, so it must not name this repo.
 - **install.sh is idempotent** — re-running refreshes the files it installed and never touches anything else.
 - **Changelog fragments are opt-in, then sticky** — `--changelog-fragments` scaffolds the convention. Project mode writes no manifest, so adoption is inferred, and a path alone is never the evidence: it takes `changelog.d/` **and** a `scripts/collect-changelog.sh` carrying the `# hephaestus:collect-changelog` token (a token, not the prose header — rewording a comment must not un-adopt every project). A repo with its own script at that path is not an adopter; adoption is declined whole rather than scaffolding the other files around a collect script that will never be installed, and `--force` never takes that file over. Our own copy is code, not a customization point, so it *is* refreshed under `--force` once it drifts.
 - **Ownership is recorded, not inferred** — each install writes a manifest (`$XDG_STATE_HOME/hephaestus/manifest` at user level, `<project>/.heph-manifest` when vendored) listing every path it wrote. Install, update, `--clean`, and uninstall all read it, so a file hephaestus did not write is never modified or removed, and an adapter dropped upstream is detected exactly.
@@ -114,38 +120,16 @@ Five agent roles, stratified by least-privilege tool access. Coder is the only a
 
 **Model tiers** — every agent declares `model: opus | sonnet | haiku | inherit`. The tier is harness-neutral; `.ai/models.conf` says what it means per harness (OpenCode gets a `provider/model-id`, Codex gets `model_reasoning_effort`, Cursor ships unset because its model namespace churns per release, Hermes gets an advisory `provider/model-id` since it applies one global `delegation.model`, Claude Code takes the tier name as-is). Assign by what the role costs to get wrong: reviewer `opus`, coder and researcher `sonnet`, explorer and tester `haiku`. Override the mapping — not the tiers — in `~/.hephaestus/models.conf` (user level, every project) or `$HEPHAESTUS_MODELS`; layers merge per key. Generator `--check` ignores overrides so committed adapters stay reproducible across machines.
 
-## Autonomy Conventions
+## Configuration Surfaces
 
-Commands are designed to run without human intervention. The escalation hierarchy is:
+Two mechanisms, split by consumer. Which one a new setting belongs to is decided in this section, not per-PR:
 
-1. **Self-recover**: Try an alternative approach (different strategy, skip non-critical task, etc.)
-2. **Degrade gracefully**: Proceed with documented limitations rather than blocking
-3. **Wind down cleanly**: Commit progress, file follow-up issues, print summary
-4. **Hard stop**: Only for irreversible risk — security issues being shipped, data loss, force-push
+| Surface | Consumed by | Layering |
+|---|---|---|
+| `.ai/models.conf` → `scripts/models.sh` | a **generator**, at build time, baked into the adapters | shipped → `~/.hephaestus/models.conf` → project `.ai/models.conf` → `$HEPHAESTUS_MODELS`, merged per key |
+| CLAUDE.md prose — the sections listed in `.ai/conventions.md` under "What the project owns" | the **agent**, at runtime | per project; only `## Development Commands` is required |
 
-**Ambiguity resolution**: When requirements are unclear, infer intent from codebase context and existing patterns. Choose the simplest interpretation. Document all assumptions in the PR body under "Assumptions Made."
-
-**Git conflicts**: Before implementation, check for conflicts with the base branch. If conflicts exist, attempt rebase. If rebase fails, wind down cleanly — commit progress, create a draft PR with `[CONFLICT]` prefix, file a follow-up issue with the conflict details.
-
-**Retry exhaustion**: When retry limits are reached, do NOT stop and ask. Instead: commit progress on a branch, create a draft PR with a descriptive prefix (`[WIP]`, `[BLOCKED]`, `[FAILING]`), file a follow-up issue with context, and wind down.
-
-**Transition to next phase**: When work is complete and ready to ship, invoke `/ship` directly (or present it as a concrete option). Do not ask vague questions like "Want me to commit and ship this?" — the workflow has explicit commands for every transition. Use them.
-
-## Session Management
-
-Every session must end at a clean checkpoint:
-
-1. **No uncommitted changes** — always commit before stopping, even partial work
-2. **No orphaned branches** — push branches so progress is preserved remotely
-3. **Breadcrumbs for next session** — file GitHub issues for unfinished work with enough context to resume
-4. **Clean local state** — delete merged branches, pop session stashes
-5. **Session summary** — print what was completed, what was created, what remains
-
-Natural stopping points (in order of preference):
-- After finishing an issue (Phase 4 of autopilot, post-/finish)
-- After shipping a PR (even if not yet merged)
-- After committing progress and filing follow-up issues
-- Never mid-implementation with uncommitted changes
+Nothing in `scripts/`, `install.sh`, `update.sh`, or `uninstall.sh` parses CLAUDE.md, and `models.conf` has exactly one reader. Keep it that way.
 
 ## Improving the Workflow
 
@@ -161,7 +145,7 @@ When modifying agents or commands:
 - Do not hand-edit `.hermes/skills/` or `.hermes/agents/`; regenerate them with `./scripts/sync-hermes-adapters.sh`.
 - Do not hand-edit `.cursor/`; regenerate it with `./scripts/sync-cursor-adapters.sh`.
 - Preserve the `$ARGUMENTS` placeholder in workflows that receive user input at invocation.
-- Retry limits are defined in "Core Workflow Pattern" above — commands must reference them, not hardcode
+- Retry limits are specified in `.ai/conventions.md` and restated by the workflows at the point of use; change the spec first, then the workflows, then run `bash tests/check_conventions.sh`
 - Commands that delegate to subagents should specify which agent type to use and what structured output to expect
 - Run `./scripts/sync-agent-adapters.sh --check` before shipping adapter changes
 - Run `./scripts/sync-opencode-adapters.sh --check` before shipping OpenCode adapter changes
