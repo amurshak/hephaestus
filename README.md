@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/amurshak/hephaestus/actions/workflows/tests.yml/badge.svg)](https://github.com/amurshak/hephaestus/actions/workflows/tests.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**A generic software development workflow pattern for AI coding agents.**
+**A general-purpose software development workflow pattern for AI coding agents.**
 
 Software delivery follows the same loop in every project: understand the problem, plan the work, validate the plan, execute, verify, ship, clean up.
 Hephaestus is an opinionated instantiation of this loop as an agentic software development workflow pattern that answers the question:
