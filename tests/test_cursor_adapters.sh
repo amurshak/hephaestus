@@ -252,4 +252,96 @@ assert_contains "rule explains verbatim injection" "$(cat "$rule")" "injected ve
 assert_contains "rule defers gates to CLAUDE.md" "$(cat "$rule")" "CLAUDE.md"
 assert_not_contains "rule does not restate retry limits" "$(cat "$rule")" "max 3 iterations"
 
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "verify-cursor-load.sh passes when CLI present or skips cleanly"
+
+if verify_output=$(bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" 2>&1); then
+  if command -v cursor-agent >/dev/null 2>&1; then
+    assert_contains "live load reports success" "$verify_output" "Cursor takes the positional-prompt spawn form"
+  else
+    assert_contains "skips without cursor-agent" "$verify_output" "skip: cursor-agent not on PATH"
+  fi
+else
+  fail "verify-cursor-load.sh exited non-zero" "$verify_output"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "verify-cursor-load.sh judges the spawn form and adapter roots"
+
+# A stub `cursor-agent` on a scratch PATH makes the checks hermetic: the real
+# CLI is absent on CI, and its presence would otherwise decide what gets
+# asserted.
+STUB_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-cursorstub-XXXXXX")
+trap 'rm -rf "$FIXTURE" "$FIXTURE_RULE" "$FIXTURE2" "$FIXTURE3" "$STUB_DIR"' EXIT
+
+make_stub() {  # make_stub <usage-line>
+  printf '#!/bin/sh\necho "Usage: %s"\n' "$1" > "$STUB_DIR/cursor-agent"
+  chmod +x "$STUB_DIR/cursor-agent"
+}
+
+# --require must fail when the CLI is missing, whatever the argument order.
+mkdir -p "$STUB_DIR/absent-project"
+for order in "flag-first" "path-first"; do
+  if [ "$order" = "flag-first" ]; then
+    set -- --require "$STUB_DIR/absent-project"
+  else
+    set -- "$STUB_DIR/absent-project" --require
+  fi
+  # /usr/bin:/bin keeps dirname/pwd reachable while excluding cursor-agent,
+  # which installs to ~/.local/bin.
+  out=$(PATH=/usr/bin:/bin bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" "$@" 2>&1)
+  assert_exit_code "--require fails without cursor-agent ($order)" 1 "$?"
+  assert_contains  "errors, not skips, without the CLI ($order)" "$out" "ERR: cursor-agent not on PATH"
+done
+
+# Unknown flags must not be silently reinterpreted as a project path.
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" --requrie 2>&1)
+assert_exit_code "rejects an unknown flag" 1 "$?"
+assert_contains  "names the unknown flag" "$out" "unknown flag"
+
+# A CLI that dropped the positional prompt breaks /worktrees Step 6 — catch it.
+make_stub "agent [options] [command] --prompt <PROMPT>"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" 2>&1)
+assert_exit_code "fails when the positional prompt is gone" 1 "$?"
+assert_contains  "names the spawn regression" "$out" "no longer documents a positional prompt"
+
+# A `--project` install scaffolds only .cursor/commands/orient.md and no
+# .cursor/agents; the shared set stays in $CURSOR_HOME. Must not false-fail.
+make_stub "agent [options] [command] [prompt...]"
+PROJ="$STUB_DIR/proj"
+mkdir -p "$PROJ/.cursor/commands"
+echo "scaffolded" > "$PROJ/.cursor/commands/orient.md"
+mkdir -p "$STUB_DIR/home"
+cp -R "$HEPHAESTUS_ROOT/.cursor/commands" "$STUB_DIR/home/commands"
+cp -R "$HEPHAESTUS_ROOT/.cursor/agents" "$STUB_DIR/home/agents"
+cp -R "$HEPHAESTUS_ROOT/.cursor/rules" "$STUB_DIR/home/rules"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" CURSOR_HOME="$STUB_DIR/home" \
+      bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" "$PROJ" 2>&1)
+proj_rc=$?
+assert_exit_code "project-mode install passes" 0 "$proj_rc"
+# Naming the resolved roots is the point: it must have fallen past the
+# scaffold-only project to $CURSOR_HOME, not silently accepted the project.
+assert_contains "reports the CURSOR_HOME commands root" "$out" "commands:  $STUB_DIR/home/commands"
+assert_contains "reports the CURSOR_HOME agents root"   "$out" "subagents: $STUB_DIR/home/agents"
+assert_contains "reports the CURSOR_HOME rule"          "$out" "rule:      $STUB_DIR/home/rules/hephaestus.mdc"
+
+# A project's own .mdc rules must not be mistaken for ours: a rules dir without
+# hephaestus.mdc has to fall through to $CURSOR_HOME, not answer the probe.
+mkdir -p "$PROJ/.cursor/rules"
+echo "---" > "$PROJ/.cursor/rules/their-own.mdc"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" CURSOR_HOME="$STUB_DIR/home" \
+      bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" "$PROJ" 2>&1)
+assert_exit_code "a foreign rules dir does not claim the root" 0 "$?"
+assert_contains  "still resolves the rule to CURSOR_HOME" "$out" "rule:      $STUB_DIR/home/rules/hephaestus.mdc"
+
+# Neither root holding the set is a real failure, and every root gets named.
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" CURSOR_HOME="$STUB_DIR/empty" \
+      bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" "$PROJ" 2>&1)
+assert_exit_code "fails when no root holds the adapters" 1 "$?"
+assert_contains  "names the commands roots" "$out" "no Cursor commands root"
+assert_contains  "names the agents roots"   "$out" "no Cursor agents root"
+assert_contains  "names the rules roots"    "$out" "no Cursor rules root holds hephaestus.mdc"
+
 print_summary

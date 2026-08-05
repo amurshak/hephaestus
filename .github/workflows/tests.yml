@@ -35,3 +35,11 @@ jobs:
         run: npm install -g @openai/codex
       - name: Codex live load check
         run: bash scripts/verify-codex-load.sh --require
+      # No install step, and no --require: cursor-agent is not on npm (the
+      # `cursor-agent` package there is an unrelated third party) and ships only
+      # via a vendor install script, so CI has no pinnable source. The step runs
+      # and skips; the script's own logic is covered hermetically by a stub CLI
+      # in tests/test_cursor_adapters.sh, and the live contract is measured on a
+      # developer machine that has the CLI.
+      - name: Cursor live load check
+        run: bash scripts/verify-cursor-load.sh
