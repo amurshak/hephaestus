@@ -92,17 +92,21 @@ teardown_mock
 begin_test "creates lockfile and writes PID"
 setup_mock_claude
 
+# Determine expected lock dir (same hash algorithm as loop.sh)
+EXPECTED_HASH=$(printf '%s' "$(pwd)" | { shasum 2>/dev/null || sha1sum; } | cut -c1-12)
+EXPECTED_LOCK="/tmp/hephaestus-${EXPECTED_HASH}.lock"
+
+# Ensure no stale lock — loop.sh refuses to start against one
+rm -rf "$EXPECTED_LOCK" 2>/dev/null || true
+
 # Run loop.sh in background with mock claude on PATH.
 # It will run one session (mock exits instantly), then sleep.
 env PATH="$MOCK_DIR:$PATH" bash "$LOOP_SH" 1 /dev/null &
 LOOP_PID=$!
 
-# Wait briefly for startup
-sleep 1
-
-# Determine expected lock dir (same hash algorithm as loop.sh)
-EXPECTED_HASH=$(printf '%s' "$(pwd)" | { shasum 2>/dev/null || sha1sum; } | cut -c1-12)
-EXPECTED_LOCK="/tmp/hephaestus-${EXPECTED_HASH}.lock"
+# loop.sh writes the PID immediately after taking the lock, so a non-empty
+# pid file is the readiness signal for all three assertions below.
+wait_for 10 '[ -s "$EXPECTED_LOCK/pid" ]'
 
 assert_dir_exists  "lockfile directory created"       "$EXPECTED_LOCK"
 assert_file_exists "PID file exists inside lock"      "$EXPECTED_LOCK/pid"
@@ -127,12 +131,12 @@ rm -rf "$EXPECTED_LOCK" 2>/dev/null || true
 
 env PATH="$MOCK_DIR:$PATH" bash "$LOOP_SH" 1 /dev/null &
 LOOP_PID=$!
-sleep 1
+wait_for 10 '[ -s "$EXPECTED_LOCK/pid" ]'
 
 # Verify lock exists, then kill
 assert_dir_exists "lock exists before kill" "$EXPECTED_LOCK"
 kill_loop "$LOOP_PID"
-sleep 0.5
+wait_for 10 '[ ! -e "$EXPECTED_LOCK" ]'
 
 assert_file_not_exists "lock cleaned up after kill" "$EXPECTED_LOCK"
 
@@ -152,7 +156,7 @@ rm -rf "$EXPECTED_LOCK" 2>/dev/null || true
 # Start first instance
 env PATH="$MOCK_DIR:$PATH" bash "$LOOP_SH" 1 /dev/null &
 LOOP_PID=$!
-sleep 1
+wait_for 10 '[ -s "$EXPECTED_LOCK/pid" ]'
 
 # Try to start second instance — should fail
 output=$(env PATH="$MOCK_DIR:$PATH" bash "$LOOP_SH" 1 /dev/null 2>&1)
@@ -194,7 +198,8 @@ rm -rf "$EXPECTED_LOCK" 2>/dev/null || true
 BANNER_FILE=$(mktemp "${TMPDIR:-/tmp}/heph-banner-XXXXXX")
 env PATH="$MOCK_DIR:$PATH" bash "$LOOP_SH" > "$BANNER_FILE" 2>&1 &
 LOOP_PID=$!
-sleep 1
+# "Stop" is the banner's last line — waiting for it means every asserted line landed.
+wait_for 10 'grep -qF "Stop     : kill" "$BANNER_FILE"'
 
 BANNER=$(cat "$BANNER_FILE")
 
@@ -226,11 +231,8 @@ rm -rf "$EXPECTED_LOCK" 2>/dev/null || true
 BANNER_FILE=$(mktemp "${TMPDIR:-/tmp}/heph-banner-XXXXXX")
 env PATH="$MOCK_DIR:$PATH" HEPH_HARNESS=opencode bash "$LOOP_SH" 1 /dev/null > "$BANNER_FILE" 2>&1 &
 LOOP_PID=$!
-# Wait until mock is invoked (session happens before sleep)
-for _ in 1 2 3 4 5 6 7 8 9 10; do
-  [ -f "$ARGS_FILE" ] && break
-  sleep 0.2
-done
+# Wait until the mock is invoked — the session runs after the banner, before the sleep
+wait_for 10 '[ -s "$ARGS_FILE" ]'
 
 BANNER=$(cat "$BANNER_FILE")
 assert_contains "banner shows opencode harness" "$BANNER" "Harness  : opencode"

@@ -106,6 +106,24 @@ assert_not_contains() {
   else fail "$desc" "output unexpectedly contains '$needle'"; fi
 }
 
+# ── Synchronization ──────────────────────────────────────────────────────────
+
+# Poll until a condition holds or the timeout (seconds) elapses:
+#   wait_for 10 '[ -s "$LOCK_DIR/pid" ]'
+# Use this, never a fixed sleep, when a background process must reach a state
+# before assertions run — a wall-clock constant races the process under load and
+# fails spuriously. Returns non-zero on timeout; the following assertion reports.
+# Stderr is dropped so a not-yet-created path is not noise — under `set -u` that
+# also hides an unbound variable, which aborts the file, so check names by eye.
+wait_for() {
+  local timeout="$1" condition="$2" elapsed=0
+  until eval "$condition" 2>/dev/null; do
+    [ "$elapsed" -ge $((timeout * 10)) ] && return 1
+    sleep 0.1
+    elapsed=$((elapsed + 1))
+  done
+}
+
 # ── Fixture management ───────────────────────────────────────────────────────
 # Each test gets isolated temp repos:
 #   FIXTURE_DIR  — root temp directory
