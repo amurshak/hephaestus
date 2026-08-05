@@ -50,11 +50,11 @@ macOS: one batch of `osascript` Terminal launches, each:
 ```
 tell application "Terminal"
   activate
-  do script "cd <worktree> && cursor-agent \"/start-issue <N>\""
+  do script "cd <worktree> && cursor-agent -p \"/start-issue <N>\""
   set custom title of front window to "issue-<N>"
 end tell
 ```
-`activate` is required (windows can silently fail to appear without it); the custom title survives the TUI's title rewrites; the positional prompt seeds the spawned session with the command. Non-macOS or on failure: print the `cd <worktree> && cursor-agent "/start-issue <N>"` commands for manual launch and continue.
+`activate` is required (windows can silently fail to appear without it); the custom title survives the TUI's title rewrites; `-p` is required: the slash dispatcher is bound to the TUI input, so a bare `/start-issue` positional prompt is never dispatched — it reaches the model as literal text. Non-macOS or on failure: print the `cd <worktree> && cursor-agent -p "/start-issue <N>"` commands for manual launch and continue.
 
 ## Step 7 — Report
 

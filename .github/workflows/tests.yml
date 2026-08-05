@@ -35,3 +35,15 @@ jobs:
         run: npm install -g @openai/codex
       - name: Codex live load check
         run: bash scripts/verify-codex-load.sh --require
+      # cursor-agent is not on npm — the `cursor-agent` package there is an
+      # unrelated third party — so it comes from the vendor installer, which
+      # drops it in ~/.local/bin. Unpinned, like the opencode and codex installs
+      # above: the check is a canary for the spawn contract, so it has to track
+      # what users actually get. `--help` needs no auth, which is all the
+      # contract check reads.
+      - name: Install Cursor CLI
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Cursor live load check
+        run: bash scripts/verify-cursor-load.sh --require
