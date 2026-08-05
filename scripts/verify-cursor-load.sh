@@ -16,11 +16,13 @@
 #      whether it actually holds the generated files, never by the directory
 #      existing.
 #
-# What this cannot check: whether a leading-slash positional prompt is
-# intercepted as a command or reaches the model as literal text. That routing
-# question needs an authenticated model round-trip; it was settled by
-# measurement and the result is recorded in the spawn rules of
-# scripts/sync-cursor-adapters.sh.
+# What this cannot check: that a slash command still resolves to its file rather
+# than reaching the model as literal text. That needs an authenticated model
+# round-trip. It was settled by measurement on cursor-agent
+# 2026.07.23-e383d2b — the dispatcher is bound to the TUI input widget, so the
+# spawn form runs under `-p` — and the result is recorded in the spawn rules of
+# scripts/sync-cursor-adapters.sh. Both flags that form depends on are checked
+# below.
 #
 # Requires `cursor-agent` on PATH. Exit 0 when the CLI is absent so the script
 # can stay in CI optionally; pass --require to fail instead.
@@ -87,6 +89,21 @@ case "$help" in
     echo "ERR: cursor-agent --help no longer documents a positional prompt" >&2
     echo "     /worktrees Step 6 seeds spawned sessions with one — update the" >&2
     echo "     spawn rules in scripts/sync-cursor-adapters.sh and regenerate" >&2
+    fail=1
+    ;;
+esac
+
+# Step 6 spawns under `-p`, not a bare positional: the slash dispatcher is bound
+# to the TUI input widget, so `cursor-agent "/start-issue <N>"` reaches the model
+# as literal text. `-p` is what makes the command resolve, so it is part of the
+# contract and not an optimization.
+case "$help" in
+  *"-p, --print"*) ;;
+  *)
+    echo "ERR: cursor-agent --help no longer documents -p, --print" >&2
+    echo "     /worktrees Step 6 needs it to dispatch /start-issue — a bare" >&2
+    echo "     positional prompt is never dispatched. Re-measure and update the" >&2
+    echo "     spawn rules in scripts/sync-cursor-adapters.sh" >&2
     fail=1
     ;;
 esac

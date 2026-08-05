@@ -224,9 +224,14 @@ assert_eq "no model pinned by default" "0" "$(grep -c '^model:' "$reviewer")"
 begin_test "Cursor worktrees command spawns cursor-agent, not claude"
 
 worktrees=$(cat "$HEPHAESTUS_ROOT/.cursor/commands/worktrees.md")
-assert_contains "osascript spawn uses cursor-agent" "$worktrees" 'do script "cd <worktree> && cursor-agent \"/start-issue <N>\""'
-assert_contains "manual fallback uses cursor-agent" "$worktrees" 'cd <worktree> && cursor-agent "/start-issue <N>"'
+assert_contains "osascript spawn uses cursor-agent" "$worktrees" 'do script "cd <worktree> && cursor-agent -p \"/start-issue <N>\""'
+assert_contains "manual fallback uses cursor-agent" "$worktrees" 'cd <worktree> && cursor-agent -p "/start-issue <N>"'
 assert_contains "summary names Cursor sessions"     "$worktrees" "spawn a seeded Cursor session"
+# Measured on cursor-agent 2026.07.23-e383d2b: the slash dispatcher is bound to
+# the TUI input widget, so a bare positional prompt reaches the model as literal
+# text. Dropping -p silently un-dispatches every spawned session.
+assert_not_contains "no bare positional slash spawn survives" "$worktrees" 'cursor-agent "/start-issue'
+assert_contains "spawn prose explains why -p is required" "$worktrees" "never dispatched"
 
 # Repo-wide guard over the two families that must contain no Claude dialect at
 # all. Bare "claude" is not a needle: `.claude/` paths are legitimate.
@@ -276,8 +281,12 @@ begin_test "verify-cursor-load.sh judges the spawn form and adapter roots"
 STUB_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-cursorstub-XXXXXX")
 trap 'rm -rf "$FIXTURE" "$FIXTURE_RULE" "$FIXTURE2" "$FIXTURE3" "$STUB_DIR"' EXIT
 
-make_stub() {  # make_stub <usage-line>
-  printf '#!/bin/sh\necho "Usage: %s"\n' "$1" > "$STUB_DIR/cursor-agent"
+# make_stub <usage-line> [print-flag-line] — the spawn form needs both halves of
+# the contract, so the stub renders both and each can be broken independently.
+make_stub() {
+  printf '#!/bin/sh\necho "Usage: %s"\necho "  %s"\n' \
+    "$1" "${2--p, --print                  Print responses to console}" \
+    > "$STUB_DIR/cursor-agent"
   chmod +x "$STUB_DIR/cursor-agent"
 }
 
@@ -306,6 +315,13 @@ make_stub "agent [options] [command] --prompt <PROMPT>"
 out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" 2>&1)
 assert_exit_code "fails when the positional prompt is gone" 1 "$?"
 assert_contains  "names the spawn regression" "$out" "no longer documents a positional prompt"
+
+# Losing -p is just as fatal and far quieter: the spawn would still run, but the
+# slash command would reach the model as literal text instead of dispatching.
+make_stub "agent [options] [command] [prompt...]" "--output-format <format>     Output format"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" 2>&1)
+assert_exit_code "fails when -p is gone" 1 "$?"
+assert_contains  "names the dispatch regression" "$out" "no longer documents -p, --print"
 
 # A `--project` install scaffolds only .cursor/commands/orient.md and no
 # .cursor/agents; the shared set stays in $CURSOR_HOME. Must not false-fail.

@@ -62,14 +62,25 @@ first_body_line_no() {
 
 # Rewrite Claude-dialect body text for Cursor mechanics. Cursor has subagents and
 # a to-do list, so only the worktree isolation and the todo tool need remapping.
+#
+# Spawn commands are localized per command, never generically. Measured on
+# cursor-agent 2026.07.23-e383d2b: Cursor's slash dispatcher is bound to the TUI
+# input widget, so a positional prompt does open an interactive session but is
+# never dispatched — `/start-issue <N>` reaches the model as literal text. The
+# same command typed into that input, or passed under `-p`, resolves from
+# .cursor/commands and ~/.cursor/commands with no filesystem search. So a generic
+# `claude "<prompt>"` → `cursor-agent "<prompt>"` rule would quietly turn any
+# `/<command>` spawn into text the model never acts on. Left unmatched instead, a
+# new Claude-form spawn keeps its Claude binary and trips the adapter drift check
+# rather than shipping broken.
 cursor_localize_body() {
   sed \
     -e 's/coder subagents (in worktrees)/coder subagents (serialize file edits — Cursor subagents share one working tree)/g' \
     -e 's/TodoWrite/the to-do list/g' \
     -e 's/seeded Claude Code session/seeded Cursor session/g' \
-    -e 's|claude --permission-mode default |cursor-agent |g' \
-    -e 's|&& claude "|\&\& cursor-agent "|g' \
-    -e 's|`--permission-mode default` prevents spawned sessions inheriting plan mode and stalling|the positional prompt seeds the spawned session with the command|g' \
+    -e 's|claude --permission-mode default \\"/start-issue <N>\\"|cursor-agent -p \\"/start-issue <N>\\"|g' \
+    -e 's|claude "/start-issue <N>"|cursor-agent -p "/start-issue <N>"|g' \
+    -e 's|`--permission-mode default` prevents spawned sessions inheriting plan mode and stalling|`-p` is required: the slash dispatcher is bound to the TUI input, so a bare `/start-issue` positional prompt is never dispatched — it reaches the model as literal text|g' \
     -e "s/Claude Code's title rewrites/the TUI's title rewrites/g"
 }
 
