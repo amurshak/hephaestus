@@ -71,8 +71,10 @@ first_body_line_no() {
 # .cursor/commands and ~/.cursor/commands with no filesystem search. So a generic
 # `claude "<prompt>"` → `cursor-agent "<prompt>"` rule would quietly turn any
 # `/<command>` spawn into text the model never acts on. Left unmatched instead, a
-# new Claude-form spawn keeps its Claude binary and trips the adapter drift check
-# rather than shipping broken.
+# new Claude-form spawn keeps the word `claude` and trips the leak guard in
+# tests/test_cursor_adapters.sh — loud, and pointing at the line that needs its
+# own `-p` rule. The drift check would not: it compares generated output against
+# the committed adapters, and both would carry the same broken spawn.
 cursor_localize_body() {
   sed \
     -e 's/coder subagents (in worktrees)/coder subagents (serialize file edits — Cursor subagents share one working tree)/g' \
