@@ -47,7 +47,7 @@ Use when there are code changes to review.
 If this critique is iteration 2+ in a retry loop and the verdict is still FAIL:
 - Clearly distinguish NEW blocking issues from PERSISTENT ones (same issue, different attempt)
 - For persistent blockers: suggest a fundamentally different approach, not just "fix this again"
-- If the same blocker has survived all retry attempts (per CLAUDE.md): classify it as either (a) fixable with a different strategy — describe it, or (b) a design-level problem — recommend proceeding with a documented limitation
+- If the same blocker has survived all 3 attempts: classify it as either (a) fixable with a different strategy — describe it, or (b) a design-level problem — recommend proceeding with a documented limitation
 
 ---
 
@@ -82,7 +82,7 @@ Use when evaluating strategy, plans, proposals, architectural decisions, product
 Verdicts are advisory — the calling command decides how to act on them:
 - **SOUND**: Proceed without changes.
 - **NEEDS REFINEMENT**: Refine and re-critique, or proceed with the weaknesses documented as "Known Limitations."
-- **RETHINK**: Strongly consider a different approach. If the plan still gets RETHINK after all retries (per CLAUDE.md), implement the most defensible subset and file follow-up issues for the rest.
+- **RETHINK**: Strongly consider a different approach. If the plan still gets RETHINK after 3 iterations, implement the most defensible subset and file follow-up issues for the rest.
 
 ---
 

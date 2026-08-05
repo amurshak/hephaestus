@@ -56,10 +56,10 @@ Steps:
 
 7. **Update docs** — decide mechanically from the PR diff; do not use model judgment.
    - Determine the changed files: `BASE_SHA=$(gh pr view <pr-number> --repo <detected-repo> --json baseRefOid -q '.baseRefOid'); HEAD_SHA=$(gh pr view <pr-number> --repo <detected-repo> --json headRefOid -q '.headRefOid'); git diff "$BASE_SHA..$HEAD_SHA" --name-only`
-   - Build the required docs set from the changed files. These are the defaults; a project may override them with its own trigger list in a "Docs Requirements" section of its CLAUDE.md:
+   - Build the required docs set from the changed files. These are the defaults; a project may override them with its own trigger list in a "Docs Requirements" section of its CLAUDE.md, which wins whole — read it before applying any default:
      - A changelog record is required for every PR, no exceptions: a `changelog.d/*.md` fragment where that directory exists, otherwise `CHANGELOG.md`.
-     - `README.md` is required when the PR touches user-facing entry points — installers, CLI scripts, or command definitions (in this repo: `install.sh`, `update.sh`, `uninstall.sh`, `.claude/commands/*.md`).
-     - `CLAUDE.md` is required when the PR changes conventions or capabilities the agent relies on — agent or command definitions (in this repo: `.claude/agents/*.md`, `.claude/commands/*.md`).
+     - `README.md` is required when the PR touches user-facing entry points — installers, CLI scripts, or command definitions.
+     - `CLAUDE.md` is required when the PR changes conventions or capabilities the agent relies on — agent or command definitions.
    - If every required doc file is present in the PR diff, skip `/update-docs` and log `skipped /update-docs: docs updated in PR #N (auto-detected)` in the session summary.
    - If any required doc file is missing, run `/update-docs` and log `ran /update-docs: missing <files> in PR #N (auto-detected)` in the session summary.
    - The skip/run decision must be deterministic from `git diff "$BASE_SHA..$HEAD_SHA" --name-only`; no prose assessment like "docs surface covered" is sufficient.

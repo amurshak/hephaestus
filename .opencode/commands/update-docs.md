@@ -31,7 +31,7 @@ Steps:
 
 4. **Update README.md** only if a public-facing feature or API changed (new endpoint, new CLI command, changed env var).
 
-5. **Verify the README Composition tree** (hephaestus repo only): if `tests/check_composition.sh` exists at the repo root, run `bash "$(git rev-parse --show-toplevel)/tests/check_composition.sh"`; on drift, fix the README's `## Composition` section (or the affected command's `<!-- requires:/chains: -->` headers) per the verifier's output, then re-run. If the script doesn't exist (target projects), skip this step.
+5. **Run the repo's doc-drift verifiers**: `for v in "$(git rev-parse --show-toplevel)"/tests/check_*.sh; do [ -e "$v" ] && bash "$v"; done`. Each one reports what drifted and where; fix the docs it names, then re-run it. A repo with no such scripts skips this step.
 
 6. **Commit the doc changes**:
    ```

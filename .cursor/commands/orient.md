@@ -15,17 +15,15 @@ Orient in the current project. On first contact with an unprepared project, set 
 
 ## Step 2 — Setup check
 
-Hephaestus is an adjunct to the host codebase. Verify its operating requirements and bootstrap what's missing — all writes are additive; never overwrite or modify existing content beyond appending a missing section:
+Hephaestus is an adjunct to the host codebase. Verify its operating requirements and bootstrap what's missing — all writes are additive; never overwrite or modify existing content beyond appending a missing section.
+
+Skip this step entirely when the repo *is* the hephaestus source clone (`.ai/workflows/` and `scripts/sync-agent-adapters.sh` both present) — it defines these requirements rather than consuming them. Read its CONTRIBUTING.md instead and go to Step 3.
 
 1. **CLAUDE.md with a "Development Commands" section** (test/lint/build — this drives every quality gate). If missing: derive the section from commands the repo already documents (CLAUDE.md under any heading, AGENTS.md, README, CI config); fall back to inferring from project manifests (package.json, Makefile, pyproject.toml, go.mod, etc.) only when nothing is documented. Create CLAUDE.md or append the section, marked `<!-- inferred by hephaestus — verify these commands -->`.
-2. **CLAUDE.md "Workflow Rules" block** — the retry limits and wind-down convention the commands reference. If missing, append (keep in sync with hephaestus CLAUDE.md "Core Workflow Pattern"):
-   ```
-   ## Workflow Rules
-   Retry limits: plan-critique max 3 iterations; pre-ship code critique max 3; test-fix max 2 full cycles.
-   On exhaustion: never stop and ask — commit progress, open a draft PR prefixed [WIP]/[BLOCKED]/[FAILING], file a follow-up issue, wind down cleanly.
-   ```
-3. **Project-specific orient** at `.claude/commands/orient.md` (also `.opencode/commands/orient.md` if the project has a `.opencode/` directory). For each that is missing: scaffold one containing the detected repo, a one-paragraph structure summary from a quick scan, the Development Commands from step 1, and find-work instructions — then note it should be customized as the project evolves.
-4. **`gh` CLI authenticated** (`gh auth status`). Not fixable autonomously — if missing or unauthenticated, report it and continue local-only.
+2. **Project-specific orient** at `.claude/commands/orient.md` (also `.opencode/commands/orient.md` if the project has a `.opencode/` directory). For each that is missing: scaffold one containing the detected repo, a one-paragraph structure summary from a quick scan, the Development Commands from step 1, and find-work instructions — then note it should be customized as the project evolves.
+3. **`gh` CLI authenticated** (`gh auth status`). Not fixable autonomously — if missing or unauthenticated, report it and continue local-only.
+
+Retry limits and the wind-down convention are not bootstrapped: the commands carry them. A project only needs a `## Workflow Rules` section if it wants values other than the defaults.
 
 Report every bootstrap action taken. Leave bootstrap writes uncommitted so the user can verify the inferred commands — say so in the report. On an already-prepared project this step is a silent no-op.
 

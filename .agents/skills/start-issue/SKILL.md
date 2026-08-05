@@ -40,7 +40,7 @@ Start working on issue $ARGUMENTS. Run autonomously through the full plan-critiq
 2. **Self-critique** (general critique mode): Evaluate the plan for logic, assumptions, completeness, trade-offs.
 3. **Refine**: Update the plan to address weaknesses.
 4. **Re-critique**: Evaluate the refined plan.
-5. **Repeat** until verdict reaches **SOUND** (per CLAUDE.md retry limits).
+5. **Repeat** until verdict reaches **SOUND** (max 3 iterations).
 
 If critique iterations are exhausted:
 - **NEEDS REFINEMENT**: Proceed with the best version. The remaining concerns become "Known Limitations" documented in the PR.
@@ -59,8 +59,8 @@ Run `/test-issue <#>` to execute project quality gates and verify acceptance cri
 
 If tests fail:
 - Analyze the root cause — don't blindly retry
-- Go back to Phase 2 with failure context (per CLAUDE.md retry limits)
-- If still failing after all retries (per CLAUDE.md): commit progress on the branch, create a draft PR (`--draft`) with `[FAILING]` prefix and failure analysis in the body, file a follow-up issue
+- Go back to Phase 2 with failure context (max 2 full cycles)
+- If still failing after 2 cycles: commit progress on the branch, create a draft PR (`--draft`) with `[FAILING]` prefix and failure analysis in the body, file a follow-up issue
 
 Report completion: files changed, test results from `/test-issue`, any assumptions made. Ready for `/ship`.
 

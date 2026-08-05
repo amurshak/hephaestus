@@ -5,15 +5,20 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/helpers.sh"
 
+# Models this repo's "## Docs Requirements" override in CLAUDE.md, which wins
+# whole over finish.md's defaults. Generated adapters (.claude/commands/ and the
+# other harness dirs) trigger nothing: they regenerate on every workflow change,
+# so triggering README from them made README required on essentially every PR —
+# a contention hotspot rather than a documentation rule.
 required_docs_for_diff() {
   local files="$1"
-  local required="CHANGELOG.md"
+  local required="changelog.d/"
 
-  if echo "$files" | grep -Eq '^(install|update|uninstall)\.sh$|^\.claude/commands/[^/]+\.md$'; then
+  if echo "$files" | grep -Eq '^(install|update|uninstall)\.sh$|^\.ai/workflows/[^/]+\.md$|^\.ai/conventions\.md$'; then
     required="$required README.md"
   fi
 
-  if echo "$files" | grep -Eq '^\.claude/(agents|commands)/[^/]+\.md$'; then
+  if echo "$files" | grep -Eq '^\.claude/agents/[^/]+\.md$|^scripts/'; then
     required="$required CLAUDE.md"
   fi
 
@@ -27,7 +32,11 @@ decision_for_diff() {
 
   local missing=""
   for doc in $required; do
-    if ! echo "$files" | grep -qxF "$doc"; then
+    # A trailing slash means "any file under this directory" — the changelog
+    # fragment is one file per PR, so its name is never known in advance.
+    if [ "${doc%/}" != "$doc" ]; then
+      echo "$files" | grep -q "^$doc" || missing="${missing:+$missing }$doc"
+    elif ! echo "$files" | grep -qxF "$doc"; then
       missing="${missing:+$missing }$doc"
     fi
   done
@@ -39,33 +48,51 @@ decision_for_diff() {
   fi
 }
 
-begin_test "/finish docs rule requires CHANGELOG for every PR"
-assert_eq "code-only PR still runs update-docs without CHANGELOG" \
-  "run:CHANGELOG.md" \
+begin_test "/finish docs rule requires a changelog fragment for every PR"
+assert_eq "code-only PR still runs update-docs without a fragment" \
+  "run:changelog.d/" \
   "$(decision_for_diff "loop.sh")"
 
-begin_test "/finish docs rule detects user-facing command docs"
-command_diff=$'.claude/commands/finish.md\nCHANGELOG.md\nREADME.md\nCLAUDE.md'
-assert_eq "command change with all docs skips update-docs" \
+begin_test "/finish docs rule detects consumer-surface changes"
+workflow_diff=$'.ai/workflows/finish.md\nchangelog.d/42.changed.md\nREADME.md'
+assert_eq "workflow change with README and fragment skips update-docs" \
   "skip" \
-  "$(decision_for_diff "$command_diff")"
+  "$(decision_for_diff "$workflow_diff")"
 
-command_missing=$'.claude/commands/finish.md\nCHANGELOG.md'
-assert_eq "command change missing README and CLAUDE runs update-docs" \
-  "run:CLAUDE.md README.md" \
-  "$(decision_for_diff "$command_missing")"
+workflow_missing=$'.ai/workflows/finish.md\nchangelog.d/42.changed.md'
+assert_eq "workflow change missing README runs update-docs" \
+  "run:README.md" \
+  "$(decision_for_diff "$workflow_missing")"
+
+spec_diff=$'.ai/conventions.md\nchangelog.d/42.changed.md'
+assert_eq "conventions change missing README runs update-docs" \
+  "run:README.md" \
+  "$(decision_for_diff "$spec_diff")"
 
 begin_test "/finish docs rule detects installer docs"
-installer_diff=$'install.sh\nCHANGELOG.md'
+installer_diff=$'install.sh\nchangelog.d/42.changed.md'
 assert_eq "installer change missing README runs update-docs" \
   "run:README.md" \
   "$(decision_for_diff "$installer_diff")"
 
-begin_test "/finish docs rule detects agent pattern docs"
-agent_diff=$'.claude/agents/reviewer.md\nCHANGELOG.md'
+begin_test "/finish docs rule detects contributor-surface changes"
+agent_diff=$'.claude/agents/reviewer.md\nchangelog.d/42.changed.md'
 assert_eq "agent change missing CLAUDE runs update-docs" \
   "run:CLAUDE.md" \
   "$(decision_for_diff "$agent_diff")"
+
+script_diff=$'scripts/sync-cursor-adapters.sh\nchangelog.d/42.changed.md'
+assert_eq "generator change missing CLAUDE runs update-docs" \
+  "run:CLAUDE.md" \
+  "$(decision_for_diff "$script_diff")"
+
+begin_test "/finish docs rule ignores generated adapters"
+# The regression the split fixed: adapters regenerate on every workflow change,
+# so requiring README from them pinned doc-touching work at one issue per wave.
+adapter_diff=$'.claude/commands/finish.md\n.cursor/commands/finish.md\nchangelog.d/42.changed.md'
+assert_eq "adapter-only change requires no README or CLAUDE" \
+  "skip" \
+  "$(decision_for_diff "$adapter_diff")"
 
 begin_test "finish.md documents deterministic logging"
 finish_md=$(cat "$HEPHAESTUS_ROOT/.claude/commands/finish.md")
