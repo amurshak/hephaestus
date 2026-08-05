@@ -89,6 +89,45 @@ else
   fi
 fi
 
+# ── A scanned surface that disappears must fail, not silently lose coverage ──
+# The likely path: a new harness generator renames a directory and nobody
+# extends SHIPPED. The check would go green while a stale pointer sat in the
+# tree — the exact regression shape of #111.
+begin_test "verifier fails when a scanned directory goes missing"
+
+F1D=$(make_fixture); FIXTURES="$FIXTURES $F1D"
+mv "$F1D/.cursor" "$F1D/.cursor-renamed"
+
+if out=$(bash "$F1D/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should fail on a missing scanned directory" "exited 0, output: $out"
+else
+  if echo "$out" | grep -q ".cursor/commands is scanned by this check but does not exist"; then
+    pass "verifier names the directory that vanished"
+  else
+    fail "verifier exited non-zero but did not name the directory" "$out"
+  fi
+fi
+
+# ── Deleting the limits everywhere is drift too ──────────────────────────────
+# Silence is not agreement: workflows carrying no limit at all is what the
+# by-name pointer produced in an installed project.
+begin_test "verifier detects limits deleted from every workflow"
+
+F1E=$(make_fixture); FIXTURES="$FIXTURES $F1E"
+sed -i.bak -E 's/[0-9]+ +([a-z-]+ +){0,2}(iterations?|cycles?|attempts?|retries|retry|rounds?)//gI' \
+  "$F1E"/.ai/workflows/*.md
+rm -f "$F1E"/.ai/workflows/*.bak
+
+if out=$(bash "$F1E/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should detect the deleted limits" "exited 0, output: $out"
+else
+  if echo "$out" | grep -q "no workflow states the critique limit"; then
+    pass "verifier reports the unbounded loops"
+  else
+    fail "verifier exited non-zero but did not report the deletion" "$out"
+  fi
+fi
+
 # ── The pointer that caused the duplication may not come back ────────────────
 # "per CLAUDE.md retry limits" is unresolvable in an installed project, which is
 # why /orient had to retype the limits into every target project's CLAUDE.md.

@@ -35,7 +35,7 @@ decision_for_diff() {
     # A trailing slash means "any file under this directory" — the changelog
     # fragment is one file per PR, so its name is never known in advance.
     if [ "${doc%/}" != "$doc" ]; then
-      echo "$files" | grep -qF -- "$doc" || missing="${missing:+$missing }$doc"
+      echo "$files" | grep -q "^${doc//./\\.}" || missing="${missing:+$missing }$doc"
     elif ! echo "$files" | grep -qxF "$doc"; then
       missing="${missing:+$missing }$doc"
     fi

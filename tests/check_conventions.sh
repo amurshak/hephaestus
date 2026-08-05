@@ -58,8 +58,12 @@ limit_for_noun() {
 iter_limit=$(limit_for_noun 'iteration')
 cycle_limit=$(limit_for_noun 'cycle')
 
-[ -n "$iter_limit" ] && [ -n "$cycle_limit" ] \
-  || { echo "ERR: $SPEC must state its limits in 'iterations' and 'cycles'" >&2; exit 1; }
+# Each noun must resolve to exactly one value, and the two must differ. A spec
+# row worded so that "iterations" also matches the test-fix limit would widen
+# both sets until the swap this binding exists to catch slips through again.
+[ "$(echo "$iter_limit" | wc -l)" -eq 1 ] && [ "$(echo "$cycle_limit" | wc -l)" -eq 1 ] \
+  && [ -n "$iter_limit" ] && [ -n "$cycle_limit" ] && [ "$iter_limit" != "$cycle_limit" ] \
+  || { echo "ERR: $SPEC must bind 'iterations' and 'cycles' to one distinct value each (got '$(echo "$iter_limit" | tr '\n' ' ')' and '$(echo "$cycle_limit" | tr '\n' ' ')')" >&2; exit 1; }
 
 for loop in "Plan-critique" "Pre-ship code critique" "Test-fix"; do
   echo "$limits" | grep -qiF "$loop" \
@@ -72,6 +76,9 @@ done
 # iterations", "all 3 attempts", "max 2 full plan-implement-test cycles".
 COUNT_RE='[0-9]+ +([a-z-]+ +){0,2}(iterations?|cycles?|attempts?|retries|retry|rounds?)'
 
+iter_seen=0
+cycle_seen=0
+
 for workflow in "$WORKFLOWS_DIR"/*.md; do
   name=$(basename "$workflow")
   while IFS= read -r phrase; do
@@ -79,25 +86,60 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
     count=$(echo "$phrase" | grep -oE '^[0-9]+')
     # cycles and retries measure the test-fix loop; everything else a critique loop.
     case "$phrase" in
-      *cycle*|*retries|*retry) expected="$cycle_limit"; loop="the test-fix loop" ;;
-      *)                       expected="$iter_limit";  loop="a critique loop"  ;;
+      *cycle*|*retries|*retry) expected="$cycle_limit"; loop="the test-fix loop"; cycle_seen=1 ;;
+      *)                       expected="$iter_limit";  loop="a critique loop";  iter_seen=1  ;;
     esac
-    echo "$expected" | grep -qx "$count" \
-      || report "$name says \"$phrase\", but .ai/conventions.md sets $loop to $(echo "$expected" | tr '\n' '/' | sed 's|/$||')"
+    [ "$count" = "$expected" ] \
+      || report "$name says \"$phrase\", but .ai/conventions.md sets $loop to $expected"
   done <<< "$(grep -oiE "$COUNT_RE" "$workflow" | tr 'A-Z' 'a-z' | sort -u)"
 done
 
-# The set of every shipped surface a stale pointer could hide in.
-SHIPPED="$WORKFLOWS_DIR $ROOT/.claude/commands $ROOT/.claude/agents
-$ROOT/.opencode/commands $ROOT/.opencode/agents $ROOT/.agents/skills
-$ROOT/.codex/agents $ROOT/.hermes/skills $ROOT/.hermes/agents
-$ROOT/.cursor/commands $ROOT/.cursor/agents $ROOT/.cursor/rules $ROOT/templates"
+# A limit deleted from every workflow is drift too, and the loudest kind: the
+# workflows would ship with no limit at all, which is what the by-name pointer
+# produced in an installed project. Silence is not agreement.
+[ "$iter_seen" -eq 1 ] \
+  || report "no workflow states the critique limit ($iter_limit); an installed project would run those loops unbounded"
+[ "$cycle_seen" -eq 1 ] \
+  || report "no workflow states the test-fix limit ($cycle_limit); an installed project would run that loop unbounded"
+
+# ── Every shipped surface a stale pointer could hide in ──────────────────────
+# Newline-separated and scanned one directory at a time: a path containing a
+# space must not word-split into non-existent directories, and a directory that
+# was renamed (a new harness generator, a layout change) must fail loudly rather
+# than silently drop its coverage.
+SHIPPED="$WORKFLOWS_DIR
+$ROOT/.claude/commands
+$ROOT/.claude/agents
+$ROOT/.opencode/commands
+$ROOT/.opencode/agents
+$ROOT/.agents/skills
+$ROOT/.codex/agents
+$ROOT/.hermes/skills
+$ROOT/.hermes/agents
+$ROOT/.cursor/commands
+$ROOT/.cursor/agents
+$ROOT/.cursor/rules
+$ROOT/templates"
+
+while IFS= read -r dir; do
+  [ -n "$dir" ] || continue
+  [ -d "$dir" ] \
+    || report "${dir#"$ROOT"/} is scanned by this check but does not exist; update SHIPPED or restore the directory"
+done <<< "$SHIPPED"
+
+# scan_shipped <extended-regex> → paths of matching files, one per line
+scan_shipped() {
+  local pattern="$1" dir
+  while IFS= read -r dir; do
+    [ -d "$dir" ] || continue
+    grep -rlE "$pattern" "$dir" 2>/dev/null
+  done <<< "$SHIPPED"
+}
 
 # ── 3. No by-name reference to the limits ────────────────────────────────────
 # Only the retry-limit pointer, not every "(per CLAUDE.md)" — a project's
 # CLAUDE.md is still the right target for quality gates and worktree config.
-stale=$(grep -rlE 'per CLAUDE\.md retry limits|retry limits \(per CLAUDE\.md\)' \
-          $SHIPPED 2>/dev/null)
+stale=$(scan_shipped 'per CLAUDE\.md retry limits|retry limits \(per CLAUDE\.md\)')
 if [ -n "$stale" ]; then
   while IFS= read -r file; do
     report "${file#"$ROOT"/} references the retry limits by name; state the value instead"
@@ -105,7 +147,7 @@ if [ -n "$stale" ]; then
 fi
 
 # ── 4. Nothing scaffolds a Workflow Rules block ──────────────────────────────
-scaffolded=$(grep -rl '^ *## Workflow Rules' $SHIPPED 2>/dev/null)
+scaffolded=$(scan_shipped '^ *## Workflow Rules')
 if [ -n "$scaffolded" ]; then
   while IFS= read -r file; do
     report "${file#"$ROOT"/} scaffolds a '## Workflow Rules' block; it is an optional project override, not something hephaestus writes"

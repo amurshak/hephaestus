@@ -72,6 +72,5 @@ Hephaestus ships the loop; the project supplies the specifics. Workflows read th
 | `## Development Commands` | `/ship`, `/test-issue`, tester | test, lint, and build commands — the quality gates |
 | `## Worktrees` | `/worktrees` | `max`, `serialize_paths`, `setup` |
 | `## Docs Requirements` | `/finish` | which doc files a change must update, overriding the defaults |
-| `## Workflow Rules` | every retry loop | retry limits, overriding the table above |
 
-Only `## Development Commands` is required. The rest have working defaults.
+Only `## Development Commands` is required. The rest have working defaults. `## Workflow Rules` is not in this table because no step goes looking for it: a project's CLAUDE.md is ambient context, so an explicit rule there wins over a command's default without anything having to fetch it.
