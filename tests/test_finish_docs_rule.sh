@@ -35,7 +35,7 @@ decision_for_diff() {
     # A trailing slash means "any file under this directory" — the changelog
     # fragment is one file per PR, so its name is never known in advance.
     if [ "${doc%/}" != "$doc" ]; then
-      echo "$files" | grep -q "^$doc" || missing="${missing:+$missing }$doc"
+      echo "$files" | grep -qF -- "$doc" || missing="${missing:+$missing }$doc"
     elif ! echo "$files" | grep -qxF "$doc"; then
       missing="${missing:+$missing }$doc"
     fi
@@ -85,6 +85,11 @@ script_diff=$'scripts/sync-cursor-adapters.sh\nchangelog.d/42.changed.md'
 assert_eq "generator change missing CLAUDE runs update-docs" \
   "run:CLAUDE.md" \
   "$(decision_for_diff "$script_diff")"
+
+both_missing=$'install.sh\n.claude/agents/coder.md'
+assert_eq "change missing every required doc lists them all" \
+  "run:changelog.d/ CLAUDE.md README.md" \
+  "$(decision_for_diff "$both_missing")"
 
 begin_test "/finish docs rule ignores generated adapters"
 # The regression the split fixed: adapters regenerate on every workflow change,

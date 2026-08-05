@@ -8,16 +8,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/helpers.sh"
 
 # Build a tempdir copy of everything check_conventions.sh reads, so every
-# negative test mutates a fixture and never the real repo.
+# negative test mutates a fixture and never the real repo. Every scanned
+# directory is copied — the verifier sends its `grep -r` errors to /dev/null,
+# so a fixture missing one would pass for the wrong reason.
 make_fixture() {
   local dir
   dir=$(mktemp -d "${TMPDIR:-/tmp}/heph-conv-XXXXXX")
   mkdir -p "$dir/.ai"
   cp "$HEPHAESTUS_ROOT/.ai/conventions.md" "$dir/.ai/conventions.md"
   cp -R "$HEPHAESTUS_ROOT/.ai/workflows" "$dir/.ai/workflows"
-  cp -R "$HEPHAESTUS_ROOT/tests" "$dir/tests"
-  cp -R "$HEPHAESTUS_ROOT/templates" "$dir/templates"
-  cp -R "$HEPHAESTUS_ROOT/.claude" "$dir/.claude"
+  for d in tests templates .claude .opencode .agents .codex .hermes .cursor; do
+    cp -R "$HEPHAESTUS_ROOT/$d" "$dir/$d"
+  done
   echo "$dir"
 }
 
@@ -43,10 +45,47 @@ rm -f "$F1/.ai/workflows/start-issue.md.bak"
 if out=$(bash "$F1/tests/check_conventions.sh" 2>&1); then
   fail "verifier should detect an out-of-spec retry count" "exited 0, output: $out"
 else
-  if echo "$out" | grep -q "start-issue.md states a retry count of 7"; then
+  if echo "$out" | grep -q 'start-issue.md says "7 iterations"'; then
     pass "verifier names the offending workflow and count"
   else
     fail "verifier exited non-zero but did not name the count" "$out"
+  fi
+fi
+
+# ── The counts may not swap between loops ────────────────────────────────────
+# 2 and 3 are both numbers the spec uses, so a set-membership check would let
+# plan-critique take the test-fix limit silently. The noun carries the binding.
+begin_test "verifier detects a limit swapped between loops"
+
+F1B=$(make_fixture); FIXTURES="$FIXTURES $F1B"
+sed -i.bak 's|(max 3 iterations)|(max 2 iterations)|' "$F1B/.ai/workflows/start-issue.md"
+rm -f "$F1B/.ai/workflows/start-issue.md.bak"
+
+if out=$(bash "$F1B/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should detect the swapped limit" "exited 0, output: $out"
+else
+  if echo "$out" | grep -q 'start-issue.md says "2 iterations"'; then
+    pass "verifier binds the count to the loop, not just the allowed set"
+  else
+    fail "verifier exited non-zero but did not name the swap" "$out"
+  fi
+fi
+
+# A stale adapter must fail too — adapters are what an installed project runs.
+begin_test "verifier scans the generated adapters, not just the canonical sources"
+
+F1C=$(make_fixture); FIXTURES="$FIXTURES $F1C"
+sed -i.bak 's|(max 3 iterations)|(per CLAUDE.md retry limits)|' \
+  "$F1C/.cursor/commands/start-issue.md"
+rm -f "$F1C/.cursor/commands/start-issue.md.bak"
+
+if out=$(bash "$F1C/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should scan .cursor/commands" "exited 0, output: $out"
+else
+  if echo "$out" | grep -q ".cursor/commands/start-issue.md references the retry limits by name"; then
+    pass "verifier reaches a generated adapter family"
+  else
+    fail "verifier exited non-zero but did not name the adapter" "$out"
   fi
 fi
 
@@ -102,8 +141,10 @@ begin_test "the shipped orient carries no maintainer-only procedure"
 orient=$(cat "$HEPHAESTUS_ROOT/.claude/commands/orient.md")
 assert_not_contains "orient no longer retypes the retry limits" "$orient" \
   "Retry limits: plan-critique"
-assert_contains "orient skips bootstrap in the hephaestus source clone" "$orient" \
-  "scripts/sync-agent-adapters.sh"
+assert_contains "orient skips bootstrap where the workflow is defined" "$orient" \
+  'scripts/sync-*-adapters.sh'
+assert_not_contains "orient's guard does not name this repo" "$orient" \
+  "hephaestus source clone"
 
 begin_test "/finish carries no repo-specific trigger list"
 

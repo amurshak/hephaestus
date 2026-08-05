@@ -29,7 +29,12 @@ Steps:
 
 4. **Update README.md** only if a public-facing feature or API changed (new endpoint, new CLI command, changed env var).
 
-5. **Run the repo's doc-drift verifiers**: `for v in "$(git rev-parse --show-toplevel)"/tests/check_*.sh; do [ -e "$v" ] && bash "$v"; done`. Each one reports what drifted and where; fix the docs it names, then re-run it. A repo with no such scripts skips this step.
+5. **Run the repo's doc-drift verifiers** — scripts that opt in by carrying a `# hephaestus:doc-verifier` marker, so a project's unrelated `tests/check_*.sh` is never executed here:
+   ```
+   vs=$(grep -l '# hephaestus:doc-verifier' "$(git rev-parse --show-toplevel)"/tests/check_*.sh 2>/dev/null)
+   for v in $vs; do bash "$v"; done
+   ```
+   Each reports what drifted and where; fix the docs it names, then re-run it. A repo with no such scripts runs nothing and moves on — that is not a failure.
 
 6. **Commit the doc changes**:
    ```

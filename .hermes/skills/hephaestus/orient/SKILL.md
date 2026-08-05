@@ -27,7 +27,7 @@ Orient in the current project. On first contact with an unprepared project, set 
 
 Hephaestus is an adjunct to the host codebase. Verify its operating requirements and bootstrap what's missing — all writes are additive; never overwrite or modify existing content beyond appending a missing section.
 
-Skip this step entirely when the repo *is* the hephaestus source clone (`.ai/workflows/` and `scripts/sync-agent-adapters.sh` both present) — it defines these requirements rather than consuming them. Read its CONTRIBUTING.md instead and go to Step 3.
+Skip items 1–2 when the repo *defines* these requirements rather than consuming them — the workflow source itself, recognised by `.ai/workflows/` alongside a `scripts/sync-*-adapters.sh` generator. Read its CONTRIBUTING.md instead. Item 3 still applies.
 
 1. **CLAUDE.md with a "Development Commands" section** (test/lint/build — this drives every quality gate). If missing: derive the section from commands the repo already documents (CLAUDE.md under any heading, AGENTS.md, README, CI config); fall back to inferring from project manifests (package.json, Makefile, pyproject.toml, go.mod, etc.) only when nothing is documented. Create CLAUDE.md or append the section, marked `<!-- inferred by hephaestus — verify these commands -->`.
 2. **Project-specific orient** at `.claude/commands/orient.md` (also `.opencode/commands/orient.md` if the project has a `.opencode/` directory). For each that is missing: scaffold one containing the detected repo, a one-paragraph structure summary from a quick scan, the Development Commands from step 1, and find-work instructions — then note it should be customized as the project evolves.
