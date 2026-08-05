@@ -531,10 +531,43 @@ EOF
 # scripts/collect-changelog.sh is not an adopter, and its file is never ours
 # to replace. scriv claims changelog.d/ but ships no such script, so the pair
 # excludes it too.
-COLLECT_MARKER='^# hephaestus:collect-changelog$'
+#
+# The distributed copy is stamped with the clone version it came from and the
+# checksum of the pristine source. A bare token proves only "we wrote this",
+# which conflates two states with opposite handling: upstream shipped a fix
+# (ours to refresh, nothing to lose) versus the operator edited our copy (never
+# overwrite unasked). The checksum separates them, so an untouched copy self-
+# heals on the next update and an edited one is preserved until --force.
+COLLECT_TOKEN='# hephaestus:collect-changelog'
+COLLECT_MARKER="^${COLLECT_TOKEN}([[:space:]]|\$)"
 
-# ours <file> — true when <file> carries the provenance token.
-collect_is_ours() { [ -f "$1" ] && grep -q "$COLLECT_MARKER" "$1" 2>/dev/null; }
+# ours <file> — true when <file> carries the provenance token, stamped or bare.
+collect_is_ours() { [ -f "$1" ] && grep -qE "$COLLECT_MARKER" "$1" 2>/dev/null; }
+
+# Checksum of <file> with its stamp line reduced to the bare token, so a copy's
+# hash is comparable to the source's across version stamps.
+# Each returns empty for a file that is absent or unreadable rather than
+# failing: under `set -euo pipefail` a bare sed on a missing path takes the
+# whole run down, and these are called before the copy exists.
+collect_sum() {
+  [ -f "$1" ] || return 0
+  sed "s|^${COLLECT_TOKEN}.*|${COLLECT_TOKEN}|" "$1" \
+    | { shasum 2>/dev/null || sha1sum; } | cut -c1-12
+}
+
+# The sha= / v… recorded in a distributed copy; empty when the copy is unstamped.
+collect_recorded_sum() { [ -f "$1" ] || return 0; sed -n "s|^${COLLECT_TOKEN} .*sha=\([0-9a-f]*\).*|\1|p" "$1" | head -1; }
+collect_recorded_ver() { [ -f "$1" ] || return 0; sed -n "s|^${COLLECT_TOKEN} v\([^ ]*\).*|\1|p" "$1" | head -1; }
+
+# Copy the clone's script into place, stamping the token line as it lands.
+write_collect() {
+  local src="$1" dest="$2" sum
+  sum=$(collect_sum "$src")
+  mkdir -p "$(dirname "$dest")"
+  rm -f "$dest"
+  sed "s|^${COLLECT_TOKEN}\$|${COLLECT_TOKEN} v${VERSION} sha=${sum}|" "$src" > "$dest"
+  chmod +x "$dest"
+}
 
 changelog_adopted() {
   [ -d "$TARGET/changelog.d" ] && collect_is_ours "$TARGET/scripts/collect-changelog.sh"
@@ -545,10 +578,24 @@ scaffold_changelog() {
   local dest="$TARGET/scripts/collect-changelog.sh"
   local label="collect-changelog.sh" status
 
-  if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then status=new
-  elif cmp -s "$src" "$dest" 2>/dev/null; then  status=current
-  elif collect_is_ours "$dest"; then            status=stale
-  else                                          status=foreign
+  # stale    — ours, provably untouched, and the clone has moved: refresh freely.
+  # modified — ours, but edited since we wrote it: never overwrite without --force.
+  # legacy   — ours from before stamping, and differing; edited or stale is now
+  #            indistinguishable, so it keeps the old --force handling. An
+  #            identical legacy copy is simply restamped, and self-heals after.
+  if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then  status=new
+  elif ! collect_is_ours "$dest"; then           status=foreign
+  else
+    local recorded; recorded=$(collect_recorded_sum "$dest")
+    if [ -z "$recorded" ]; then
+      cmp -s "$src" "$dest" 2>/dev/null && status=restamp || status=legacy
+    elif [ "$recorded" != "$(collect_sum "$dest")" ]; then
+      status=modified
+    elif [ "$recorded" != "$(collect_sum "$src")" ]; then
+      status=stale
+    else
+      status=current
+    fi
   fi
 
   echo "Changelog fragments:"
@@ -597,23 +644,32 @@ EOF
     echo "  [warn] CHANGELOG.md has no '## Unreleased' heading — add one, or the release fold fails."
   fi
 
-  # Our own copy is code, not a customization point — refresh it when it drifts
-  # from the clone. --force does the overwrite, as it does everywhere else.
+  # Our own copy is code, not a customization point, so an untouched one is
+  # refreshed on sight — that is what makes `update.sh` carry a fix into an
+  # adopted project without --force, whose blast radius reaches hand-edited
+  # adapters the operator never asked to replace. Local edits still hold it.
   if [ "$AUDIT_MODE" = true ]; then
     case "$status" in
-      new)     printf "  %-25s %-12s %s\n" "$label" "missing" "will copy from the clone" ;;
-      current) printf "  %-25s %-12s %s\n" "$label" "current" "matches this clone" ;;
-      stale)   printf "  %-25s %-12s %s\n" "$label" "stale"   "differs from this clone (--force to refresh)" ;;
+      new)      printf "  %-25s %-12s %s\n" "$label" "missing"  "will copy from the clone" ;;
+      current)  printf "  %-25s %-12s %s\n" "$label" "current"  "matches this clone" ;;
+      stale)    printf "  %-25s %-12s %s\n" "$label" "stale"    "unmodified — will refresh to $VERSION" ;;
+      restamp)  printf "  %-25s %-12s %s\n" "$label" "unstamped" "matches this clone — will stamp $VERSION" ;;
+      modified) printf "  %-25s %-12s %s\n" "$label" "modified" "edited locally (--force to overwrite)" ;;
+      legacy)   printf "  %-25s %-12s %s\n" "$label" "unstamped" "differs from this clone (--force to refresh)" ;;
     esac
-  elif [ "$status" = new ] || { [ "$status" = stale ] && [ "$FORCE_MODE" = true ]; }; then
-    mkdir -p "$TARGET/scripts"
-    rm -f "$dest"
-    cp "$src" "$dest"
-    chmod +x "$dest"
-    [ "$status" = new ] \
-      && echo "  [scaffold] $label (fold at release: scripts/collect-changelog.sh <version>)" \
-      || echo "  [update] $label"
-  elif [ "$status" = stale ]; then
+  elif [ "$status" = new ] || [ "$status" = stale ] || [ "$status" = restamp ] \
+       || { { [ "$status" = modified ] || [ "$status" = legacy ]; } && [ "$FORCE_MODE" = true ]; }; then
+    local was; was=$(collect_recorded_ver "$dest")
+    write_collect "$src" "$dest"
+    case "$status" in
+      new)     echo "  [scaffold] $label (fold at release: scripts/collect-changelog.sh <version>)" ;;
+      stale)   echo "  [update] $label (${was:-unstamped} → $VERSION, unmodified copy refreshed)" ;;
+      restamp) echo "  [ok] $label (up to date — stamped $VERSION)" ;;
+      *)       echo "  [update] $label (overwritten by --force)" ;;
+    esac
+  elif [ "$status" = modified ]; then
+    echo "  [skip] $label (edited locally since we wrote it — --force to overwrite)"
+  elif [ "$status" = legacy ]; then
     echo "  [skip] $label (differs from this clone — refresh with --force)"
   else
     echo "  [ok] $label (up to date)"

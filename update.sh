@@ -58,7 +58,7 @@ if [ "$MODE" = vendor ]; then
   # uses: a same-named script we did not write is not an adoption.
   CHANGELOG_PATHS=""
   if [ -d "$TARGET/changelog.d" ] \
-     && grep -q '^# hephaestus:collect-changelog$' "$TARGET/scripts/collect-changelog.sh" 2>/dev/null; then
+     && grep -qE '^# hephaestus:collect-changelog([[:space:]]|$)' "$TARGET/scripts/collect-changelog.sh" 2>/dev/null; then
     CHANGELOG_PATHS=" changelog.d scripts/collect-changelog.sh CHANGELOG.md .gitattributes"
   fi
   echo ""

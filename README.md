@@ -464,6 +464,8 @@ It is opt-in because it changes *where* `/ship` writes — everything else the i
 
 If your repo already has its own `scripts/collect-changelog.sh`, adoption is declined outright — nothing is scaffolded, and `--force` will not take that file over. Recognition needs both `changelog.d/` and a script carrying hephaestus's provenance token, so a name collision is never mistaken for adoption.
 
+The copy that lands is stamped with the version it came from and a checksum of the original, which lets a later run tell the two reasons it can differ apart. If you have not touched it and upstream has moved, `update.sh` refreshes it in place — no flag, since there is nothing of yours to lose. If you *have* edited it, it is left alone and reported, and only `--force` overwrites it. That matters because `--force` is repo-wide: it also replaces same-named adapters you may have hand-edited, so needing it just to pick up a fix in one script was a bad trade. Copies installed before stamping existed are a special case — an edit and an upstream change are indistinguishable there, so a drifted one still waits for `--force`; once refreshed or found identical to the clone, it is stamped and self-heals from then on.
+
 ### Migrating from a submodule install
 
 Installs from before 2.2 put hephaestus in a `.hephaestus` submodule and symlinked every adapter through it. One command converts a repo:
