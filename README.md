@@ -21,6 +21,8 @@ Or run the whole loop as one command:
 
 The core is a set of harness-neutral workflow specs (`.ai/workflows/`) and agent definitions — plain markdown files. Per-harness support is *generated adapters* from those specs: Claude Code, [OpenCode](https://opencode.ai), Codex, [Hermes](https://github.com/NousResearch/hermes-agent), and [Cursor](https://cursor.com) adapters ship today; new harnesses are a ~200-line generator script away.
 
+The stance is protocol-oriented toward agents, models, and harnesses: each is a neutral spec with pluggable implementations — agent roles rather than vendor bindings, model tiers rather than model IDs, workflow specs rather than one harness's dialect.
+
 Hephaestus is an OODA loop — observe, orient, decide, act — for software. Boyd designed OODA for fighter pilots: cycle faster than the opponent and you win. Software has the opposite problem. Shipping too fast costs more than slowing down. So this loop puts most of its weight on Orient. Plans face adversarial review before code begins. Code faces adversarial review before it ships. Retries are bounded so nothing spirals.
 
 The core of Hephaestus is composed of five commands spread across eight internal phases. These are the fundamental process primitives of the development workflow. The system has five agent roles. Its memory lives in places that already exist: git history, GitHub issues, PRs, project management tools, project documentation. No opaque internal state. When retries exhaust, the system degrades into artifacts (draft PRs, follow-up issues, commits) the next session or a human can resume from.
