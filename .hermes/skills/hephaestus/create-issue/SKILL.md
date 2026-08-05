@@ -14,7 +14,7 @@ metadata:
 <!-- generated from .ai/workflows/create-issue.md; do not edit directly -->
 
 > **Hermes:** this skill is the `/create-issue` adapter.
-> Delegate to `delegate_task` for the roles this workflow needs (explorer); each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation and **not your working directory** — give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
+> Where a step below names a role (explorer), you **must** call `delegate_task` for it rather than doing that step yourself — measured: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation and **not your working directory** — give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
 
 > Hermes does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
 

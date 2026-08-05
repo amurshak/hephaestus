@@ -14,7 +14,7 @@ metadata:
 <!-- generated from .ai/workflows/start-issue.md; do not edit directly -->
 
 > **Hermes:** this skill is the `/start-issue` adapter.
-> Delegate to `delegate_task` for the roles this workflow needs (coder, explorer); each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation and **not your working directory** — give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
+> Where a step below names a role (coder, explorer), you **must** call `delegate_task` for it rather than doing that step yourself — measured: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation and **not your working directory** — give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
 > For chained workflows (/test-issue), invoke the matching skill (`/<workflow>`) when it is installed; otherwise read and follow `.hermes/skills/hephaestus/<workflow>/SKILL.md`.
 
 > Hermes does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
@@ -34,7 +34,7 @@ Start working on issue $ARGUMENTS. Run autonomously through the full plan-critiq
    - **Read the issue**: `gh issue view <#> --repo <detected-repo>`
    - **Explore codebase** (explorer delegate(s)): Search for relevant files, understand current implementation
    - **Recent history**: `git log --oneline -10`
-   - For complex issues, spawn multiple explorer delegates per subsystem
+   - For complex issues, you **must** spawn multiple explorer delegates via `delegate_task` per subsystem
 
 3. **Resolve ambiguities**: If the issue is underspecified:
    - Infer intent from related code, tests, and commit history
