@@ -31,6 +31,25 @@
 - **Keep the two audiences apart.** Before adding a sentence, ask whether it would still be true in a project that merely installed hephaestus. Yes → it is product, and belongs in `.ai/conventions.md` or a workflow. No → it is contributor, and belongs here or in CLAUDE.md. Retry limits are specified once in `.ai/conventions.md`; the workflows restate them at the point of use because an installed project has no `.ai/` to read, and `tests/check_conventions.sh` fails if the two disagree. Never write a by-name reference like "per CLAUDE.md retry limits" — that is what forced `/orient` to retype the limits into every installed project.
 - Every PR adds a changelog fragment: `changelog.d/<issue-or-slug>.<added|changed|fixed|removed>.md`, entry body only, no leading `- `. Do not edit `CHANGELOG.md` — `scripts/collect-changelog.sh <version>` assembles it at release. Validate with `./scripts/collect-changelog.sh --check`.
 
+## Verifying harness behavior
+
+A generator encodes claims about a harness — where it discovers skills, how it dispatches a slash command, whether `readonly` is enforced. Those claims go stale silently when the harness ships a release. Do not reason about them from documentation; probe the installed CLI and record what you measured.
+
+The procedure, as used to settle the Cursor `readonly` semantics in #147 and the Codex spawn form in #161:
+
+1. **Probe the live CLI** — smallest command that answers the question (`codex --help`, a one-file skill in a scratch dir, a `cursor-agent` run against a fixture). Never a docs page.
+2. **Record the version you measured**, in the note and in the commit message: "measured against codex-cli 0.145.0". A claim without a version is unfalsifiable.
+3. **Encode it where it will break loudly** — a `scripts/verify-*-load.sh` guard (`verify-opencode-load.sh`, `verify-codex-load.sh`, `verify-hermes-load.sh`) that a maintainer with the CLI installed runs, and that skips cleanly without it. Prose in CLAUDE.md alone does not catch a regression.
+4. **Then change the generator**, and only then.
+
+The harness mechanics each generator relies on are documented in CLAUDE.md § Key Design Constraints, one bullet per harness.
+
+## Dogfooding boundary
+
+The clone is symlinked into `~/.claude` and the other harness config dirs, so editing `.ai/workflows/ship.md` and regenerating changes the `/ship` running in the session doing the edit. Intended when you are testing a workflow change; a silent trap when you are not — a mid-session regeneration can alter the command that is about to run.
+
+Work on a workflow in a `/worktrees` worktree, where the edit is local until merge, or regenerate as the last step before committing rather than mid-flow. If a command starts behaving unlike its file, check `git status` in the clone before debugging the harness.
+
 ## Forking
 
 Fork hephaestus to customize commands for your org while still pulling upstream updates.
