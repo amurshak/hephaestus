@@ -252,7 +252,17 @@ esac
 STUB
 chmod +x "$FIXTURE4/bin/hermes"
 
-verify_out=$(cd "$PROJ" && PATH="$FIXTURE4/bin:$PATH" bash .hephaestus/scripts/verify-hermes-load.sh 2>&1)
+# Sandbox HOME (and drop any inherited HERMES_HOME): the verifier now counts
+# hephaestus/start-issue across every root Hermes searches, which includes
+# ~/.hermes/skills. Without this the result depends on whether the developer
+# running the suite happens to have a user-level install.
+HOME_SB="$FIXTURE4/home"
+mkdir -p "$HOME_SB/.hermes/skills"
+HOME_SB=$(cd "$HOME_SB" && pwd)   # canonicalize as PROJ is — the verifier reports resolved paths
+verify() { (cd "$PROJ" && env -u HERMES_HOME HOME="$HOME_SB" PATH="$FIXTURE4/bin:$PATH" \
+  bash .hephaestus/scripts/verify-hermes-load.sh 2>&1); }
+
+verify_out=$(verify)
 verify_rc=$?
 assert_exit_code "verifier passes on a correctly wired install" 0 "$verify_rc"
 assert_contains "verifier names the project skills dir" "$verify_out" "$PROJ/.hermes/skills"
@@ -260,7 +270,7 @@ assert_not_contains "verifier never names the submodule skills dir" "$verify_out
 
 # Unwired project: must fail with the PROJECT path in the remediation.
 printf 'skills:\n  external_dirs: []\n' > "$FIXTURE4/config.yaml"
-unwired_out=$(cd "$PROJ" && PATH="$FIXTURE4/bin:$PATH" bash .hephaestus/scripts/verify-hermes-load.sh 2>&1)
+unwired_out=$(verify)
 assert_exit_code "verifier fails when unwired" 1 "$?"
 assert_contains "remediation names the project skills dir" "$unwired_out" "$PROJ/.hermes/skills"
 assert_not_contains "remediation never names the submodule dir" "$unwired_out" ".hephaestus/.hermes/skills"
@@ -270,9 +280,42 @@ assert_not_contains "remediation never names the submodule dir" "$unwired_out" "
 # must fail rather than report a healthy install.
 printf 'skills:\n  external_dirs:\n    - %s/.hermes/skills\n' "$PROJ" > "$FIXTURE4/config.yaml"
 rm -rf "$PROJ/.hermes/skills/hephaestus/start-issue"
-noskill_out=$(cd "$PROJ" && PATH="$FIXTURE4/bin:$PATH" bash .hephaestus/scripts/verify-hermes-load.sh 2>&1)
+noskill_out=$(verify)
 assert_exit_code "verifier fails when the preload identifier is missing" 1 "$?"
 assert_contains "names the missing identifier" "$noskill_out" "no skill at hephaestus/start-issue"
+
+# Ambiguous: a user-level install and a vendored project both claim the
+# identifier. Hermes refuses to guess and aborts with `Unknown skill(s)`, so
+# every /worktrees window dies — the verifier must not call this healthy.
+mkdir -p "$PROJ/.hermes/skills/hephaestus/start-issue" \
+         "$HOME_SB/.hermes/skills/hephaestus/start-issue"
+cp "$SKILLS/start-issue/SKILL.md" "$PROJ/.hermes/skills/hephaestus/start-issue/SKILL.md"
+cp "$SKILLS/start-issue/SKILL.md" "$HOME_SB/.hermes/skills/hephaestus/start-issue/SKILL.md"
+ambig_out=$(verify)
+assert_exit_code "verifier fails when the preload identifier is ambiguous" 1 "$?"
+assert_contains "names the ambiguity" "$ambig_out" "hephaestus/start-issue is ambiguous"
+assert_contains "names the user-level copy" "$ambig_out" "$HOME_SB/.hermes/skills/hephaestus/start-issue/SKILL.md"
+assert_contains "names the project copy"    "$ambig_out" "$PROJ/.hermes/skills/hephaestus/start-issue/SKILL.md"
+
+# Symlinked, not duplicated: a user-level install links into the same skill the
+# project ships. Hermes dedups on the resolved path, so this is one candidate —
+# the check must not cry ambiguity at a correctly wired machine.
+rm -rf "$HOME_SB/.hermes/skills/hephaestus/start-issue"
+ln -s "$PROJ/.hermes/skills/hephaestus/start-issue" \
+      "$HOME_SB/.hermes/skills/hephaestus/start-issue"
+symlink_out=$(verify)
+assert_exit_code "verifier passes when the second match is a symlink to the first" 0 "$?"
+assert_not_contains "no false ambiguity on a symlinked install" "$symlink_out" "ambiguous"
+
+# YAML admits an inline list too. Missing an entry here would under-count and
+# restore the false-healthy report, so the flow form is covered explicitly.
+rm -rf "$HOME_SB/.hermes/skills/hephaestus/start-issue"
+mkdir -p "$HOME_SB/.hermes/skills/hephaestus/start-issue"
+cp "$SKILLS/start-issue/SKILL.md" "$HOME_SB/.hermes/skills/hephaestus/start-issue/SKILL.md"
+printf 'skills:\n  external_dirs: [%s/.hermes/skills]\n' "$PROJ" > "$FIXTURE4/config.yaml"
+inline_out=$(verify)
+assert_exit_code "verifier reads an inline external_dirs list" 1 "$?"
+assert_contains "inline list still detects ambiguity" "$inline_out" "hephaestus/start-issue is ambiguous"
 
 # ─────────────────────────────────────────────────────────────────────────────
 
