@@ -1,5 +1,7 @@
 # AGENTS.md
 
+> **Audience: contributor** — this repo's internals. The product behavior spec is [`.ai/conventions.md`](.ai/conventions.md); the gates and conventions for changing it are [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Commands
 - Run the full integration suite with `./tests/run.sh`; run a focused file with `./tests/run.sh tests/test_install.sh` or `bash tests/test_install.sh`.
 - Check generated Claude command adapters with `./scripts/sync-agent-adapters.sh --check`; regenerate them with `./scripts/sync-agent-adapters.sh`.
@@ -20,7 +22,7 @@
 - Workflow frontmatter must include `name`, `requires`, and `chains`; use `requires: none` or `chains: none` when empty.
 - Preserve `$ARGUMENTS` in workflows that accept user input.
 - Agent definitions are hand-edited in `.claude/agents/*.md`; preserve YAML frontmatter, tool lists, isolation mode, and structured output contracts.
-- Retry limits live in `CLAUDE.md`; commands should reference them rather than hardcoding counts.
+- Retry limits are specified in `.ai/conventions.md`; the workflows restate them at the point of use, and `tests/check_conventions.sh` fails on disagreement. Never reference them by name — an installed project cannot resolve the pointer.
 
 ## Repo Shape
 - This is a shell/prose workflow repo, not a package-manager project; there is no `package.json`. CI is `.github/workflows/tests.yml` (runs `tests/run.sh`, every adapter drift check, and the composition check).
@@ -33,5 +35,5 @@
 - Tests create isolated temporary git repos and copy current uncommitted working-tree changes into fixtures, so focused tests exercise local edits before commit. Install tests call `sandbox_home` so a user-level install under test can never touch the real `~/.claude`, `~/.codex`, `~/.config/opencode`, or `~/.hermes`.
 - Adapter changes usually need every `./scripts/sync-*-adapters.sh --check` and `./tests/run.sh`; workflow-command drift is a common failure mode.
 - README `## Composition` must match command `requires`/`chains` metadata bidirectionally; update README trees when command composition changes.
-- `/finish` docs rules are mechanical: every PR needs `CHANGELOG.md`; installer or command changes also need `README.md`; agent or command changes also need `CLAUDE.md`.
+- `/finish` docs rules are mechanical, and this repo overrides the defaults in CLAUDE.md `## Docs Requirements`: every PR needs a changelog fragment; consumer-surface changes need `README.md`; contributor-surface changes need `CLAUDE.md`. Generated adapters trigger neither.
 - `loop.sh` depends on `claude` on `PATH` and uses a project-scoped lock directory in `/tmp` based on the full working directory path.

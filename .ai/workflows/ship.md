@@ -16,7 +16,7 @@ Run `git remote get-url origin` to identify the target repo.
 
 Run `/critique` (Code Critique mode auto-detects on uncommitted/staged changes; the reviewer subagent absorbs the verbose diff context). This is the last quality check before the code goes out.
 
-- **FAIL**: Fix blocking issues, re-run `/critique` (per CLAUDE.md retry limits). If still FAIL:
+- **FAIL**: Fix blocking issues, re-run `/critique` (max 3 iterations). If still FAIL:
   - Separate fixable issues from fundamental design problems
   - If fixable: attempt one more targeted fix cycle
   - If fundamental: create a draft PR (`--draft`) with `[BLOCKED]` prefix, list unresolved issues in the body, file a follow-up issue, and proceed to wind-down
@@ -30,7 +30,7 @@ Launch as parallel subagents:
 
 If any gate fails:
 - Analyze root cause — don't blindly re-run
-- Fix and re-run (per CLAUDE.md retry limits)
+- Fix and re-run (max 2 cycles)
 - If a gate still fails after retries:
   - If it's lint: auto-fix what you can, note remaining issues in PR body
   - If it's tests: create PR as draft with `[FAILING: <test-name>]` prefix and failure analysis
