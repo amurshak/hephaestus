@@ -226,7 +226,9 @@ echo "# drifted" >> "$TARGET/scripts/collect-changelog.sh"
 output=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
 assert_contains "keeps scaffolding without the flag" "$output" "Changelog fragments:"
 assert_eq       "CHANGELOG.md preserved" "MY OWN CHANGELOG" "$(cat "$TARGET/CHANGELOG.md")"
-assert_contains "drift reported, not overwritten" "$output" "differs from this clone"
+# Appending to the target's copy is an operator edit, which the stamp now tells
+# apart from an upstream change — it is reported as such, and never overwritten.
+assert_contains "drift reported, not overwritten" "$output" "edited locally"
 assert_contains "drift preserved" "$(cat "$TARGET/scripts/collect-changelog.sh")" "# drifted"
 
 # --force refreshes it: the collect script is hephaestus code, not a template.
@@ -323,6 +325,68 @@ assert_contains "collect script carries the token" \
 rm -rf "$TARGET/changelog.d"
 output=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
 assert_contains "flags the missing directory" "$output" "changelog.d/ missing"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "an unmodified collect-changelog.sh refreshes without --force"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET" >/dev/null 2>&1
+DEST="$TARGET/scripts/collect-changelog.sh"
+
+assert_contains "the copy is stamped with a version and checksum" \
+  "$(cat "$DEST")" "# hephaestus:collect-changelog v"
+
+# Upstream ships a fix. The copy is provably untouched, so an ordinary run must
+# carry it — the whole point, since --force also replaces hand-edited adapters
+# the operator never asked to touch.
+printf '\n# upstream fix\n' >> "$SOURCE_REPO/scripts/collect-changelog.sh"
+out=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
+assert_contains "refreshes an unmodified copy" "$out" "unmodified copy refreshed"
+assert_contains "the fix actually landed"      "$(cat "$DEST")" "# upstream fix"
+
+out=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
+assert_contains "re-running is then a no-op" "$out" "[ok] collect-changelog.sh"
+
+# A copy the operator edited is a different case and must survive untouched.
+printf '\n# operator tweak\n' >> "$DEST"
+out=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
+assert_contains "an edited copy is not overwritten" "$out" "edited locally"
+assert_contains "the local edit survives"           "$(cat "$DEST")" "# operator tweak"
+
+bash "$SOURCE_REPO/install.sh" --project --force "$TARGET" >/dev/null 2>&1
+assert_not_contains "--force still overwrites when asked" "$(cat "$DEST")" "# operator tweak"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "a pre-stamp collect-changelog.sh keeps the --force contract"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET" >/dev/null 2>&1
+DEST="$TARGET/scripts/collect-changelog.sh"
+
+# Reproduce a copy written before stamping: bare token, and drifted. Edited and
+# stale are indistinguishable there, so it must keep the old --force handling
+# rather than silently overwriting what might be the operator's work.
+sed 's|^# hephaestus:collect-changelog .*|# hephaestus:collect-changelog|' "$DEST" > "$DEST.tmp"
+mv "$DEST.tmp" "$DEST"
+printf '\n# pre-existing drift\n' >> "$DEST"
+out=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
+assert_contains "unstamped drift still needs --force" "$out" "refresh with --force"
+assert_contains "the drift is preserved"              "$(cat "$DEST")" "# pre-existing drift"
+
+# An unstamped copy identical to the clone carries no such doubt: stamp it, and
+# it self-heals from the next upstream change onward.
+cp "$SOURCE_REPO/scripts/collect-changelog.sh" "$DEST"
+out=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
+assert_contains "an identical unstamped copy is stamped" "$out" "stamped"
+printf '\n# later upstream fix\n' >> "$SOURCE_REPO/scripts/collect-changelog.sh"
+out=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
+assert_contains "and then refreshes on its own" "$out" "unmodified copy refreshed"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
