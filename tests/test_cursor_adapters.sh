@@ -263,7 +263,7 @@ begin_test "verify-cursor-load.sh passes when CLI present or skips cleanly"
 
 if verify_output=$(bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" 2>&1); then
   if command -v cursor-agent >/dev/null 2>&1; then
-    assert_contains "live load reports success" "$verify_output" "Cursor takes the positional-prompt spawn form"
+    assert_contains "live load reports success" "$verify_output" "Cursor takes the -p spawn form"
   else
     assert_contains "skips without cursor-agent" "$verify_output" "skip: cursor-agent not on PATH"
   fi

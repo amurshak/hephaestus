@@ -169,7 +169,7 @@ fi
 
 # Name the roots: the fallback is silent, and which one answered decides
 # whether a drifted copy in the other root would be what Cursor actually loads.
-echo "✓ Cursor takes the positional-prompt spawn form"
+echo "✓ Cursor takes the -p spawn form"
 echo "  commands:  $COMMANDS_DIR"
 echo "  subagents: $AGENTS_DIR"
 echo "  rule:      $RULES_DIR/hephaestus.mdc"
