@@ -94,15 +94,21 @@ assert_exit_code() {
   else fail "$desc" "expected exit $expected, got $actual"; fi
 }
 
+# Herestring, never `echo | grep`: `grep -q` exits at the first match and closes
+# the pipe, so a haystack larger than the pipe buffer leaves echo writing into a
+# closed fd. Under the `set -o pipefail` every test file sets, that SIGPIPE fails
+# the pipeline and the assertion reports a miss on text that is present. Linux
+# pipes hold 64KB and macOS grows to the same, so it surfaces only on a big
+# haystack (a whole README) and only on the runner — the worst place to learn it.
 assert_contains() {
   local desc="$1" haystack="$2" needle="$3"
-  if echo "$haystack" | grep -qF -- "$needle"; then pass "$desc"
+  if grep -qF -- "$needle" <<< "$haystack"; then pass "$desc"
   else fail "$desc" "output doesn't contain '$needle'"; fi
 }
 
 assert_not_contains() {
   local desc="$1" haystack="$2" needle="$3"
-  if ! echo "$haystack" | grep -qF -- "$needle"; then pass "$desc"
+  if ! grep -qF -- "$needle" <<< "$haystack"; then pass "$desc"
   else fail "$desc" "output unexpectedly contains '$needle'"; fi
 }
 
