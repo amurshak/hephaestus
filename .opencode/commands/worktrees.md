@@ -27,7 +27,7 @@ Detect the repo (`git remote get-url origin`) and read the optional `## Worktree
 
 ## Step 3 — Reap
 
-Remove **Finished** and **Stale** worktrees: `git worktree remove <path>` + `git branch -D <branch>` (force is safe — the PR is merged or the branch has nothing ahead) + `git worktree prune`. Never touch a worktree that is dirty or has unpushed commits — list those under "Attention needed" with what's blocking. Freed slots: `available = max − active`.
+Run from the primary checkout — a session cannot remove the worktree it occupies, so `/finish` defers reaping here. Remove **Finished** and **Stale** worktrees: `git worktree remove <path>` + `git branch -D <branch>` (force is safe — the PR is merged or the branch has nothing ahead) + `git worktree prune`. Never touch a worktree that is dirty or has unpushed commits — list those under "Attention needed" with what's blocking. Freed slots: `available = max − active`.
 
 ## Step 4 — Wave plan
 
@@ -65,5 +65,6 @@ Reaped (worktree → why), launched (issue → path), deferred (issue → named 
 ## Safety
 
 - Never remove dirty or unpushed worktrees; never force-delete a branch without a merged PR or zero commits ahead
+- Reap only from the primary checkout. `git worktree remove .` succeeds from inside a worktree by deleting the caller's cwd, stranding the session mid-command
 - The cap is a hard limit — cap-overflow issues queue, they don't stretch the cap
 - Spawned sessions run the normal `/start-issue` pipeline with all its gates; this command only orchestrates

@@ -28,9 +28,9 @@ Steps:
      ```
    - If PR state is not merged, skip issue close and include the pending/manual-merge reason in the session summary.
 
-4. **Clean up branches** — sweep aggressively; GitHub's auto-delete only catches branches merged *after* the setting was enabled, so debt accumulates without an active sweep:
-   - Switch off the merged branch (squash-merged branches can't be deleted while checked out): `BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo master); git checkout "$BASE"`
-   - Delete the PR's local branch only when PR state is merged (idempotent — `/finish` may re-run): `BR=$(gh pr view <pr-number> --repo <detected-repo> --json headRefName -q '.headRefName'); git show-ref --verify --quiet "refs/heads/$BR" && git branch -D "$BR"` (use `-D` — squash merges leave the tip unreachable, so `-d` refuses)
+4. **Clean up branches** — sweep aggressively; GitHub's auto-delete only catches branches merged *after* the setting was enabled, so debt accumulates without an active sweep. Local cleanup depends on the checkout context, so resolve it first: `[ "$(git rev-parse --git-dir)" = "$(git rev-parse --git-common-dir)" ]` is the primary checkout; otherwise this session runs in a linked worktree.
+   - **Primary checkout** — switch off the merged branch (squash-merged branches can't be deleted while checked out): `BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo master); git checkout "$BASE"`. Then delete the PR's local branch only when PR state is merged (idempotent — `/finish` may re-run): `BR=$(gh pr view <pr-number> --repo <detected-repo> --json headRefName -q '.headRefName'); git show-ref --verify --quiet "refs/heads/$BR" && git branch -D "$BR"` (use `-D` — squash merges leave the tip unreachable, so `-d` refuses)
+   - **Linked worktree** — skip both, and never self-remove. `git checkout "$BASE"` fails (`already used by worktree`), `git branch -D` refuses the branch its worktree occupies, and `git worktree remove .` *succeeds* by deleting this session's cwd, killing the run before the retrospective and summary. Leave the branch and worktree in place and log `left worktree <path> on <branch> for reaping`; a primary session reaps it via `/worktrees cleanup`, which `/orient` chains.
    - Delete remote branches for *all* merged PRs (handles this PR plus any stranded by prior runs, auto-merge timing, or pre-setting merges):
      ```
      merged=$(gh pr list --state merged --limit 200 --repo <detected-repo> --json headRefName --jq '.[].headRefName' | sort -u)
@@ -39,7 +39,7 @@ Steps:
      [ -n "$stale" ] && git push origin --delete $stale
      ```
      Safe because the intersection requires a remote branch *and* a merged PR with that headRef — but if branch names get reused (rare), live work could match. For an open PR state, exclude the current PR's `headRefName` from `stale` before pushing deletes. Raise `--limit 200` if your unswept debt is older than the last 200 PRs. On push failure: print the error and continue to step 5; do **not** swallow with `|| true`, and do **not** abort the finish flow.
-   - Prune local refs and pop session stash: `git fetch --prune origin; git stash list | grep -q "autopilot-pre" && git stash pop || true`
+   - Prune local refs: `git fetch --prune origin`. Pop the session stash in the primary checkout only — the stash ref lives in the common git dir, so a worktree popping `autopilot-pre` would apply the primary session's changes into the wrong tree: `git stash list | grep -q "autopilot-pre" && git stash pop || true`
 
 5. **Create breadcrumbs for remaining work**:
    - Check if there are any TODO/FIXME comments added during this session's implementation
@@ -68,6 +68,7 @@ Steps:
    - One-line: what shipped (feature/fix name, PR number, issue number)
    - Follow-up issues created (if any, with links)
    - Manual actions needed (if any, e.g., "PR awaiting manual merge")
+   - When running in a linked worktree: the path and branch left for reaping, and that a primary session collects it. This is the end of the pipeline inside a worktree — do not chain further work.
 
 If no issue number is provided in $ARGUMENTS, check recent PRs to infer which issue was just shipped.
 

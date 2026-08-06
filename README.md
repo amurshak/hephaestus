@@ -212,6 +212,13 @@ Each canonical workflow declares what it directly uses (`requires:` for agents) 
              └── /update-docs       (requires: none)
 ```
 
+`/orient` collects what a spawned session could not clean up itself — a `/finish` running inside a worktree cannot remove the worktree it occupies, so it defers:
+
+```
+/orient                             (requires: none)
+└── /worktrees                      (requires: none)
+```
+
 **Why explicit composition.** Single source of truth: change `/critique`'s retry semantics once, and every command that chains `/critique` (currently `/ship`) inherits the change. Eliminates the duplicate gates earlier inline structures created — pre-ship critique used to run twice on `/autopilot` (once in autopilot itself, once again inside its inlined ship procedure).
 
 **Subagents preserve main-context growth.** Verbose work — diff reads, file scans, intermediate reasoning — stays inside subagent context. Only structured output (verdicts, file lists) returns to the orchestrator. Chaining commands costs ~80 lines of prompt prose per chained command in main context; trivial vs. the duplication eliminated.
