@@ -317,6 +317,32 @@ inline_out=$(verify)
 assert_exit_code "verifier reads an inline external_dirs list" 1 "$?"
 assert_contains "inline list still detects ambiguity" "$inline_out" "hephaestus/start-issue is ambiguous"
 
+# The default path must never bill an inference call, so the stub's `hermes chat`
+# (which exits 1 like any unhandled verb) has to go unused. If a future edit made
+# the body probe unconditional, this catches it.
+rm -rf "$HOME_SB/.hermes/skills/hephaestus/start-issue"
+printf 'skills:\n  external_dirs:\n    - %s/.hermes/skills\n' "$PROJ" > "$FIXTURE4/config.yaml"
+default_out=$(verify)
+assert_exit_code "default run stays offline and passes" 0 "$?"
+assert_not_contains "default run runs no live probe" "$default_out" "live probe"
+
+# --live with a chat that cannot answer must report the probe inconclusive and
+# fail. Reporting a pass here would be the exact false-healthy result the flag
+# exists to prevent: layout fine, body never loaded.
+live() { (cd "$PROJ" && env -u HERMES_HOME HOME="$HOME_SB" PATH="$FIXTURE4/bin:$PATH" \
+  bash .hephaestus/scripts/verify-hermes-load.sh --live 2>&1); }
+live_out=$(live)
+assert_exit_code "--live fails when the probe cannot run" 1 "$?"
+assert_contains "names the probe as inconclusive" "$live_out" "live probe inconclusive"
+assert_not_contains "never claims a healthy load" "$live_out" "skill body reaches the model"
+
+# Flags parse in any order and are never mistaken for the project path — the
+# path argument is what makes the verifier check the project instead of cwd.
+order_out=$(cd / && env -u HERMES_HOME HOME="$HOME_SB" PATH="$FIXTURE4/bin:$PATH" \
+  bash "$HEPHAESTUS_ROOT/scripts/verify-hermes-load.sh" --require "$PROJ" 2>&1)
+assert_exit_code "--require plus a path still resolves the project" 0 "$?"
+assert_contains "path argument wins over cwd" "$order_out" "$PROJ/.hermes/skills"
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 begin_test "hand-written files in .hermes/agents survive the stale sweep"

@@ -86,6 +86,9 @@ truncate_desc() {
 # loud, and pointing at the line that needs its own `-s` rule.
 hermes_localize_body() {
   sed \
+    -e 's/, use parallel coder subagents (in worktrees)/, you **must** spawn one coder delegate per file via `delegate_task` instead of editing them yourself (serialize file edits; Hermes delegates share one working tree)/g' \
+    -e 's/, spawn parallel explorer subagents/, you **must** spawn parallel explorer delegates via `delegate_task`/g' \
+    -e 's/, spawn multiple explorer subagents/, you **must** spawn multiple explorer delegates via `delegate_task`/g' \
     -e 's/parallel coder subagents (in worktrees)/parallel coder delegates via `delegate_task` (serialize file edits; Hermes delegates share one working tree)/g' \
     -e 's/coder subagents (in worktrees)/coder delegates via `delegate_task` (serialize file edits; Hermes delegates share one working tree)/g' \
     -e 's/parallel coder subagents/parallel coder delegates/g' \
@@ -160,7 +163,7 @@ render_hermes_skill() {
     echo ""
     echo "> **Hermes:** this skill is the \`/${name}\` adapter."
     if [ "$requires" != "none" ]; then
-      echo "> Delegate to \`delegate_task\` for the roles this workflow needs (${requires}); each role's toolsets, cap and prompt are in \`.hermes/agents/<role>.md\`. A delegate inherits **none** of your conversation and **not your working directory** — give \`context\` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work."
+      echo "> Where a step below names a role (${requires}), you **must** call \`delegate_task\` for it rather than doing that step yourself — measured: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in \`.hermes/agents/<role>.md\`. A delegate inherits **none** of your conversation and **not your working directory** — give \`context\` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work."
     fi
     if [ "$chains" != "none" ]; then
       echo "> For chained workflows (${chains}), invoke the matching skill (\`/<workflow>\`) when it is installed; otherwise read and follow \`.hermes/skills/hephaestus/<workflow>/SKILL.md\`."

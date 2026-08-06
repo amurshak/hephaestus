@@ -14,7 +14,7 @@ metadata:
 <!-- generated from .ai/workflows/refactor.md; do not edit directly -->
 
 > **Hermes:** this skill is the `/refactor` adapter.
-> Delegate to `delegate_task` for the roles this workflow needs (coder, explorer); each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation and **not your working directory** — give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
+> Where a step below names a role (coder, explorer), you **must** call `delegate_task` for it rather than doing that step yourself — measured: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation and **not your working directory** — give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
 > For chained workflows (/ship, /finish), invoke the matching skill (`/<workflow>`) when it is installed; otherwise read and follow `.hermes/skills/hephaestus/<workflow>/SKILL.md`.
 
 > Hermes does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
@@ -26,7 +26,7 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 ### Phase 1: Analysis
 1. **Detect repo**: Run `git remote get-url origin` to identify the target repo.
 2. Read the target file(s) and all files that import/depend on them
-3. For large refactors spanning multiple modules, spawn parallel explorer delegates to investigate each module's dependencies and usage patterns simultaneously
+3. For large refactors spanning multiple modules, you **must** spawn parallel explorer delegates via `delegate_task` to investigate each module's dependencies and usage patterns simultaneously
 4. Measure current state: line count, function count, nesting depth, number of parameters
 5. Identify: repeated patterns, unused code, unnecessary abstractions, tight coupling
 
@@ -39,7 +39,7 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 
 ### Phase 3: Implement
 1. Make single, focused changes — one concern per commit
-2. For independent refactoring tasks across different files, use parallel coder delegates via `delegate_task` (serialize file edits; Hermes delegates share one working tree)
+2. For independent refactoring tasks across different files, you **must** spawn one coder delegate per file via `delegate_task` instead of editing them yourself (serialize file edits; Hermes delegates share one working tree)
 3. Run tests after each change per the project's CLAUDE.md (test command, lint command)
 4. If tests fail after a change, fix and re-test before proceeding (max 2 cycles)
 

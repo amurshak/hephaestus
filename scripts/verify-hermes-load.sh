@@ -8,18 +8,32 @@
 # Requires `hermes` on PATH. Exit 0 when the CLI is absent so the script can stay
 # in CI optionally; pass --require to fail instead.
 #
+# Every check below is a layout assertion, which is free but only proves a skill
+# *resolves*. It cannot prove Hermes injects the skill's **body** — `-s` could
+# preload nothing but the description and every assertion here would still pass,
+# which is precisely how #154 lost two measurement runs to a workflow the model
+# never actually received. Nothing offline closes that gap: `hermes skills
+# inspect` reads registries, not local dirs, and `hermes prompt-size` reports the
+# skills *index* only. It takes one inference call, so it is opt-in via --live
+# rather than a default that silently bills every quality-gate run.
+#
 # Usage (from hephaestus root or an installed project):
 #   bash scripts/verify-hermes-load.sh
 #   bash .hephaestus/scripts/verify-hermes-load.sh
 #   bash scripts/verify-hermes-load.sh --require /path/to/project
+#   bash scripts/verify-hermes-load.sh --live          # + one billed probe
 
 set -uo pipefail
 
 REQUIRE=0
-if [ "${1:-}" = "--require" ]; then
-  REQUIRE=1
-  shift
-fi
+LIVE=0
+while :; do
+  case "${1:-}" in
+    --require) REQUIRE=1; shift ;;
+    --live)    LIVE=1; shift ;;
+    *)         break ;;
+  esac
+done
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Verify the *project's* skills, not the submodule's. Run from an installed
@@ -179,6 +193,53 @@ fi
 
 if [ "$fail" -ne 0 ]; then
   exit 1
+fi
+
+# ── Live body probe (--live) ─────────────────────────────────────────────────
+# Asks the model to confirm a sentence only the skill *body* carries, and mirrors
+# the real spawn form so it exercises the path /worktrees actually uses. Measured
+# discriminating, not vacuous: `-s hephaestus/start-issue` answers OK while
+# `-s hephaestus/ship` and a bare session both answer MISSING. (`--ignore-rules`
+# is deliberately absent, though measurement says it would not have mattered —
+# it does not suppress `-s` preloads in v0.15.1 despite what its help text says.)
+if [ "$LIVE" -eq 1 ]; then
+  probe="Do not use any tools. If your loaded instructions contain the exact \
+phrase 'this skill is the /start-issue adapter', reply with the single token \
+HEPH_BODY_OK and nothing else. Otherwise reply HEPH_BODY_MISSING."
+
+  # `timeout` is coreutils, absent from a stock macOS, and no other shipped
+  # script here depends on it. Without the guard its "command not found" would
+  # surface as an empty reply and get misreported below as a credentials fault.
+  if command -v timeout >/dev/null 2>&1; then
+    reply=$(timeout 180 hermes chat -s hephaestus/start-issue -Q -q "$probe" 2>&1)
+  else
+    reply=$(hermes chat -s hephaestus/start-issue -Q -q "$probe" 2>&1)
+  fi
+
+  # MISSING is tested first on purpose. Both sentinels appear in the probe text,
+  # so a reply that echoes the question back contains both — matching OK first
+  # would turn that into a false pass, the one outcome this check exists to
+  # prevent. Ordering it this way makes an ambiguous reply fail loudly instead.
+  case "$reply" in
+    *HEPH_BODY_MISSING*)
+      echo "ERR: Hermes resolved hephaestus/start-issue but did not load its body." >&2
+      echo "     Every layout check above passes, so the skill file is found — the" >&2
+      echo "     model just never receives the workflow. Sessions spawned this way" >&2
+      echo "     improvise instead of following the workflow." >&2
+      exit 1
+      ;;
+    *HEPH_BODY_OK*)
+      echo "  ✓ live probe: skill body reaches the model"
+      ;;
+    *)
+      # No sentinel either way: the call itself failed. Report it as an
+      # inconclusive probe, never as a passing body check.
+      echo "ERR: live probe inconclusive — hermes chat returned no sentinel." >&2
+      echo "     Usually missing or expired credentials (\`hermes auth status\`)." >&2
+      printf '     response: %s\n' "$(printf '%s' "$reply" | tr '\n' ' ' | cut -c1-200)" >&2
+      exit 1
+      ;;
+  esac
 fi
 
 echo "✓ Hermes loads hephaestus skills and delegate briefs"
