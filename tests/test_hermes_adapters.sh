@@ -123,7 +123,8 @@ begin_test "Hermes skills map chains to related_skills"
 
 assert_contains "start-issue relates to test-issue" "$(cat "$start")" "related_skills: [test-issue]"
 assert_contains "autopilot relates to its whole chain" "$(cat "$SKILLS/autopilot/SKILL.md")" "related_skills: [start-issue, ship, finish]"
-assert_contains "orient declares no related skills" "$(cat "$orient")" "related_skills: []"
+assert_contains "orient relates to the reaper" "$(cat "$orient")" "related_skills: [worktrees]"
+assert_contains "update-docs declares no related skills" "$(cat "$SKILLS/update-docs/SKILL.md")" "related_skills: []"
 
 begin_test "Hermes skills use Hermes dialect and delegation notes"
 
