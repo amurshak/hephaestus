@@ -207,18 +207,29 @@ if [ "$LIVE" -eq 1 ]; then
 phrase 'this skill is the /start-issue adapter', reply with the single token \
 HEPH_BODY_OK and nothing else. Otherwise reply HEPH_BODY_MISSING."
 
-  reply=$(timeout 180 hermes chat -s hephaestus/start-issue -Q -q "$probe" 2>&1)
+  # `timeout` is coreutils, absent from a stock macOS, and no other shipped
+  # script here depends on it. Without the guard its "command not found" would
+  # surface as an empty reply and get misreported below as a credentials fault.
+  if command -v timeout >/dev/null 2>&1; then
+    reply=$(timeout 180 hermes chat -s hephaestus/start-issue -Q -q "$probe" 2>&1)
+  else
+    reply=$(hermes chat -s hephaestus/start-issue -Q -q "$probe" 2>&1)
+  fi
 
+  # MISSING is tested first on purpose. Both sentinels appear in the probe text,
+  # so a reply that echoes the question back contains both — matching OK first
+  # would turn that into a false pass, the one outcome this check exists to
+  # prevent. Ordering it this way makes an ambiguous reply fail loudly instead.
   case "$reply" in
-    *HEPH_BODY_OK*)
-      echo "  ✓ live probe: skill body reaches the model"
-      ;;
     *HEPH_BODY_MISSING*)
       echo "ERR: Hermes resolved hephaestus/start-issue but did not load its body." >&2
       echo "     Every layout check above passes, so the skill file is found — the" >&2
       echo "     model just never receives the workflow. Sessions spawned this way" >&2
       echo "     improvise instead of following the workflow." >&2
       exit 1
+      ;;
+    *HEPH_BODY_OK*)
+      echo "  ✓ live probe: skill body reaches the model"
       ;;
     *)
       # No sentinel either way: the call itself failed. Report it as an
