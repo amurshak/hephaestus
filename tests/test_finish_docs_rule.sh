@@ -22,7 +22,10 @@ required_docs_for_diff() {
     required="$required CLAUDE.md"
   fi
 
-  printf '%s\n' $required | sort -u | tr '\n' ' ' | sed 's/ $//'
+  # LC_ALL=C: the default collation orders "changelog.d/" before "CLAUDE.md" on
+  # macOS and after it on the CI runner, so an unpinned sort makes this test
+  # pass locally and fail on Linux.
+  printf '%s\n' $required | LC_ALL=C sort -u | tr '\n' ' ' | sed 's/ $//'
 }
 
 decision_for_diff() {
@@ -88,7 +91,7 @@ assert_eq "generator change missing CLAUDE runs update-docs" \
 
 both_missing=$'install.sh\n.claude/agents/coder.md'
 assert_eq "change missing every required doc lists them all" \
-  "run:changelog.d/ CLAUDE.md README.md" \
+  "run:CLAUDE.md README.md changelog.d/" \
   "$(decision_for_diff "$both_missing")"
 
 begin_test "/finish docs rule ignores generated adapters"
