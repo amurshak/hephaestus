@@ -16,6 +16,7 @@ A command that chains another must load that command's file and follow it — ne
 | --- | --- |
 | /autopilot | /start-issue, /ship, /finish |
 | /finish | /update-docs |
+| /orient | /worktrees |
 | /refactor | /ship, /finish |
 | /ship | /critique |
 | /start-issue | /test-issue |

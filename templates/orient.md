@@ -26,6 +26,7 @@ First, sync with remote and prune stale tracking refs (branches GitHub deleted o
 ```
 git fetch --prune origin
 ```
+Then, in the primary checkout only (`git rev-parse --git-dir` equals `--git-common-dir`), run `/worktrees cleanup` if `git worktree list` shows any linked worktree. `/finish` cannot remove the worktree it runs in, so finished ones accumulate until a primary session sweeps them.
 
 ## Find work
 ```

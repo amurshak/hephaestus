@@ -2,10 +2,10 @@
 description: "Orient in the current project. On first contact with an unprepared project, set up the workflow's operating requirements, then orient. Run autonomously."
 ---
 <!-- requires: none -->
-<!-- chains: none -->
+<!-- chains: /worktrees -->
 <!-- generated from .ai/workflows/orient.md; do not edit directly -->
 
-> **OpenCode:** start from the project root that contains `.opencode/`. Spawn role agents with the Task tool or @mentions when required.
+> **OpenCode:** start from the project root that contains `.opencode/`. Invoke nested workflows as slash commands (/worktrees) so their full templates load — do not paraphrase. Spawn role agents with the Task tool or @mentions.
 
 Orient in the current project. On first contact with an unprepared project, set up the workflow's operating requirements, then orient. Run autonomously.
 
@@ -33,6 +33,7 @@ Report every bootstrap action taken. Leave bootstrap writes uncommitted so the u
 
 - Read CLAUDE.md and the project orient — if a project-specific orient exists, prefer its guidance over this file.
 - Sync state: `git fetch --prune origin`, then `git status -sb` and `git log --oneline -5`.
+- Reap deferred worktrees — in the primary checkout only (`git rev-parse --git-dir` equals `--git-common-dir`). If `git worktree list` shows any linked worktree, run `/worktrees cleanup`. `/finish` cannot remove the worktree it runs in, so finished ones accumulate until a primary session sweeps them.
 - Find work: `gh issue list --state open --repo <detected-repo>` and `gh pr list --state open --repo <detected-repo>`. If no open issues, self-triage: scan for TODOs, failing checks, doc drift, missing tests.
 
 ## Step 4 — Report
