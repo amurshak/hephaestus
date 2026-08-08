@@ -7,9 +7,14 @@
 # its own. Keep it verbatim.
 #
 # Usage:
-#   scripts/collect-changelog.sh <version>   Fold fragments into a released section
-#   scripts/collect-changelog.sh --preview   Print what would be folded, change nothing
-#   scripts/collect-changelog.sh --check     Exit 1 if any fragment is malformed
+#   scripts/collect-changelog.sh <version>             Fold fragments into a released section
+#   scripts/collect-changelog.sh [<version>] --preview Print what would be folded, change nothing
+#   scripts/collect-changelog.sh --check               Exit 1 if any fragment is malformed
+#
+# Flags are position-independent: `<version> --preview` and `--preview <version>`
+# are the same non-destructive command. Release is the only mode that writes, and
+# it is reached only when no flag is given — an unrecognized flag anywhere is an
+# error, never a silent fallthrough to the destructive path.
 #
 # Fragments live in changelog.d/ as `<id>.<category>.md`, one per PR, so parallel
 # branches never touch the same file. Categories: added, changed, fixed, removed.
@@ -157,15 +162,27 @@ count_fragments() {
 [ -d "$FRAGMENT_DIR" ] || die "no changelog.d/ directory at $FRAGMENT_DIR"
 [ -f "$CHANGELOG" ]    || die "no CHANGELOG.md at $CHANGELOG"
 
+# Every argument is inspected, not just $1. A `case` on $1 alone let
+# `<version> --preview` fall through to release mode and consume the fragments.
 MODE="release"
 VERSION=""
-case "${1:-}" in
-  --check)   MODE="check" ;;
-  --preview) MODE="preview" ;;
-  "")        die "usage: collect-changelog.sh <version> | --preview | --check" ;;
-  -*)        die "unknown flag: $1" ;;
-  *)         VERSION="$1" ;;
-esac
+USAGE="usage: collect-changelog.sh <version> | [<version>] --preview | --check"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --check)   MODE="check" ;;
+    --preview) MODE="preview" ;;
+    -*)        die "unknown flag: $1"$'\n'"$USAGE" ;;
+    *)
+      [ -n "$VERSION" ] && die "unexpected argument: $1 (version already given as $VERSION)"$'\n'"$USAGE"
+      VERSION="$1"
+      ;;
+  esac
+  shift
+done
+
+if [ "$MODE" = "release" ] && [ -z "$VERSION" ]; then
+  die "$USAGE"
+fi
 
 if ! validate_fragments; then
   die "malformed fragments — fix the names above"
@@ -183,6 +200,9 @@ if [ "$MODE" = "preview" ]; then
     echo -e "${YELLOW}no fragments in changelog.d/${NC}"
     exit 0
   fi
+  # Show the heading the release would write, so previewing a specific version
+  # is a real rehearsal rather than a bare list of entries.
+  [ -n "$VERSION" ] && printf '## %s — %s\n\n' "$VERSION" "$(date +%Y-%m-%d)"
   render_fragments
   exit 0
 fi

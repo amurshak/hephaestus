@@ -161,6 +161,53 @@ assert_exit_code "exits 1 without Unreleased" 1 "$rc"
 assert_contains "names the missing section" "$out" "Unreleased"
 
 # ─────────────────────────────────────────────────────────────────────────────
+begin_test "flags are position-independent and never fall through to release"
+
+# Regression: a `case` on $1 alone ignored every later argument, so
+# `<version> --preview` silently ran a real release and deleted the fragments.
+count_frags() { ls "$1/changelog.d"/*.md 2>/dev/null | grep -vc 'README.md$'; }
+
+for form in "2.9.0 --preview" "--preview 2.9.0" "--preview" "--check" "2.9.0 --check"; do
+  R="$FIXTURE/args-$(printf '%s' "$form" | tr -cd '[:alnum:]')"
+  make_repo "$R"
+  frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+  frag "$R" "129.fixed.md" '**Spawn CLI** (#129): a fix.'
+  before=$(cat "$R/CHANGELOG.md")
+  # shellcheck disable=SC2086
+  out=$("$R/scripts/collect-changelog.sh" $form 2>&1); rc=$?
+  assert_exit_code "'$form' exits 0" 0 "$rc"
+  assert_eq "'$form' leaves CHANGELOG.md untouched" "$before" "$(cat "$R/CHANGELOG.md")"
+  assert_eq "'$form' consumes no fragments" "2" "$(count_frags "$R")"
+  assert_not_contains "'$form' does not claim a release" "$out" "released"
+done
+
+# The version reaches preview output, so previewing a release is a real rehearsal.
+R="$FIXTURE/args-heading"
+make_repo "$R"
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+out=$("$R/scripts/collect-changelog.sh" 2.9.0 --preview 2>&1)
+assert_contains "preview renders the version heading" "$out" "## 2.9.0 — "
+
+# An unrecognized flag must never reach the destructive default.
+for bad in "2.9.0 --dry-run" "--dry-run" "2.9.0 -n" "2.9.0 extra"; do
+  R="$FIXTURE/bad-$(printf '%s' "$bad" | tr -cd '[:alnum:]')"
+  make_repo "$R"
+  frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+  before=$(cat "$R/CHANGELOG.md")
+  # shellcheck disable=SC2086
+  out=$("$R/scripts/collect-changelog.sh" $bad 2>&1); rc=$?
+  assert_exit_code "'$bad' exits 1" 1 "$rc"
+  assert_eq "'$bad' leaves CHANGELOG.md untouched" "$before" "$(cat "$R/CHANGELOG.md")"
+  assert_eq "'$bad' consumes no fragments" "1" "$(count_frags "$R")"
+done
+
+R="$FIXTURE/args-noargs"
+make_repo "$R"
+out=$("$R/scripts/collect-changelog.sh" 2>&1); rc=$?
+assert_exit_code "no arguments exits 1" 1 "$rc"
+assert_contains "no arguments prints usage" "$out" "usage:"
+
+# ─────────────────────────────────────────────────────────────────────────────
 begin_test "repo's own fragments are valid"
 
 out=$("$HEPHAESTUS_ROOT/scripts/collect-changelog.sh" --check 2>&1); rc=$?
