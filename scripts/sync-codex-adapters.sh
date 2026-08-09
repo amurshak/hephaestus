@@ -101,8 +101,13 @@ render_codex_skill() {
   # on a word boundary, and anchor the slash-command name for matching.
   desc=$(first_body_line "$workflow" "$start" | codex_localize_body)
   desc=$(printf '%s' "$desc" | sed 's/\$ARGUMENTS/<argument>/g; s/  */ /g')
-  if [ "${#desc}" -gt 180 ]; then
-    desc="${desc:0:180}"
+  # Counted and cut in bytes, never `${#desc}`/`${desc:0:180}`: those are bytes
+  # under LC_ALL=C and characters otherwise, so the cut would land differently
+  # per machine and --check would report drift on $LANG alone. Same hazard the
+  # LC_ALL pin in sync-hermes-adapters.sh guards. The trailing trim to a word
+  # boundary discards any character the byte cut split.
+  if [ "$(printf '%s' "$desc" | wc -c)" -gt 180 ]; then
+    desc=$(printf '%s' "$desc" | cut -b1-180)
     desc="${desc% *}…"
   fi
   desc=$(quote_escape "$desc Use for /${name} requests.")

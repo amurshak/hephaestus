@@ -70,7 +70,10 @@ while IFS= read -r line; do
       # root of a new tree (no leading branch glyph or indent)
       current_root=$cmd
       current_top=""
-    elif [[ "$line" =~ ^[├└] ]]; then
+    # Literal prefix match, not a bracket expression: under a non-UTF-8 locale
+    # `[├└]` degrades to the *bytes* those glyphs share, so `│` matches too and
+    # every sub-child is promoted to top-level. Glob compares byte sequences.
+    elif [[ "$line" == ├* ]] || [[ "$line" == └* ]]; then
       # top-level child of the current root
       [ -n "$current_root" ] && readme_chains="${readme_chains}${current_root} ${cmd}
 "

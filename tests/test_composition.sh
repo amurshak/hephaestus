@@ -14,6 +14,15 @@ else
   fail "check_composition.sh exits non-zero" "$output"
 fi
 
+# Again under a byte-only locale. The tree is drawn with multibyte glyphs, and
+# /update-docs runs this verifier in whatever locale the session inherits — a
+# parse that collapses under LC_ALL=C reports the README as structurally wrong.
+if output=$(LC_ALL=C bash "$SCRIPT_DIR/check_composition.sh" 2>&1); then
+  pass "check_composition.sh exits 0 under LC_ALL=C"
+else
+  fail "check_composition.sh exits non-zero under LC_ALL=C" "$output"
+fi
+
 # Negative test: mutate a requires: header in a tempdir copy and confirm the
 # verifier flags the drift. Operates on a fixture, never the real repo.
 begin_test "verifier detects drift when a requires: header changes"

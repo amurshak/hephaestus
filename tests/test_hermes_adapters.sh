@@ -110,12 +110,16 @@ assert_not_contains "argument note only when body uses \$ARGUMENTS" "$(cat "$ori
 assert_not_contains "generated skills carry no version field" "$(cat "$ship")" "version:"
 
 # Hermes recommends descriptions ≤60 characters; the generator trims to fit.
+# Measured as the generator budgets it — bytes, ellipsis excluded. `wc -c` is
+# byte-exact in every locale, where `${#desc}` counts bytes under LC_ALL=C and
+# characters otherwise, so the 3-byte `…` read as three over the cap.
 for skill_md in "$SKILLS"/*/SKILL.md; do
   desc=$(grep -m1 '^description:' "$skill_md" | sed 's/^description: *"//; s/"$//')
-  if [ "${#desc}" -le 61 ]; then
-    pass "$(basename "$(dirname "$skill_md")") description fits Hermes cap (${#desc})"
+  n=$(printf '%s' "${desc%…}" | wc -c | tr -d ' ')
+  if [ "$n" -le 60 ]; then
+    pass "$(basename "$(dirname "$skill_md")") description fits Hermes cap ($n)"
   else
-    fail "$(basename "$(dirname "$skill_md")") description too long" "${#desc} chars: $desc"
+    fail "$(basename "$(dirname "$skill_md")") description too long" "$n bytes: $desc"
   fi
 done
 
