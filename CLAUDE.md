@@ -153,6 +153,7 @@ When modifying agents or commands:
 - Run `./scripts/sync-codex-adapters.sh --check` before shipping Codex adapter changes
 - Run `./scripts/sync-hermes-adapters.sh --check` before shipping Hermes adapter changes
 - Run `./scripts/sync-cursor-adapters.sh --check` before shipping Cursor adapter changes
+- Measure and cut text in bytes (`wc -c`, `cut -b`), not `${#var}`/`${var:0:n}`/`[[ =~ [multibyte] ]]` — those switch between bytes and characters with `$LANG`, which makes a generator's output and a test's verdict depend on the machine
 - **No bloat**: Replacements must be at least as concise as the original. If the new text is longer without adding information, tighten it. Bloat and drift are the enemies of excellence.
 
 **Workflow metadata** — every `.ai/workflows/*.md` declares its dependencies in frontmatter:
