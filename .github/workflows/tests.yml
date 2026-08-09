@@ -15,6 +15,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Integration tests
         run: ./tests/run.sh
+      # Byte-only locale. Assertions that measure text in characters pass here
+      # and fail on a contributor's shell, reading as real drift rather than an
+      # encoding artifact (#177). The runner's own locale is multibyte-capable,
+      # so without this the suite is only ever exercised one way.
+      - name: Integration tests (LC_ALL=C)
+        run: LC_ALL=C ./tests/run.sh
       - name: Claude adapter drift check
         run: ./scripts/sync-agent-adapters.sh --check
       - name: OpenCode adapter drift check
