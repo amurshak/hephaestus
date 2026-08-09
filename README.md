@@ -70,7 +70,7 @@ That's it — commands appear under `/heph:` (`/heph:autopilot`, `/heph:ship`, �
 | 4 | **Implement** | Parallel coder agents in isolated worktrees, one commit per logical unit |
 | 5 | **Review** | Security, architecture, test coverage, convention compliance (up to 3 rounds) |
 | 6 | **Test** | Quality gates from the project's `CLAUDE.md` (up to 2 full retry cycles) |
-| 7 | **Ship** | CHANGELOG, PR with quality checklist, squash auto-merge |
+| 7 | **Ship** | CHANGELOG, PR with quality checklist, squash auto-merge — which gates on CI only where the base branch requires a status check, and otherwise merges on the spot, reported as such |
 | 8 | **Finish** | Branch on PR state, close shipped issues, clean branches, file follow-ups, and run or skip docs sync by a deterministic PR-diff rule |
 
 ### Agents

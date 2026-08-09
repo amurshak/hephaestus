@@ -95,10 +95,15 @@ For gates that passed with caveats, use `[x]` with a suffix: `- [x] Lint clean (
 gh pr merge --squash --auto
 ```
 
-If auto-merge cannot be enabled (branch protection, required reviewers, etc.):
-- Do NOT retry or force-push
-- Note in the session summary that manual merge is required
-- This is a valid stopping point — the work is preserved in the PR
+Read back what happened — where the base branch requires no status check, `--auto` has nothing to wait on and the command succeeds by merging on the spot:
+
+```
+gh pr view <pr-number> --repo <detected-repo> --json state,autoMergeRequest
+```
+
+- `OPEN` with `autoMergeRequest` set — armed as intended; it merges when checks pass.
+- `MERGED` — it merged immediately. Step 3's local gates were the only thing between this branch and the base, and CI gated nothing. Report that rather than "auto-merge enabled", and name the cause: the base branch requires no status checks.
+- Command failed, or any other state (branch protection, required reviewers) — do NOT retry or force-push. Note that manual merge is required. This is a valid stopping point; the work is preserved in the PR.
 
 ### 7. Return the PR URL.
 
