@@ -123,7 +123,7 @@ Five agent roles, stratified by least-privilege tool access. Coder is the only a
 
 ## Configuration Surfaces
 
-Two mechanisms, split by consumer. Which one a new setting belongs to is decided in this section, not per-PR:
+Two mechanisms, split by consumer. Which one a new setting belongs to is decided in this section, not per-PR. The test: **does a script consume the value, or does the agent read it?** Script-consumed → a config file with the `models.conf` layering. Agent-read → CLAUDE.md prose. The failure mode the test blocks is adding a schema and a parser so an LLM can read a value it could already read — indirection that fights what hephaestus is, prose workflows that cause an agent to behave.
 
 | Surface | Consumed by | Layering |
 |---|---|---|
@@ -131,6 +131,8 @@ Two mechanisms, split by consumer. Which one a new setting belongs to is decided
 | CLAUDE.md prose — the sections listed in `.ai/conventions.md` under "What the project owns" | the **agent**, at runtime | per project; only `## Development Commands` is required |
 
 Nothing in `scripts/`, `install.sh`, `update.sh`, or `uninstall.sh` parses CLAUDE.md, and `models.conf` has exactly one reader. Keep it that way.
+
+Retry limits and critique thresholds look like the archetypal config value and are not: they are set in `.ai/conventions.md`, restated by the workflows at the point of use, and overridable per project in a `## Workflow Rules` block — read only by the agent. `tests/check_conventions.sh` greps them, but to prove the restatements match the spec; verification is not consumption. Moving them to a config file would add a parser and change nothing about how they are consumed. Settled — do not reopen.
 
 ## Improving the Workflow
 
