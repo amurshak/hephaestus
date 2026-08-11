@@ -9,14 +9,21 @@ LOOP_SH="$HEPHAESTUS_ROOT/loop.sh"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-# The harness dispatch table under test: harness|binary|argv token…
+# The harness dispatch table under test: harness|binary|argv…
 # Each row is the headless form loop.sh must invoke — the harness's own
 # non-interactive mode, not the TUI-seeding form /worktrees spawns.
+#
+# The argv is the COMPLETE, ORDERED expected argument vector, asserted whole.
+# Asserting token presence instead would be near-worthless here: order is the
+# invariant that matters most. `-q --accept-hooks` makes Hermes swallow the
+# hooks flag as its query text, and `--dangerously-bypass-approvals-and-sandbox
+# /autopilot exec` demotes Codex's subcommand to a positional — both are
+# argv-token-identical to the correct forms, and both would ship silently.
 HARNESS_CASES=(
   "claude|claude|--dangerously-skip-permissions|-p|/autopilot"
   "codex|codex|exec|--dangerously-bypass-approvals-and-sandbox|/autopilot"
   "cursor|cursor-agent|-p|--force|--trust|/autopilot"
-  "hermes|hermes|chat|-s|hephaestus/autopilot|-q|--yolo|--accept-hooks"
+  "hermes|hermes|chat|-s|hephaestus/autopilot|-q|Run the autopilot skill. If the autopilot skill is not loaded, stop and report that.|--yolo|--accept-hooks"
   "opencode|opencode|run|--auto|--command|autopilot"
 )
 
@@ -38,8 +45,9 @@ setup_mock_harness() {
 # that exits cleanly and default to claude.
 setup_mock_claude() { setup_mock_harness claude; }
 
-# Recorded argv as a |-delimited string, so a token can be matched whole:
-# `-p` is a substring of half the flags in the table, `|-p|` is not.
+# Recorded argv canonicalized to |a|b|c| so it can be compared whole against a
+# table row. Delimited rather than space-joined because Hermes's query argument
+# contains spaces, which a space-joined string could not tell from two arguments.
 recorded_argv() {
   printf '|%s' "$(tr '\n' '|' < "$ARGS_FILE" 2>/dev/null || echo missing)"
 }
@@ -279,16 +287,55 @@ for case_row in "${HARNESS_CASES[@]}"; do
   assert_contains "$harness: banner names the harness" "$BANNER" "Harness  : $harness"
   assert_contains "$harness: banner echoes the command" "$BANNER" "Command  : $binary "
 
-  ARGV=$(recorded_argv)
-  IFS='|' read -ra expected_tokens <<< "$expected_argv"
-  for token in "${expected_tokens[@]}"; do
-    assert_contains "$harness: argv carries $token" "$ARGV" "|$token|"
-  done
+  assert_eq "$harness: argv matches exactly, in order" \
+    "|$expected_argv|" "$(recorded_argv)"
 
   kill_loop "$LOOP_PID"
   rm -f "$BANNER_FILE"
   teardown_mock
 done
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "the session cannot block on stdin"
+# `codex exec` reads stdin whenever one is attached, so loop.sh runs the harness
+# with </dev/null. Proving that needs a stdin that would otherwise never reach
+# EOF — inherit the test runner's and the check passes vacuously under CI, where
+# stdin is already closed. So: hand loop.sh a FIFO held open by a writer that
+# sends nothing, and give the mock a `cat` that returns only at EOF. With the
+# redirect the mock records its argv at once; without it, it blocks forever and
+# wait_for times out.
+MOCK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-loop-test-XXXXXX")
+ARGS_FILE="$MOCK_DIR/last-args"
+{
+  echo '#!/usr/bin/env bash'
+  echo 'cat > /dev/null'
+  echo "printf '%s\\n' \"\$@\" > \"$ARGS_FILE\""
+  echo 'exit 0'
+} > "$MOCK_DIR/claude"
+chmod +x "$MOCK_DIR/claude"
+
+STDIN_FIFO="$MOCK_DIR/stdin"
+mkfifo "$STDIN_FIFO"
+# Holds the write end open without writing, so the FIFO never signals EOF.
+sleep 30 > "$STDIN_FIFO" &
+HOLDER_PID=$!
+
+EXPECTED_HASH=$(printf '%s' "$(pwd)" | { shasum 2>/dev/null || sha1sum; } | cut -c1-12)
+EXPECTED_LOCK="/tmp/hephaestus-${EXPECTED_HASH}.lock"
+rm -rf "$EXPECTED_LOCK" 2>/dev/null || true
+
+env PATH="$MOCK_DIR:$PATH" bash "$LOOP_SH" 1 /dev/null \
+  < "$STDIN_FIFO" > /dev/null 2>&1 &
+LOOP_PID=$!
+
+wait_for 10 '[ -s "$ARGS_FILE" ]'
+assert_file_exists "harness ran instead of hanging on an open stdin" "$ARGS_FILE"
+
+kill_loop "$LOOP_PID"
+kill "$HOLDER_PID" 2>/dev/null || true
+wait "$HOLDER_PID" 2>/dev/null || true
+teardown_mock
 
 # ─────────────────────────────────────────────────────────────────────────────
 

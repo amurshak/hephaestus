@@ -62,11 +62,16 @@ case "${HARNESS}" in
     # -q is single-query (non-interactive) mode, which bypasses the slash
     # dispatcher — so -s preloads the skill instead of sending /autopilot as
     # text. --yolo bypasses command approval; --accept-hooks is a separate gate
-    # for shell hooks declared in config.yaml. Hermes has no project-local skill
-    # discovery: the project's .hermes/skills must already be reachable via
-    # skills.external_dirs or HERMES_HOME.
+    # for shell hooks declared in config.yaml.
+    #
+    # The query carries its own guard because this is the one harness that can
+    # fail silently: Hermes has no project-local skill discovery, and a -s that
+    # resolves to nothing does not abort — it starts the session with no skill
+    # loaded. Unguarded, that would leave a fully-approved agent looping in a
+    # git repo on nothing but a one-line instruction. Wire the project's
+    # .hermes/skills through skills.external_dirs or HERMES_HOME.
     HARNESS_BIN=hermes
-    HARNESS_ARGV=(chat -s hephaestus/autopilot -q "Run the autopilot workflow." --yolo --accept-hooks)
+    HARNESS_ARGV=(chat -s hephaestus/autopilot -q "Run the autopilot skill. If the autopilot skill is not loaded, stop and report that." --yolo --accept-hooks)
     ;;
   opencode)
     # --auto approves non-denied permissions for unattended runs.

@@ -521,10 +521,12 @@ HEPH_HARNESS=codex nohup ~/.hephaestus/loop.sh 30 autopilot-codex.log &
 | `claude` | `claude --dangerously-skip-permissions -p "/autopilot"` |
 | `codex` | `codex exec --dangerously-bypass-approvals-and-sandbox "/autopilot"` |
 | `cursor` | `cursor-agent -p --force --trust "/autopilot"` |
-| `hermes` | `hermes chat -s hephaestus/autopilot -q "Run the autopilot workflow." --yolo --accept-hooks` |
+| `hermes` | `hermes chat -s hephaestus/autopilot -q "Run the autopilot skill. …" --yolo --accept-hooks` |
 | `opencode` | `opencode run --auto --command autopilot` |
 
-Every form is unattended: approvals are bypassed, and nothing reads stdin. Hermes is the one harness without project-local skill discovery — its `.hermes/skills` must already be reachable through `skills.external_dirs` or `HERMES_HOME`.
+Every form is unattended, and nothing can block on stdin — the session reads `/dev/null`, because `codex exec` reads stdin whenever one is attached. Note that these flags are not all the same kind of permission: `--dangerously-skip-permissions`, `--auto`, `--force`, and `--yolo` bypass *approval* for tool calls, while `--dangerously-bypass-approvals-and-sandbox` also drops Codex's *sandbox* (required, or blocked network fails `git push`/`gh`), and `--trust` and `--accept-hooks` pre-accept a workspace and previously-unseen shell hooks. Point a loop only at a repo you would grant all of that.
+
+Hermes is the one harness without project-local skill discovery, and a `-s` that resolves to nothing starts the session with no skill rather than failing — so its query carries its own guard, and `.hermes/skills` must be reachable through `skills.external_dirs` or `HERMES_HOME`.
 
 ### Forking
 
