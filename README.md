@@ -521,7 +521,7 @@ HEPH_HARNESS=codex nohup ~/.hephaestus/loop.sh 30 autopilot-codex.log &
 | `claude` | `claude --dangerously-skip-permissions -p "/autopilot"` |
 | `codex` | `codex exec --dangerously-bypass-approvals-and-sandbox "/autopilot"` |
 | `cursor` | `cursor-agent -p --force --trust "/autopilot"` |
-| `hermes` | `hermes chat -s hephaestus/autopilot -q "…" --yolo --accept-hooks` |
+| `hermes` | `hermes chat -s hephaestus/autopilot -q "Run the autopilot workflow." --yolo --accept-hooks` |
 | `opencode` | `opencode run --auto --command autopilot` |
 
 Every form is unattended: approvals are bypassed, and nothing reads stdin. Hermes is the one harness without project-local skill discovery — its `.hermes/skills` must already be reachable through `skills.external_dirs` or `HERMES_HOME`.
