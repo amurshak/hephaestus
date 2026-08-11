@@ -36,4 +36,4 @@
 - Adapter changes usually need every `./scripts/sync-*-adapters.sh --check` and `./tests/run.sh`; workflow-command drift is a common failure mode.
 - README `## Composition` must match command `requires`/`chains` metadata bidirectionally; update README trees when command composition changes.
 - `/finish` docs rules are mechanical, and this repo overrides the defaults in CLAUDE.md `## Docs Requirements`: every PR needs a changelog fragment; consumer-surface changes need `README.md`; contributor-surface changes need `CLAUDE.md`. Generated adapters trigger neither.
-- `loop.sh` depends on `claude` on `PATH` and uses a project-scoped lock directory in `/tmp` based on the full working directory path.
+- `loop.sh` dispatches `HEPH_HARNESS` (`claude`|`codex`|`cursor`|`hermes`|`opencode`) through a per-harness table of binary + headless argv, depends on that binary being on `PATH`, and uses a project-scoped lock directory in `/tmp` based on the full working directory path.
