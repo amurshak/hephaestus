@@ -71,6 +71,69 @@ else
   fi
 fi
 
+# ── Limit-shaped prose outside the restatement shape must fail ───────────────
+# Each of these slipped past the single regex that used to be check 2. Widening
+# it to cover them would trade false negatives for false positives over free
+# prose; the restatement has a shape instead, and anything limit-shaped that is
+# not in it is reported so it gets reworded.
+begin_test "verifier rejects limit phrasings outside the restatement shape"
+
+F1B2=$(make_fixture); FIXTURES="$FIXTURES $F1B2"
+{
+  echo "Repeat, max four iterations."
+  echo "Repeat, max 4 passes."
+  echo "Repeat, max 4 loops."
+  echo "Proceed under a 4-iteration maximum."
+  echo "Repeat, max 4 further full critique iterations."
+  echo "iterations: 4"
+} >> "$F1B2/.ai/workflows/refactor.md"
+
+if out=$(bash "$F1B2/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should reject every out-of-shape phrasing" "exited 0, output: $out"
+else
+  for quoted in 'says "repeat, max four iterations."' \
+                'says "4 passes"' \
+                'says "4 loops"' \
+                'says "proceed under a 4-iteration maximum."' \
+                'says "repeat, max 4 further full critique iterations."' \
+                'says "iterations: 4"'; do
+    assert_contains "reports ${quoted#says }" "$out" "$quoted"
+  done
+fi
+
+# ── A generic noun names no loop, so it may not be read as one ───────────────
+# "retries" used to be hard-bound to the test-fix loop, so a correct "3 retries"
+# on a critique path was reported as drift against a limit it never meant. It is
+# now reported as unrestated — the fix is the spec's noun, not a guessed loop.
+begin_test "verifier does not bind a generic noun to a loop"
+
+F1B3=$(make_fixture); FIXTURES="$FIXTURES $F1B3"
+printf '\nRe-run the critique after 3 retries.\n' >> "$F1B3/.ai/workflows/ship.md"
+
+if out=$(bash "$F1B3/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should reject a limit stated in a generic noun" "exited 0, output: $out"
+else
+  assert_contains "asks for the spec's noun" "$out" \
+    'ship.md says "3 retries"; .ai/conventions.md measures its loops in iterations and cycles'
+  assert_not_contains "does not claim drift against the test-fix limit" "$out" \
+    "sets the test-fix loop to"
+fi
+
+# ── A cap that bounds no loop is not a retry limit ───────────────────────────
+# The out-of-shape check keys on a quantifier beside loop vocabulary, and reads
+# prose only, so an unrelated cap and a code-span identifier stay silent.
+begin_test "verifier ignores a cap that names no loop"
+
+F1B4=$(make_fixture); FIXTURES="$FIXTURES $F1B4"
+printf '\nSpawn max 3 explorers in parallel; set `max:` to 3 in the worktrees block.\n' \
+  >> "$F1B4/.ai/workflows/refactor.md"
+
+if out=$(bash "$F1B4/tests/check_conventions.sh" 2>&1); then
+  pass "an unrelated cap and a code-span identifier do not read as limits"
+else
+  fail "verifier fired on a cap that bounds no loop" "$out"
+fi
+
 # A stale adapter must fail too — adapters are what an installed project runs.
 begin_test "verifier scans the generated adapters, not just the canonical sources"
 
@@ -114,7 +177,7 @@ fi
 begin_test "verifier detects limits deleted from every workflow"
 
 F1E=$(make_fixture); FIXTURES="$FIXTURES $F1E"
-sed -i.bak -E 's/[0-9]+ +([a-z-]+ +){0,2}(iterations?|cycles?|attempts?|retries|retry|rounds?)//gI' \
+sed -i.bak -E 's/[0-9]+ +([a-z-]+ +){0,2}(iterations?|cycles?)//gI' \
   "$F1E"/.ai/workflows/*.md
 rm -f "$F1E"/.ai/workflows/*.bak
 
