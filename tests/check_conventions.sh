@@ -90,11 +90,11 @@ done
 #      iterations", "iterations: 4". The window and the spec noun are what keep
 #      an unrelated cap ("up to 3 explorers, then let the loop finish") out.
 #
-# The fence is the shape, so the boundary is the shape's vocabulary: (c) reads
-# only the four quantifiers and the two spec nouns, so "no more than four
-# iterations" or "four passes" still slips. Widen the lists when a phrasing
-# earns it — do not loosen the window, which is what holds the false positives
-# down.
+# The fence is the shape, so the boundary is the shape's vocabulary and window:
+# (c) reads only the four quantifiers and the two spec nouns, within four words,
+# so "no more than four iterations", "four passes", and "max 4 further full plan
+# critique iterations" all still slip. Widen the lists when a phrasing earns it;
+# leave the window, which is what holds the false positives down.
 SPEC_NOUN='iterations?|cycles?'
 OFF_SPEC_NOUN='attempts?|retr(y|ies)|rounds?|passes|loops?|tries'
 QUANTIFIER='max(imum)?|at most|up to'
@@ -137,17 +137,22 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
   # (b) counts bound to a noun that names no loop
   while IFS= read -r phrase; do
     [ -n "$phrase" ] || continue
-    report "$name says \"$phrase\"; .ai/conventions.md measures its loops in iterations and cycles — restate with the noun for the loop you mean"
+    report "$name says \"$phrase\"; .ai/conventions.md measures its loops in iterations and cycles — restate in one of those, or reword if this bounds no loop"
   done <<< "$(echo "$lower" | grep -oE "$OFF_SPEC_RE" | sort -u)"
 
-  # (c) limit vocabulary neither shape claimed. A line already carrying a
-  # readable restatement is dropped whole, so "a maximum of 3 iterations" is
-  # validated by (a) and not second-guessed here.
+  # (c) limit vocabulary neither shape claimed. What (a) already read is blanked
+  # rather than its whole line: "a maximum of 3 iterations" must not be
+  # second-guessed here, but a second clause on the same line must still be
+  # read — and every line that states a limit carries an (a) match by
+  # definition, so dropping them whole would blind (c) to exactly the lines a
+  # limit-changing edit touches. BSD sed ignores \b, so the right edge is spelt
+  # out; reusing $COUNT_RE here would no-op on macOS and work on Linux.
   while IFS= read -r phrase; do
     [ -n "$phrase" ] || continue
     report "$name says \"$phrase\"; that reads as a limit but not in the restatement shape (<count> <iterations|cycles>) — reword it"
   done <<< "$(prose_of "$workflow" | tr 'A-Z' 'a-z' \
-    | grep -vE "$COUNT_RE|$OFF_SPEC_RE" | grep -oE "$OUT_OF_SHAPE" | sort -u)"
+    | sed -E "s/[0-9]+ +([a-z-]+ +){0,2}($SPEC_NOUN)([^a-z]|\$)/ /g" \
+    | grep -oE "$OUT_OF_SHAPE" | sort -u)"
 done
 
 # A limit deleted from every workflow is drift too, and the loudest kind: the

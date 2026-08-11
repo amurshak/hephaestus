@@ -81,22 +81,35 @@ begin_test "verifier rejects limit phrasings outside the restatement shape"
 F1B2=$(make_fixture); FIXTURES="$FIXTURES $F1B2"
 {
   echo "Repeat, max four iterations."
-  echo "Repeat, max 4 passes."
-  echo "Repeat, max 4 loops."
   echo "Proceed under a 4-iteration maximum."
   echo "Repeat, max 4 further full critique iterations."
   echo "iterations: 4"
+  # Every noun that names no loop, and every quantifier the shape knows. Each
+  # phrase is distinct: the report is deduped, so a repeat would mask a check.
+  echo "Repeat, max 4 passes."
+  echo "Repeat, max 4 loops."
+  echo "Retry the plan 3 attempts."
+  echo "Re-review 3 rounds before shipping."
+  echo "Give the fix 3 tries."
+  echo "Repeat, at most five iterations."
+  echo "Repeat, up to six iterations."
+  # Clauses sharing a line with a valid restatement — every line that states a
+  # limit carries one, so they are the lines a limit-changing edit touches.
+  echo "Refine until SOUND (max 3 iterations), then at most seven iterations more."
+  echo "Refine until SOUND (max 3 iterations). Config says iterations: 9."
 } >> "$F1B2/.ai/workflows/refactor.md"
 
 if out=$(bash "$F1B2/tests/check_conventions.sh" 2>&1); then
   fail "verifier should reject every out-of-shape phrasing" "exited 0, output: $out"
 else
   for quoted in 'says "max four iterations"' \
-                'says "4 passes"' \
-                'says "4 loops"' \
                 'says "iteration maximum"' \
                 'says "max 4 further full critique iterations"' \
-                'says "iterations: 4"'; do
+                'says "iterations: 4"' \
+                'says "4 passes"' 'says "4 loops"' 'says "3 attempts"' \
+                'says "3 rounds"' 'says "3 tries"' \
+                'says "at most five iterations"' 'says "up to six iterations"' \
+                'says "at most seven iterations"' 'says "iterations: 9"'; do
     assert_contains "reports ${quoted#says }" "$out" "$quoted"
   done
 fi
@@ -175,12 +188,17 @@ begin_test "verifier ignores a cap that names no loop"
 
 F1B4=$(make_fixture); FIXTURES="$FIXTURES $F1B4"
 {
-  echo 'Spawn max 3 explorers in parallel; set `max:` to 3 in the worktrees block.'
+  echo 'Spawn max 3 explorers in parallel; keep `max iterations` out of it.'
   echo "Spawn up to 3 explorers in parallel, then let the critique loop finish."
   echo "Run the workaround at most once when the branch is stale."
   echo "Keep up to 5 changelog entries in the fragment directory."
   echo "The reviewer may request up to 3 rounded estimates."
-  # A spec noun far from the quantifier: only the four-word window keeps this out.
+  echo "Use 5 iterationsx as the placeholder token."
+  # A word merely ending in a quantifier: the leading boundary keeps it out.
+  echo "Set HEPH_MAX before the plan iterations begin."
+  # Spec nouns four and eleven words off the quantifier: only the window keeps
+  # these out, and the shorter one pins it at four rather than merely below ten.
+  echo "Spawn at most 3 explorers before the plan iterations begin."
   echo "Spawn up to 3 explorers in parallel and let the plan critique loop run its iterations."
   # A rejected phrasing quoted as an example: only the fence strip keeps this out.
   printf 'The gate rejects prose like this:\n\n```\nmax four iterations\n```\n'
