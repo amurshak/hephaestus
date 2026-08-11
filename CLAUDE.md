@@ -87,7 +87,7 @@ Target projects adopt the same convention with `install.sh --project --changelog
 
 **The spec is [`.ai/conventions.md`](.ai/conventions.md)** — the eight phases, the retry limits, the escalation ladder, ambiguity handling, verdicts, session checkpoints, and what a target project owns. Read it before changing any workflow; it governs this repo's sessions too.
 
-It is a spec, not a runtime dependency. The workflows are the shipped artifact, so they state each limit at the point of use — an installed project has no `.ai/` directory to read. `bash tests/check_conventions.sh` fails if a workflow states a value the spec does not, so the two cannot drift silently. Change the spec first, then the workflows, then run the check.
+It is a spec, not a runtime dependency. The workflows are the shipped artifact, so they state each limit at the point of use — an installed project has no `.ai/` directory to read. `bash tests/check_conventions.sh` fails if a workflow states a value the spec does not — or states one in a shape it cannot read — so the two cannot drift silently. Change the spec first, then the workflows, then run the check.
 
 Never reintroduce a by-name reference like "per CLAUDE.md retry limits": it forced `/orient` to retype the limits into every installed project's CLAUDE.md, which is the hand-maintained duplication this layout exists to prevent.
 
@@ -146,7 +146,7 @@ When modifying agents or commands:
 - Do not hand-edit `.hermes/skills/` or `.hermes/agents/`; regenerate them with `./scripts/sync-hermes-adapters.sh`.
 - Do not hand-edit `.cursor/`; regenerate it with `./scripts/sync-cursor-adapters.sh`.
 - Preserve the `$ARGUMENTS` placeholder in workflows that receive user input at invocation.
-- Retry limits are specified in `.ai/conventions.md` and restated by the workflows at the point of use; change the spec first, then the workflows, then run `bash tests/check_conventions.sh`
+- Retry limits are specified in `.ai/conventions.md` and restated by the workflows at the point of use, in the spec's own nouns — `<count> iterations` or `<count> cycles`, up to two words between. A generic noun ("3 retries") names no loop and is rejected; change the spec first, then the workflows, then run `bash tests/check_conventions.sh`
 - Commands that delegate to subagents should specify which agent type to use and what structured output to expect
 - Run `./scripts/sync-agent-adapters.sh --check` before shipping adapter changes
 - Run `./scripts/sync-opencode-adapters.sh --check` before shipping OpenCode adapter changes

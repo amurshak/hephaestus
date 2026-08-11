@@ -71,6 +71,188 @@ else
   fi
 fi
 
+# ── Limit-shaped prose outside the restatement shape must fail ───────────────
+# Each of these slipped past the single regex that used to be check 2. Widening
+# it to cover them would trade false negatives for false positives over free
+# prose; the restatement has a shape instead, and anything limit-shaped that is
+# not in it is reported so it gets reworded.
+begin_test "verifier rejects limit phrasings outside the restatement shape"
+
+F1B2=$(make_fixture); FIXTURES="$FIXTURES $F1B2"
+{
+  echo "Repeat, max four iterations."
+  echo "Proceed under a 4-iteration maximum."
+  echo "Repeat, max 4 further full critique iterations."
+  echo "Iterations: 4"   # capitalised: the report is folded, so the check must be
+  # Every noun that names no loop, and every quantifier the shape knows. Each
+  # phrase is distinct: the report is deduped, so a repeat would mask a check.
+  echo "Repeat, max 4 passes."
+  echo "Repeat, max 4 loops."
+  echo "Retry the plan 3 attempts."
+  echo "Re-review 3 rounds before shipping."
+  echo "Give the fix 3 tries."
+  echo "Allow 1 retry, 1 attempt, 1 round and 1 loop."
+  echo "Repeat, at most five iterations."
+  echo "Repeat, up to six iterations."
+  # Clauses sharing a line with a valid restatement — every line that states a
+  # limit carries one, so they are the lines a limit-changing edit touches.
+  echo "Refine until SOUND (max 3 iterations), then at most seven iterations more."
+  echo "Refine until SOUND (max 3 iterations). Config says iterations: 9."
+} >> "$F1B2/.ai/workflows/refactor.md"
+
+if out=$(bash "$F1B2/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should reject every out-of-shape phrasing" "exited 0, output: $out"
+else
+  for quoted in 'says "max four iterations"' \
+                'says "iteration maximum"' \
+                'says "max 4 further full critique iterations"' \
+                'says "iterations: 4"' \
+                'says "4 passes"' 'says "4 loops"' 'says "3 attempts"' \
+                'says "3 rounds"' 'says "3 tries"' \
+                'says "1 retry"' 'says "1 attempt"' 'says "1 round"' 'says "1 loop"' \
+                'says "at most five iterations"' 'says "up to six iterations"' \
+                'says "at most seven iterations"' 'says "iterations: 9"'; do
+    assert_contains "reports ${quoted#says }" "$out" "$quoted"
+  done
+fi
+
+# ── The shape check may not second-guess a restatement the spec check read ───
+# The quantifier need not sit against the count: "a maximum of 3 iterations" is
+# a valid restatement, and reporting it as out-of-shape would tell a maintainer
+# to reword prose that already agrees with the spec.
+begin_test "verifier accepts a restatement whose quantifier is not adjacent"
+
+F1B2B=$(make_fixture); FIXTURES="$FIXTURES $F1B2B"
+{
+  echo "Allow a maximum of 3 iterations on the critique loop."
+  echo "Repeat the plan-critique loop up to the limit of 3 iterations."
+} >> "$F1B2B/.ai/workflows/refactor.md"
+
+if out=$(bash "$F1B2B/tests/check_conventions.sh" 2>&1); then
+  pass "a spec-agreeing restatement is not reported as out-of-shape"
+else
+  fail "verifier second-guessed a restatement it had already validated" "$out"
+fi
+
+# ── (a) and (b) read the file whole; only the shape check reads prose ────────
+# Stripping fences and code spans for every check would hide a limit restated
+# inside ship.md's PR-body fence — the drift this file exists to catch.
+begin_test "verifier reads limits inside fences and code spans"
+
+while IFS='|' read -r placement expected; do
+  [ -n "$placement" ] || continue
+  F=$(make_fixture); FIXTURES="$FIXTURES $F"
+  printf "$placement" >> "$F/.ai/workflows/refactor.md"
+  if out=$(bash "$F/tests/check_conventions.sh" 2>&1); then
+    fail "verifier missed a limit in a code context" "exited 0"
+  else
+    assert_contains "reads a limit stated inside code" "$out" "$expected"
+  fi
+done <<'PLACEMENTS'
+\n```\nRepeat until SOUND (max 9 iterations).\n```\n|says "9 iterations", but .ai/conventions.md sets a critique loop to 3
+\nBound it to `max 9 iterations` here.\n|says "9 iterations", but .ai/conventions.md sets a critique loop to 3
+\n```\nRepeat until SOUND (max 9 retries).\n```\n|says "9 retries"; .ai/conventions.md measures its loops
+PLACEMENTS
+
+# ── The loop binding is the trailing noun, not a substring of the filler ─────
+begin_test "verifier binds on the noun, not a filler word containing it"
+
+F1B2C=$(make_fixture); FIXTURES="$FIXTURES $F1B2C"
+{
+  echo "Fix within 2 lifecycle iterations, then 3 more cycle."
+  # The spec's own wording for the test-fix row: two filler words, one
+  # hyphenated. Narrow the filler count or drop the hyphen from its character
+  # class and (a) stops reading the canonical shape entirely.
+  echo "Iterate until green, max 9 full plan-implement-test cycles."
+} >> "$F1B2C/.ai/workflows/refactor.md"
+
+if out=$(bash "$F1B2C/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should reject all three counts" "exited 0, output: $out"
+else
+  assert_contains "'lifecycle' in the filler does not reroute to the test-fix loop" "$out" \
+    'says "2 lifecycle iterations", but .ai/conventions.md sets a critique loop to 3'
+  assert_contains "a singular trailing noun still binds its loop" "$out" \
+    'says "3 more cycle", but .ai/conventions.md sets the test-fix loop to 2'
+  assert_contains "the spec's own two-filler hyphenated shape is read" "$out" \
+    'says "9 full plan-implement-test cycles", but .ai/conventions.md sets the test-fix loop to 2'
+fi
+
+# ── The spec must keep the two nouns bound to distinct values ────────────────
+# The noun binding is only meaningful while "iterations" and "cycles" resolve to
+# one value each and those differ; a spec edit that collapses them would let the
+# two limits swap again with every workflow still passing.
+begin_test "verifier rejects a spec whose nouns no longer separate the loops"
+
+F1B2D=$(make_fixture); FIXTURES="$FIXTURES $F1B2D"
+sed -i.bak 's/| 2 full plan-implement-test cycles |/| 3 full plan-implement-test cycles |/' \
+  "$F1B2D/.ai/conventions.md"
+rm -f "$F1B2D/.ai/conventions.md.bak"
+
+if out=$(bash "$F1B2D/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should reject a spec that binds both nouns to one value" "exited 0, output: $out"
+else
+  assert_contains "names the constraint the spec broke" "$out" \
+    "must bind 'iterations' and 'cycles' to one distinct value each"
+fi
+
+# ── A generic noun names no loop, so it may not be read as one ───────────────
+# "retries" used to be hard-bound to the test-fix loop, so a correct "3 retries"
+# on a critique path was reported as drift against a limit it never meant. It is
+# now reported as unrestated — the fix is the spec's noun, not a guessed loop.
+begin_test "verifier does not bind a generic noun to a loop"
+
+F1B3=$(make_fixture); FIXTURES="$FIXTURES $F1B3"
+printf '\nRe-run the critique after 3 retries.\n' >> "$F1B3/.ai/workflows/ship.md"
+
+if out=$(bash "$F1B3/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should reject a limit stated in a generic noun" "exited 0, output: $out"
+else
+  assert_contains "asks for the spec's noun" "$out" \
+    'ship.md says "3 retries"; .ai/conventions.md measures its loops in iterations and cycles'
+  assert_not_contains "does not claim drift against the test-fix limit" "$out" \
+    "sets the test-fix loop to"
+fi
+
+# ── A cap that bounds no loop is not a retry limit ───────────────────────────
+# The shape check needs a spec noun within four words of the quantifier, and
+# reads prose only. Loop vocabulary further off, an unrelated cap, a word merely
+# containing a loop noun, and a code-span identifier all stay silent.
+begin_test "verifier ignores a cap that names no loop"
+
+F1B4=$(make_fixture); FIXTURES="$FIXTURES $F1B4"
+{
+  echo 'Spawn max 3 explorers in parallel; keep `max iterations` out of it.'
+  echo "Spawn up to 3 explorers in parallel, then let the critique loop finish."
+  echo "Run the workaround at most once when the branch is stale."
+  echo "Keep up to 5 changelog entries in the fragment directory."
+  echo "The reviewer may request up to 3 rounded estimates."
+  echo "Use 5 iterationsx as the placeholder token."
+  # A word merely ending in a quantifier: the leading boundary keeps it out.
+  echo "Set HEPH_MAX before the plan iterations begin."
+  # Blanking a restatement must not merge its clause with the next one, nor
+  # pull a later noun into the window — the `~` and the restored delimiter.
+  echo "Refine until SOUND, max 3 iterations. Iterations beyond that need approval."
+  echo "Cap the loop at max 3 iterations so later iterations never run."
+  # A restatement ending the line: only the \$ arm of the blank's right edge
+  # reaches it, and BSD sed would ignore a \\b there.
+  echo "Refine until SOUND, max 3 iterations"
+  # A correct restatement in the spec's own two-filler wording: the blank must
+  # reach as far as (a) does, or the shape check second-guesses it.
+  echo "Fix and re-run, max 2 full plan-implement-test cycles."
+  # Spec nouns four and eleven words off the quantifier: only the window keeps
+  # these out, and the shorter one pins it at four rather than merely below ten.
+  echo "Spawn at most 3 explorers before the plan iterations begin."
+  echo "Spawn up to 3 explorers in parallel and let the plan critique loop run its iterations."
+  # A rejected phrasing quoted as an example: only the fence strip keeps this out.
+  printf 'The gate rejects prose like this:\n\n```\nmax four iterations\n```\n'
+} >> "$F1B4/.ai/workflows/refactor.md"
+
+if out=$(bash "$F1B4/tests/check_conventions.sh" 2>&1); then
+  pass "caps, near-miss words, quoted examples, and code spans do not read as limits"
+else
+  fail "verifier fired on prose that bounds no loop" "$out"
+fi
+
 # A stale adapter must fail too — adapters are what an installed project runs.
 begin_test "verifier scans the generated adapters, not just the canonical sources"
 
@@ -114,7 +296,7 @@ fi
 begin_test "verifier detects limits deleted from every workflow"
 
 F1E=$(make_fixture); FIXTURES="$FIXTURES $F1E"
-sed -i.bak -E 's/[0-9]+ +([a-z-]+ +){0,2}(iterations?|cycles?|attempts?|retries|retry|rounds?)//gI' \
+sed -i.bak -E 's/[0-9]+ +([a-z-]+ +){0,2}(iterations?|cycles?)//gI' \
   "$F1E"/.ai/workflows/*.md
 rm -f "$F1E"/.ai/workflows/*.bak
 

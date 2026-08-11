@@ -8,8 +8,9 @@
 #
 #   1. The spec's retry-limit table parses, and every loop it names has a value.
 #   2. Every retry count a workflow states matches the spec limit for the loop
-#      it names. The binding is the noun: the spec measures the critique loops
-#      in "iterations" and the test-fix loop in "cycles", so a workflow saying
+#      it names, and every limit-shaped phrase is in a shape this check can
+#      read. The binding is the noun: the spec measures the critique loops in
+#      "iterations" and the test-fix loop in "cycles", so a workflow saying
 #      "max 2 iterations" fails even though 2 is a number the spec uses
 #      elsewhere. Set membership alone would let the two limits swap silently.
 #   3. No file reintroduces a by-name reference to the limits ("per CLAUDE.md
@@ -71,27 +72,87 @@ for loop in "Plan-critique" "Pre-ship code critique" "Test-fix"; do
 done
 
 # ── 2. Every count a workflow states must match the spec for that loop ───────
-# The noun carries the binding, so the pattern must be generous about the verb
-# and the words between the number and the noun: "max 3 iterations", "up to 3
-# iterations", "all 3 attempts", "max 2 full plan-implement-test cycles".
-COUNT_RE='[0-9]+ +([a-z-]+ +){0,2}(iterations?|cycles?|attempts?|retries|retry|rounds?)'
+# A restatement has a shape: a count, up to two filler words, then one of the
+# two nouns the spec measures in — "max 3 iterations", "up to 3 iterations",
+# "max 2 full plan-implement-test cycles". The noun carries the loop binding,
+# so it must be a noun the spec actually uses; a generic one names no loop and
+# cannot be checked against anything.
+#
+# A regex reads only what it recognises, so that shape is not the only one read:
+#
+#   b. A count bound to a noun the spec does not measure in — "max 2 retries",
+#      "3 rounds". The fix is to restate in the spec's noun, not for this check
+#      to guess which loop was meant.
+#   c. Whatever is left that still reads as a limit: a quantifier and a spec
+#      noun within four words, or a count after the noun — "max four
+#      iterations", "a 4-iteration maximum", "iterations: 4". The window and the
+#      spec noun are what keep an unrelated cap ("up to 3 explorers, then let
+#      the loop finish") out.
+#
+# The shape is the fence, so the boundary is its vocabulary and window: (c)
+# reads only the four quantifiers and the two spec nouns, within four words, so
+# "no more than four iterations" and "max 4 further full plan critique
+# iterations" still slip. Widen the lists when a phrasing earns it; leave the
+# window, which is what holds the false positives down.
+SPEC_NOUN='iterations?|cycles?'
+OFF_SPEC_NOUN='attempts?|retr(y|ies)|rounds?|passes|loops?|tries'
+QUANTIFIER='max(imum)?|at most|up to'
+COUNT_RE="[0-9]+ +([a-z-]+ +){0,2}($SPEC_NOUN)\\b"
+OFF_SPEC_RE="[0-9]+ +([a-z-]+ +){0,2}($OFF_SPEC_NOUN)\\b"
+OUT_OF_SHAPE="\\b($QUANTIFIER)( +[a-z0-9-]+){0,4} +($SPEC_NOUN)\\b\
+|\\b($SPEC_NOUN)( +[a-z0-9-]+){0,4} +($QUANTIFIER)\\b\
+|\\b($SPEC_NOUN) *: *[0-9]"
+
+# prose_of <file> — the file with fenced blocks and inline code spans dropped.
+# Only (c) reads it: `max:` in a code span is an identifier (worktrees'
+# concurrency key), not a limit, and (c) is the check a stray quantifier can
+# trip. (a) and (b) read the file whole — they are anchored on a count, and a
+# limit restated inside ship.md's PR-body fence still ships.
+prose_of() {
+  awk '/^ *```/{f=!f; next} !f' "$1" | sed -E 's/`[^`]*`//g'
+}
 
 iter_seen=0
 cycle_seen=0
 
 for workflow in "$WORKFLOWS_DIR"/*.md; do
   name=$(basename "$workflow")
+  lower=$(tr 'A-Z' 'a-z' < "$workflow")
+
+  # (a) counts bound to a spec noun — checked against the spec
   while IFS= read -r phrase; do
     [ -n "$phrase" ] || continue
     count=$(echo "$phrase" | grep -oE '^[0-9]+')
-    # cycles and retries measure the test-fix loop; everything else a critique loop.
+    # The trailing noun is the binding — a filler word that merely contains
+    # "cycle" ("3 lifecycle iterations") must not reroute it.
     case "$phrase" in
-      *cycle*|*retries|*retry) expected="$cycle_limit"; loop="the test-fix loop"; cycle_seen=1 ;;
-      *)                       expected="$iter_limit";  loop="a critique loop";  iter_seen=1  ;;
+      *cycle|*cycles) expected="$cycle_limit"; loop="the test-fix loop"; cycle_seen=1 ;;
+      *)              expected="$iter_limit";  loop="a critique loop";  iter_seen=1  ;;
     esac
     [ "$count" = "$expected" ] \
       || report "$name says \"$phrase\", but .ai/conventions.md sets $loop to $expected"
-  done <<< "$(grep -oiE "$COUNT_RE" "$workflow" | tr 'A-Z' 'a-z' | sort -u)"
+  done <<< "$(echo "$lower" | grep -oE "$COUNT_RE" | sort -u)"
+
+  # (b) counts bound to a noun that names no loop
+  while IFS= read -r phrase; do
+    [ -n "$phrase" ] || continue
+    report "$name says \"$phrase\"; .ai/conventions.md measures its loops in iterations and cycles — restate in one of those, or reword if this bounds no loop"
+  done <<< "$(echo "$lower" | grep -oE "$OFF_SPEC_RE" | sort -u)"
+
+  # (c) limit vocabulary neither shape claimed. What (a) already read is blanked
+  # rather than its whole line — every line that states a limit carries an (a)
+  # match by construction, so dropping them whole would blind (c) to exactly the
+  # lines a limit-changing edit touches. The blank leaves `~`, which is outside
+  # the window's token class: without a barrier, removing text pulls a
+  # quantifier and an unrelated later noun into range of each other. The right
+  # edge is spelt out because BSD sed ignores \b — reusing $COUNT_RE here would
+  # no-op on macOS and work on Linux.
+  while IFS= read -r phrase; do
+    [ -n "$phrase" ] || continue
+    report "$name says \"$phrase\"; that reads as a limit but not in the restatement shape (<count> <iterations|cycles>) — reword it"
+  done <<< "$(prose_of "$workflow" | tr 'A-Z' 'a-z' \
+    | sed -E "s/[0-9]+ +([a-z-]+ +){0,2}($SPEC_NOUN)([^a-z]|\$)/ ~/g" \
+    | grep -oE "$OUT_OF_SHAPE" | sort -u)"
 done
 
 # A limit deleted from every workflow is drift too, and the loudest kind: the
