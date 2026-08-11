@@ -27,14 +27,31 @@ HARNESS_CASES=(
   "opencode|opencode|run|--auto|--command|autopilot"
 )
 
+# Every unattended flag from every dispatch row, space-separated so the
+# preflight's word-boundary grep matches each one. A mock prints the whole set
+# on --help — the preflight only asks for its own harness's flags, so the
+# surplus is harmless and one line serves all five mocks.
+ALL_UNATTENDED_FLAGS="--dangerously-skip-permissions -p --dangerously-bypass-approvals-and-sandbox --force --trust -s -q --yolo --accept-hooks --auto --command"
+
 # Create a temp dir holding a mock harness binary that records its argv, one
-# argument per line, to $ARGS_FILE and exits immediately.
+# argument per line, to $ARGS_FILE and exits immediately. A --help call is the
+# preflight, not the session: it answers with the flag list, records its argv
+# separately to $HELP_ARGS_FILE, and must never touch $ARGS_FILE — the tests
+# use a non-empty $ARGS_FILE as the signal that the real session dispatched.
 setup_mock_harness() {
   MOCK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-loop-test-XXXXXX")
   ARGS_FILE="$MOCK_DIR/last-args"
-  # Embed the absolute args path directly — no sed, no placeholders.
+  HELP_ARGS_FILE="$MOCK_DIR/help-args"
+  # Embed the absolute paths directly — no sed, no placeholders.
   {
     echo '#!/usr/bin/env bash'
+    echo 'for a in "$@"; do'
+    echo '  if [ "$a" = "--help" ]; then'
+    echo "    printf '%s\\n' \"\$@\" > \"$HELP_ARGS_FILE\""
+    echo "    echo \"${2-$ALL_UNATTENDED_FLAGS}\""
+    echo '    exit 0'
+    echo '  fi'
+    echo 'done'
     echo "printf '%s\\n' \"\$@\" > \"$ARGS_FILE\""
     echo 'exit 0'
   } > "$MOCK_DIR/$1"
@@ -290,10 +307,60 @@ for case_row in "${HARNESS_CASES[@]}"; do
   assert_eq "$harness: argv matches exactly, in order" \
     "|$expected_argv|" "$(recorded_argv)"
 
+  # The preflight must consult the help of what actually runs: the subcommand's
+  # (exec/chat/run) when the entry leads with one — the flag sets differ from
+  # the top level — and the binary's own otherwise.
+  expected_help="--help"
+  first_tok=${expected_argv%%|*}
+  case "$first_tok" in -*) ;; *) expected_help="$first_tok|--help" ;; esac
+  assert_eq "$harness: preflight asked the right help" \
+    "|$expected_help|" "$(printf '|%s' "$(tr '\n' '|' < "$HELP_ARGS_FILE" 2>/dev/null || echo missing)")"
+
   kill_loop "$LOOP_PID"
   rm -f "$BANNER_FILE"
   teardown_mock
 done
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "preflight fails loudly when the harness drops an unattended flag"
+# A dropped approval flag does not fail like a missing binary — the harness
+# starts, prompts, and hangs with no TTY to answer. The preflight must turn
+# that into a loud startup error, before the lock and before any session.
+setup_mock_harness cursor-agent "-p --force"
+
+EXPECTED_HASH=$(printf '%s' "$(pwd)" | { shasum 2>/dev/null || sha1sum; } | cut -c1-12)
+EXPECTED_LOCK="/tmp/hephaestus-${EXPECTED_HASH}.lock"
+rm -rf "$EXPECTED_LOCK" 2>/dev/null || true
+
+output=$(env PATH="$MOCK_DIR:$PATH" HEPH_HARNESS=cursor bash "$LOOP_SH" 1 /dev/null 2>&1)
+exit_code=$?
+assert_eq       "exits non-zero"                 1 "$exit_code"
+assert_contains "names the missing flag"         "$output" "no longer documents --trust"
+assert_contains "points at the dispatch table"   "$output" "dispatch table"
+assert_file_not_exists "no session dispatched"   "$ARGS_FILE"
+assert_file_not_exists "no lock left behind"     "$EXPECTED_LOCK"
+teardown_mock
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "HEPH_NO_PREFLIGHT=1 waves an undocumented flag through"
+# The escape hatch for a harness whose flag works but is hidden from its help:
+# the same broken help output must not stop the loop when the user opts out.
+setup_mock_harness cursor-agent "-p --force"
+
+EXPECTED_HASH=$(printf '%s' "$(pwd)" | { shasum 2>/dev/null || sha1sum; } | cut -c1-12)
+EXPECTED_LOCK="/tmp/hephaestus-${EXPECTED_HASH}.lock"
+rm -rf "$EXPECTED_LOCK" 2>/dev/null || true
+
+env PATH="$MOCK_DIR:$PATH" HEPH_HARNESS=cursor HEPH_NO_PREFLIGHT=1 \
+  bash "$LOOP_SH" 1 /dev/null > /dev/null 2>&1 &
+LOOP_PID=$!
+wait_for 10 '[ -s "$ARGS_FILE" ]'
+assert_eq "session dispatched despite the broken help" \
+  "|-p|--force|--trust|/autopilot|" "$(recorded_argv)"
+kill_loop "$LOOP_PID"
+teardown_mock
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -309,6 +376,9 @@ MOCK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-loop-test-XXXXXX")
 ARGS_FILE="$MOCK_DIR/last-args"
 {
   echo '#!/usr/bin/env bash'
+  # Answer the preflight without touching $ARGS_FILE: a non-empty args file is
+  # this test's proof that the *session* ran, and the preflight must not fake it.
+  echo "[ \"\$1\" = \"--help\" ] && { echo \"$ALL_UNATTENDED_FLAGS\"; exit 0; }"
   echo 'cat > /dev/null'
   echo "printf '%s\\n' \"\$@\" > \"$ARGS_FILE\""
   echo 'exit 0'

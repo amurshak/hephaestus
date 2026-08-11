@@ -182,8 +182,12 @@ begin_test "verify-codex-load.sh judges the spawn form and adapter roots"
 STUB_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-codexstub-XXXXXX")
 trap 'rm -rf "$FIXTURE" "$FIXTURE2" "$FIXTURE3" "$FIXTURE4" "$STUB_DIR"' EXIT
 
-make_stub() {  # make_stub <usage-line>
-  printf '#!/bin/sh\necho "Usage: %s"\n' "$1" > "$STUB_DIR/codex"
+make_stub() {  # make_stub <usage-line> [exec-help-line]
+  # The verifier asks `codex exec --help` for the unattended flag separately —
+  # exec's flag set differs from the top level — so the stub answers both, and
+  # each half can be broken independently.
+  printf '#!/bin/sh\nif [ "$1" = "exec" ]; then echo "%s"; exit 0; fi\necho "Usage: %s"\n' \
+    "${2---dangerously-bypass-approvals-and-sandbox}" "$1" > "$STUB_DIR/codex"
   chmod +x "$STUB_DIR/codex"
 }
 
@@ -212,6 +216,15 @@ make_stub "codex [OPTIONS] --prompt <PROMPT>"
 out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" 2>&1)
 assert_exit_code "fails when [PROMPT] is gone"  1 "$?"
 assert_contains  "names the spawn regression" "$out" "no longer documents a positional [PROMPT]"
+
+# An exec that dropped the approvals bypass would not fail loop.sh — it would
+# hang it: exec has no --ask-for-approval, so the sandbox gate re-arms and the
+# first blocked write stalls with no TTY to answer. The verifier must catch it.
+make_stub "codex [OPTIONS] [PROMPT]" "--full-auto low-friction sandboxed execution"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" 2>&1)
+assert_exit_code "fails when the exec unattended flag is gone" 1 "$?"
+assert_contains  "names the dropped flag" "$out" "no longer documents --dangerously-bypass-approvals-and-sandbox"
+assert_contains  "points at the dispatch table" "$out" "loop.sh's dispatch table"
 
 # A `--project` install scaffolds only .agents/skills/orient and no
 # .codex/agents; the shared set stays in $CODEX_HOME. Must not false-fail.

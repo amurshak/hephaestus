@@ -7,7 +7,8 @@
 #
 #   1. `cursor-agent --help` still documents a bare positional prompt.
 #      /worktrees Step 6 spawns `cursor-agent "<prompt>"`, which seeds a session
-#      only while that form holds.
+#      only while that form holds. The same help output must document the
+#      unattended flags loop.sh passes (--force, --trust).
 #   2. The generated commands, subagents, and project rule are present in a root
 #      Cursor reads. Either root counts: $CURSOR_HOME/{commands,agents,rules}
 #      for a user install, the project's .cursor/* when vendored. A `--project`
@@ -104,6 +105,32 @@ case "$help" in
     echo "     /worktrees Step 6 needs it to dispatch /start-issue — a bare" >&2
     echo "     positional prompt is never dispatched. Re-measure and update the" >&2
     echo "     spawn rules in scripts/sync-cursor-adapters.sh" >&2
+    fail=1
+    ;;
+esac
+
+# ── Unattended contract ──────────────────────────────────────────────────────
+# loop.sh runs `cursor-agent -p --force --trust`: --force approves tool calls,
+# --trust answers the workspace-trust prompt. Losing either does not fail like
+# a missing binary — the session starts, prompts, and hangs with no TTY to
+# answer, stalling the loop silently. `-f, --force` is matched in full because
+# `--yolo` is documented as "Alias for --force", so the bare substring would
+# survive the flag itself being dropped.
+case "$help" in
+  *"-f, --force"*) ;;
+  *)
+    echo "ERR: cursor-agent --help no longer documents -f, --force" >&2
+    echo "     the cursor entry in loop.sh's dispatch table depends on it to approve" >&2
+    echo "     tool calls unattended — re-measure and update the dispatch table" >&2
+    fail=1
+    ;;
+esac
+case "$help" in
+  *"--trust"*) ;;
+  *)
+    echo "ERR: cursor-agent --help no longer documents --trust" >&2
+    echo "     the cursor entry in loop.sh's dispatch table depends on it to answer the" >&2
+    echo "     workspace-trust prompt unattended — re-measure and update the dispatch table" >&2
     fail=1
     ;;
 esac

@@ -8,6 +8,7 @@
 #   ~/.hephaestus/loop.sh 15                       # every 15 min
 #   ~/.hephaestus/loop.sh 30 /tmp/autopilot.log    # custom log path
 #   HEPH_HARNESS=codex ~/.hephaestus/loop.sh 30    # claude|codex|cursor|hermes|opencode
+#   HEPH_NO_PREFLIGHT=1 ~/.hephaestus/loop.sh      # skip the startup flag check
 #
 # Background (unattended):
 #   nohup ~/.hephaestus/loop.sh 30 /tmp/autopilot.log &
@@ -93,6 +94,42 @@ if ! command -v "${HARNESS_BIN}" >/dev/null 2>&1; then
   done
   echo "Error: '${HARNESS_BIN}' not found on PATH. Install the ${HARNESS} CLI and put it on PATH, or set HEPH_HARNESS to one of: ${ALTERNATIVES}." >&2
   exit 1
+fi
+
+# Preflight: confirm the harness still documents every flag the dispatch table
+# passes it, before taking the lock or entering the loop. A renamed approval
+# flag does not fail like a missing binary — the harness starts, prompts, and
+# hangs with no TTY to answer — so discovering it on iteration 1 means a silent,
+# unbounded stall. One help invocation at startup; nothing per-iteration.
+#
+# The flags are read from HARNESS_ARGV itself, so there is no second copy to
+# drift, and a leading subcommand (exec/chat/run) selects that subcommand's
+# help — the flag sets differ from the top level. Help text is the honest
+# ceiling here (cf. the Hermes config-parsing preflight rejected in #191); a
+# harness that hides a working flag from its help can be waved through with
+# HEPH_NO_PREFLIGHT=1.
+if [ -z "${HEPH_NO_PREFLIGHT:-}" ]; then
+  HELP_ARGV=(--help)
+  case "${HARNESS_ARGV[0]}" in
+    -*) ;;
+    *) HELP_ARGV=("${HARNESS_ARGV[0]}" --help) ;;
+  esac
+  if ! HELP_TEXT=$("${HARNESS_BIN}" "${HELP_ARGV[@]}" </dev/null 2>&1) || [ -z "${HELP_TEXT}" ]; then
+    echo "Error: '${HARNESS_BIN} ${HELP_ARGV[*]}' failed, so the unattended flags cannot be verified." >&2
+    echo "       Fix the ${HARNESS} install, or skip this check with HEPH_NO_PREFLIGHT=1." >&2
+    exit 1
+  fi
+  for flag in "${HARNESS_ARGV[@]}"; do
+    case "${flag}" in -*) ;; *) continue ;; esac
+    if ! grep -qE "(^|[[:space:],])${flag}([[:space:],=]|$)" <<< "${HELP_TEXT}"; then
+      echo "Error: '${HARNESS_BIN} ${HELP_ARGV[*]}' no longer documents ${flag}." >&2
+      echo "       The ${HARNESS} entry in loop.sh's dispatch table depends on it to run" >&2
+      echo "       unattended — a session invoked without it can block on a prompt with no" >&2
+      echo "       TTY to answer. Re-measure the CLI and update the dispatch table, or skip" >&2
+      echo "       this check with HEPH_NO_PREFLIGHT=1 if the flag works but is undocumented." >&2
+      exit 1
+    fi
+  done
 fi
 
 # Lockfile: prevent concurrent instances from conflicting.

@@ -247,11 +247,15 @@ cp "$SKILLS/start-issue/SKILL.md" "$PROJ/.hermes/skills/hephaestus/start-issue/S
 # a config wired to the PROJECT skills dir — what install.sh tells the user to add.
 mkdir -p "$FIXTURE4/bin"
 printf 'skills:\n  external_dirs:\n    - %s/.hermes/skills\n' "$PROJ" > "$FIXTURE4/config.yaml"
+# `chat --help` reads from a file so the unattended-flag checks can break it
+# per-case without rewriting the stub.
+printf 'usage: hermes chat -q QUERY -s SKILLS --yolo --accept-hooks\n' > "$FIXTURE4/chat-help"
 cat > "$FIXTURE4/bin/hermes" <<STUB
 #!/usr/bin/env bash
 case "\$1 \$2" in
   "config path") echo "$FIXTURE4/config.yaml" ;;
   "skills list") echo "autopilot start-issue ship finish critique" ;;
+  "chat --help") cat "$FIXTURE4/chat-help" ;;
   *) exit 1 ;;
 esac
 STUB
@@ -330,6 +334,17 @@ printf 'skills:\n  external_dirs:\n    - %s/.hermes/skills\n' "$PROJ" > "$FIXTUR
 default_out=$(verify)
 assert_exit_code "default run stays offline and passes" 0 "$?"
 assert_not_contains "default run runs no live probe" "$default_out" "live probe"
+
+# A chat that dropped an approval gate stalls an unattended loop.sh session on
+# a prompt no TTY can answer. Word-boundary matching is part of the contract:
+# the surviving --skills text must not satisfy a check for -s.
+printf 'usage: hermes chat -q QUERY --skills SKILLS --yolo\n' > "$FIXTURE4/chat-help"
+flagdrop_out=$(verify)
+assert_exit_code "verifier fails when chat drops unattended flags" 1 "$?"
+assert_contains "names the dropped -s"     "$flagdrop_out" "no longer documents -s"
+assert_contains "names the dropped hooks gate" "$flagdrop_out" "no longer documents --accept-hooks"
+assert_contains "points at the dispatch table" "$flagdrop_out" "loop.sh's dispatch table"
+printf 'usage: hermes chat -q QUERY -s SKILLS --yolo --accept-hooks\n' > "$FIXTURE4/chat-help"
 
 # --live with a chat that cannot answer must report the probe inconclusive and
 # fail. Reporting a pass here would be the exact false-healthy result the flag

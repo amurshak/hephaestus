@@ -38,6 +38,27 @@ if ! cfg=$(opencode debug config 2>/dev/null); then
 fi
 
 fail=0
+
+# ── Unattended contract ──────────────────────────────────────────────────────
+# loop.sh runs `opencode run --auto --command autopilot`. --auto approves
+# non-denied permissions; without it an unattended session stalls on the first
+# gated write with no TTY to answer. Checked against `opencode run --help`
+# because run's flag set is its own, not the top level's.
+if ! run_help=$(opencode run --help 2>&1); then
+  echo "ERR: opencode run --help failed" >&2
+  exit 1
+fi
+for flag in --auto --command; do
+  case "$run_help" in
+    *"$flag"*) ;;
+    *)
+      echo "ERR: opencode run --help no longer documents ${flag}" >&2
+      echo "     the opencode entry in loop.sh's dispatch table depends on it to run" >&2
+      echo "     unattended — re-measure and update the dispatch table" >&2
+      fail=1
+      ;;
+  esac
+done
 for cmd in autopilot ship finish start-issue critique; do
   case "$cfg" in
     *\"$cmd\"*) ;;
