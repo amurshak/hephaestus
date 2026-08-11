@@ -261,6 +261,7 @@ echo "scriv fragment" > "$TARGET/changelog.d/20230101_120000_someone.md"
 output=$(bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET" 2>&1)
 
 assert_contains    "warns about the existing directory" "$output" "another tool may own it"
+assert_contains    "names the migration path" "$output" "scriv collect"
 assert_file_exists "foreign fragment untouched" "$TARGET/changelog.d/20230101_120000_someone.md"
 teardown_fixture
 

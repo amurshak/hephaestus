@@ -613,10 +613,14 @@ scaffold_changelog() {
 
   # scriv also uses changelog.d/ with its own filename convention. Say so rather
   # than quietly dropping our README into someone else's fragment directory.
+  # No auto-rename: a scriv fragment keeps its category in the body, not the
+  # filename — one file can hold several — so there is no name to rename to,
+  # and these files are not ours to rewrite. Point at the migration instead.
   if [ -d "$TARGET/changelog.d" ] && [ ! -f "$TARGET/changelog.d/README.md" ] \
      && [ -n "$(ls -A "$TARGET/changelog.d" 2>/dev/null)" ]; then
     echo "  [warn] changelog.d/ already holds files — another tool may own it."
     echo "         collect-changelog.sh --check rejects filenames other than <id>.<category>.md."
+    echo "         Fold them with the tool that wrote them first (scriv: 'scriv collect') — see README."
   fi
 
   if [ ! -f "$SCRIPT_DIR/changelog.d/README.md" ]; then
