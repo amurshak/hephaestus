@@ -8,8 +8,9 @@
 #
 #   1. The spec's retry-limit table parses, and every loop it names has a value.
 #   2. Every retry count a workflow states matches the spec limit for the loop
-#      it names. The binding is the noun: the spec measures the critique loops
-#      in "iterations" and the test-fix loop in "cycles", so a workflow saying
+#      it names, and every limit-shaped phrase is in a shape this check can
+#      read. The binding is the noun: the spec measures the critique loops in
+#      "iterations" and the test-fix loop in "cycles", so a workflow saying
 #      "max 2 iterations" fails even though 2 is a number the spec uses
 #      elsewhere. Set membership alone would let the two limits swap silently.
 #   3. No file reintroduces a by-name reference to the limits ("per CLAUDE.md
@@ -71,27 +72,71 @@ for loop in "Plan-critique" "Pre-ship code critique" "Test-fix"; do
 done
 
 # ── 2. Every count a workflow states must match the spec for that loop ───────
-# The noun carries the binding, so the pattern must be generous about the verb
-# and the words between the number and the noun: "max 3 iterations", "up to 3
-# iterations", "all 3 attempts", "max 2 full plan-implement-test cycles".
-COUNT_RE='[0-9]+ +([a-z-]+ +){0,2}(iterations?|cycles?|attempts?|retries|retry|rounds?)'
+# A restatement has a shape: a count, up to two filler words, then one of the
+# two nouns the spec measures in — "max 3 iterations", "up to 3 iterations",
+# "max 2 full plan-implement-test cycles". The noun carries the loop binding,
+# so it must be a noun the spec actually uses; a generic one names no loop and
+# cannot be checked against anything.
+#
+# A regex reads only what it recognises, so two further shapes make an
+# unrecognised phrasing loud rather than silent:
+#
+#   b. A count bound to a noun the spec does not measure in — "max 2 retries",
+#      "3 rounds". The fix is to restate in the spec's noun, not for this check
+#      to guess which loop was meant.
+#   c. Limit vocabulary left unclaimed by (a) and (b) — "max four iterations",
+#      "max 4 passes", "a 4-iteration maximum", "iterations: 4". A quantifier
+#      only counts as limit-shaped alongside a loop noun, so an unrelated cap
+#      ("max 3 explorers") does not fire.
+#
+# Out of reach: a spelled-out count with no quantifier ("four iterations").
+# Free prose has no boundary a regex can find — the shape is the fence.
+SPEC_NOUN='iterations?|cycles?'
+OFF_SPEC_NOUN='attempts?|retr(y|ies)|rounds?|passes|loops?|tries'
+QUANTIFIER='max(imum)?|at most|up to'
+COUNT_RE="[0-9]+ +([a-z-]+ +){0,2}($SPEC_NOUN)"
+OFF_SPEC_RE="[0-9]+ +([a-z-]+ +){0,2}($OFF_SPEC_NOUN)"
+
+# prose_of <file> — the file with fenced blocks and inline code spans dropped
+# and folded to lower case. A limit is stated in prose; `max:` in a code span is
+# an identifier (worktrees' concurrency key), not a retry limit.
+prose_of() {
+  awk '/^ *```/{f=!f; next} !f' "$1" | sed -E 's/`[^`]*`//g' | tr 'A-Z' 'a-z'
+}
 
 iter_seen=0
 cycle_seen=0
 
 for workflow in "$WORKFLOWS_DIR"/*.md; do
   name=$(basename "$workflow")
+  prose=$(prose_of "$workflow")
+
+  # (a) counts bound to a spec noun — checked against the spec
   while IFS= read -r phrase; do
     [ -n "$phrase" ] || continue
     count=$(echo "$phrase" | grep -oE '^[0-9]+')
-    # cycles and retries measure the test-fix loop; everything else a critique loop.
     case "$phrase" in
-      *cycle*|*retries|*retry) expected="$cycle_limit"; loop="the test-fix loop"; cycle_seen=1 ;;
-      *)                       expected="$iter_limit";  loop="a critique loop";  iter_seen=1  ;;
+      *cycle*) expected="$cycle_limit"; loop="the test-fix loop"; cycle_seen=1 ;;
+      *)       expected="$iter_limit";  loop="a critique loop";  iter_seen=1  ;;
     esac
     [ "$count" = "$expected" ] \
       || report "$name says \"$phrase\", but .ai/conventions.md sets $loop to $expected"
-  done <<< "$(grep -oiE "$COUNT_RE" "$workflow" | tr 'A-Z' 'a-z' | sort -u)"
+  done <<< "$(echo "$prose" | grep -oE "$COUNT_RE" | sort -u)"
+
+  # (b) counts bound to a noun that names no loop
+  while IFS= read -r phrase; do
+    [ -n "$phrase" ] || continue
+    report "$name says \"$phrase\"; .ai/conventions.md measures its loops in iterations and cycles — restate with the noun for the loop you mean"
+  done <<< "$(echo "$prose" | grep -oE "$OFF_SPEC_RE" | sort -u)"
+
+  # (c) limit vocabulary neither shape claimed
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    report "$name says \"$line\"; that reads as a limit but not in the restatement shape (<count> <iterations|cycles>) — reword it"
+  done <<< "$(echo "$prose" \
+    | sed -E "s/($QUANTIFIER)? *($COUNT_RE|$OFF_SPEC_RE)//g" \
+    | grep -E "($QUANTIFIER).*($SPEC_NOUN|$OFF_SPEC_NOUN)|($SPEC_NOUN|$OFF_SPEC_NOUN).*($QUANTIFIER)|($SPEC_NOUN|$OFF_SPEC_NOUN) *: *[0-9]" \
+    | sed -E 's/^ *//; s/ *$//' | sort -u)"
 done
 
 # A limit deleted from every workflow is drift too, and the loudest kind: the
