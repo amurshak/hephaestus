@@ -83,7 +83,7 @@ F1B2=$(make_fixture); FIXTURES="$FIXTURES $F1B2"
   echo "Repeat, max four iterations."
   echo "Proceed under a 4-iteration maximum."
   echo "Repeat, max 4 further full critique iterations."
-  echo "iterations: 4"
+  echo "Iterations: 4"   # capitalised: the report is folded, so the check must be
   # Every noun that names no loop, and every quantifier the shape knows. Each
   # phrase is distinct: the report is deduped, so a repeat would mask a check.
   echo "Repeat, max 4 passes."
