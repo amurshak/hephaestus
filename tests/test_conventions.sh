@@ -91,14 +91,62 @@ F1B2=$(make_fixture); FIXTURES="$FIXTURES $F1B2"
 if out=$(bash "$F1B2/tests/check_conventions.sh" 2>&1); then
   fail "verifier should reject every out-of-shape phrasing" "exited 0, output: $out"
 else
-  for quoted in 'says "repeat, max four iterations."' \
+  for quoted in 'says "max four iterations"' \
                 'says "4 passes"' \
                 'says "4 loops"' \
-                'says "proceed under a 4-iteration maximum."' \
-                'says "repeat, max 4 further full critique iterations."' \
+                'says "iteration maximum"' \
+                'says "max 4 further full critique iterations"' \
                 'says "iterations: 4"'; do
     assert_contains "reports ${quoted#says }" "$out" "$quoted"
   done
+fi
+
+# ── The shape check may not second-guess a restatement the spec check read ───
+# The quantifier need not sit against the count: "a maximum of 3 iterations" is
+# a valid restatement, and reporting it as out-of-shape would tell a maintainer
+# to reword prose that already agrees with the spec.
+begin_test "verifier accepts a restatement whose quantifier is not adjacent"
+
+F1B2B=$(make_fixture); FIXTURES="$FIXTURES $F1B2B"
+{
+  echo "Allow a maximum of 3 iterations on the critique loop."
+  echo "Repeat the plan-critique loop up to the limit of 3 iterations."
+} >> "$F1B2B/.ai/workflows/refactor.md"
+
+if out=$(bash "$F1B2B/tests/check_conventions.sh" 2>&1); then
+  pass "a spec-agreeing restatement is not reported as out-of-shape"
+else
+  fail "verifier second-guessed a restatement it had already validated" "$out"
+fi
+
+# ── (a) and (b) read the file whole; only the shape check reads prose ────────
+# Stripping fences and code spans for every check would hide a limit restated
+# inside ship.md's PR-body fence — the drift this file exists to catch.
+begin_test "verifier reads limits inside fences and code spans"
+
+for placement in '\n```\nRepeat until SOUND (max 9 iterations).\n```\n' \
+                 '\nBound it to `max 9 iterations` here.\n'; do
+  F=$(make_fixture); FIXTURES="$FIXTURES $F"
+  printf "$placement" >> "$F/.ai/workflows/refactor.md"
+  if out=$(bash "$F/tests/check_conventions.sh" 2>&1); then
+    fail "verifier missed a limit in a code context" "exited 0"
+  else
+    assert_contains "reads a limit stated inside code" "$out" \
+      'refactor.md says "9 iterations", but .ai/conventions.md sets a critique loop to 3'
+  fi
+done
+
+# ── The loop binding is the trailing noun, not a substring of the filler ─────
+begin_test "verifier binds on the noun, not a filler word containing it"
+
+F1B2C=$(make_fixture); FIXTURES="$FIXTURES $F1B2C"
+printf '\nFix within 2 lifecycle iterations.\n' >> "$F1B2C/.ai/workflows/refactor.md"
+
+if out=$(bash "$F1B2C/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should reject 2 against the critique limit" "exited 0, output: $out"
+else
+  assert_contains "'lifecycle' in the filler does not reroute to the test-fix loop" "$out" \
+    'says "2 lifecycle iterations", but .ai/conventions.md sets a critique loop to 3'
 fi
 
 # ── A generic noun names no loop, so it may not be read as one ───────────────
@@ -120,18 +168,28 @@ else
 fi
 
 # ── A cap that bounds no loop is not a retry limit ───────────────────────────
-# The out-of-shape check keys on a quantifier beside loop vocabulary, and reads
-# prose only, so an unrelated cap and a code-span identifier stay silent.
+# The shape check needs a spec noun within four words of the quantifier, and
+# reads prose only. Loop vocabulary further off, an unrelated cap, a word merely
+# containing a loop noun, and a code-span identifier all stay silent.
 begin_test "verifier ignores a cap that names no loop"
 
 F1B4=$(make_fixture); FIXTURES="$FIXTURES $F1B4"
-printf '\nSpawn max 3 explorers in parallel; set `max:` to 3 in the worktrees block.\n' \
-  >> "$F1B4/.ai/workflows/refactor.md"
+{
+  echo 'Spawn max 3 explorers in parallel; set `max:` to 3 in the worktrees block.'
+  echo "Spawn up to 3 explorers in parallel, then let the critique loop finish."
+  echo "Run the workaround at most once when the branch is stale."
+  echo "Keep up to 5 changelog entries in the fragment directory."
+  echo "The reviewer may request up to 3 rounded estimates."
+  # A spec noun far from the quantifier: only the four-word window keeps this out.
+  echo "Spawn up to 3 explorers in parallel and let the plan critique loop run its iterations."
+  # A rejected phrasing quoted as an example: only the fence strip keeps this out.
+  printf 'The gate rejects prose like this:\n\n```\nmax four iterations\n```\n'
+} >> "$F1B4/.ai/workflows/refactor.md"
 
 if out=$(bash "$F1B4/tests/check_conventions.sh" 2>&1); then
-  pass "an unrelated cap and a code-span identifier do not read as limits"
+  pass "caps, near-miss words, quoted examples, and code spans do not read as limits"
 else
-  fail "verifier fired on a cap that bounds no loop" "$out"
+  fail "verifier fired on prose that bounds no loop" "$out"
 fi
 
 # A stale adapter must fail too — adapters are what an installed project runs.
