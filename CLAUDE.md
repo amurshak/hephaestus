@@ -43,7 +43,7 @@ Generated adapters (`.claude/commands/`, `.opencode/`, `.agents/skills/`, `.herm
 
 ## Worktrees
 
-- `max:` 3
+- `max:` 6
 - `serialize_paths:` `install.sh`
 - `setup:` none (no deps to install)
 
