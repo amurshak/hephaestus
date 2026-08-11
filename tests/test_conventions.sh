@@ -158,16 +158,41 @@ PLACEMENTS
 begin_test "verifier binds on the noun, not a filler word containing it"
 
 F1B2C=$(make_fixture); FIXTURES="$FIXTURES $F1B2C"
-printf '\nFix within 2 lifecycle iterations, then 3 more cycle.\n' \
-  >> "$F1B2C/.ai/workflows/refactor.md"
+{
+  echo "Fix within 2 lifecycle iterations, then 3 more cycle."
+  # The spec's own wording for the test-fix row: two filler words, one
+  # hyphenated. Narrow the filler count or drop the hyphen from its character
+  # class and (a) stops reading the canonical shape entirely.
+  echo "Iterate until green, max 9 full plan-implement-test cycles."
+} >> "$F1B2C/.ai/workflows/refactor.md"
 
 if out=$(bash "$F1B2C/tests/check_conventions.sh" 2>&1); then
-  fail "verifier should reject both counts" "exited 0, output: $out"
+  fail "verifier should reject all three counts" "exited 0, output: $out"
 else
   assert_contains "'lifecycle' in the filler does not reroute to the test-fix loop" "$out" \
     'says "2 lifecycle iterations", but .ai/conventions.md sets a critique loop to 3'
   assert_contains "a singular trailing noun still binds its loop" "$out" \
     'says "3 more cycle", but .ai/conventions.md sets the test-fix loop to 2'
+  assert_contains "the spec's own two-filler hyphenated shape is read" "$out" \
+    'says "9 full plan-implement-test cycles", but .ai/conventions.md sets the test-fix loop to 2'
+fi
+
+# ── The spec must keep the two nouns bound to distinct values ────────────────
+# The noun binding is only meaningful while "iterations" and "cycles" resolve to
+# one value each and those differ; a spec edit that collapses them would let the
+# two limits swap again with every workflow still passing.
+begin_test "verifier rejects a spec whose nouns no longer separate the loops"
+
+F1B2D=$(make_fixture); FIXTURES="$FIXTURES $F1B2D"
+sed -i.bak 's/| 2 full plan-implement-test cycles |/| 3 full plan-implement-test cycles |/' \
+  "$F1B2D/.ai/conventions.md"
+rm -f "$F1B2D/.ai/conventions.md.bak"
+
+if out=$(bash "$F1B2D/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should reject a spec that binds both nouns to one value" "exited 0, output: $out"
+else
+  assert_contains "names the constraint the spec broke" "$out" \
+    "must bind 'iterations' and 'cycles' to one distinct value each"
 fi
 
 # ── A generic noun names no loop, so it may not be read as one ───────────────
@@ -211,6 +236,9 @@ F1B4=$(make_fixture); FIXTURES="$FIXTURES $F1B4"
   # A restatement ending the line: only the \$ arm of the blank's right edge
   # reaches it, and BSD sed would ignore a \\b there.
   echo "Refine until SOUND, max 3 iterations"
+  # A correct restatement in the spec's own two-filler wording: the blank must
+  # reach as far as (a) does, or the shape check second-guesses it.
+  echo "Fix and re-run, max 2 full plan-implement-test cycles."
   # Spec nouns four and eleven words off the quantifier: only the window keeps
   # these out, and the shorter one pins it at four rather than merely below ten.
   echo "Spawn at most 3 explorers before the plan iterations begin."

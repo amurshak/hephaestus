@@ -78,9 +78,8 @@ done
 # so it must be a noun the spec actually uses; a generic one names no loop and
 # cannot be checked against anything.
 #
-# A regex reads only what it recognises, so three shapes are read, not one:
+# A regex reads only what it recognises, so that shape is not the only one read:
 #
-#   a. That shape, checked against the spec.
 #   b. A count bound to a noun the spec does not measure in — "max 2 retries",
 #      "3 rounds". The fix is to restate in the spec's noun, not for this check
 #      to guess which loop was meant.
@@ -143,17 +142,16 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
   # (c) limit vocabulary neither shape claimed. What (a) already read is blanked
   # rather than its whole line — every line that states a limit carries an (a)
   # match by construction, so dropping them whole would blind (c) to exactly the
-  # lines a limit-changing edit touches. The blank leaves `~` and restores the
-  # delimiter it matched: `~` is outside the window's token class, so removing
-  # text can never pull a quantifier and an unrelated later noun into range, and
-  # a swallowed full stop would have merged two clauses into one window. The
-  # right edge is spelt out because BSD sed ignores \b — reusing $COUNT_RE here
-  # would no-op on macOS and work on Linux.
+  # lines a limit-changing edit touches. The blank leaves `~`, which is outside
+  # the window's token class: without a barrier, removing text pulls a
+  # quantifier and an unrelated later noun into range of each other. The right
+  # edge is spelt out because BSD sed ignores \b — reusing $COUNT_RE here would
+  # no-op on macOS and work on Linux.
   while IFS= read -r phrase; do
     [ -n "$phrase" ] || continue
     report "$name says \"$phrase\"; that reads as a limit but not in the restatement shape (<count> <iterations|cycles>) — reword it"
   done <<< "$(prose_of "$workflow" | tr 'A-Z' 'a-z' \
-    | sed -E "s/[0-9]+ +([a-z-]+ +){0,2}($SPEC_NOUN)([^a-z]|\$)/ ~\\3/g" \
+    | sed -E "s/[0-9]+ +([a-z-]+ +){0,2}($SPEC_NOUN)([^a-z]|\$)/ ~/g" \
     | grep -oE "$OUT_OF_SHAPE" | sort -u)"
 done
 
