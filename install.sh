@@ -611,16 +611,17 @@ scaffold_changelog() {
     return 0
   fi
 
-  # scriv also uses changelog.d/ with its own filename convention. Say so rather
-  # than quietly dropping our README into someone else's fragment directory.
-  # No auto-rename: a scriv fragment keeps its category in the body, not the
-  # filename — one file can hold several — so there is no name to rename to,
-  # and these files are not ours to rewrite. Point at the migration instead.
-  if [ -d "$TARGET/changelog.d" ] && [ ! -f "$TARGET/changelog.d/README.md" ] \
-     && [ -n "$(ls -A "$TARGET/changelog.d" 2>/dev/null)" ]; then
-    echo "  [warn] changelog.d/ already holds files — another tool may own it."
-    echo "         collect-changelog.sh --check rejects filenames other than <id>.<category>.md."
-    echo "         Fold them with the tool that wrote them first (scriv: 'scriv collect') — see README."
+  # scriv also claims changelog.d/, keeping the category in the fragment body —
+  # no <id>.<category>.md rename target exists, and the files are not ours to
+  # rewrite. Warn while any unfoldable file remains, not just on the run that
+  # adopts; dotfiles like .gitkeep are placeholders, not fragments. Test the
+  # captured output, not grep -qv's exit code — BSD grep exits 0 there on
+  # empty input where GNU exits 1.
+  if [ -n "$(ls "$TARGET/changelog.d" 2>/dev/null | grep -v '^README\.md$' \
+               | grep -Ev '\.(added|changed|fixed|removed)\.md$')" ]; then
+    echo "  [warn] changelog.d/ holds files another tool may own."
+    echo "         collect-changelog.sh folds only <id>.<category>.md — --check rejects other .md names and never sees the rest."
+    echo "         Fold them with the tool that wrote them (scriv: 'scriv collect') — see changelog.d/README.md."
   fi
 
   if [ ! -f "$SCRIPT_DIR/changelog.d/README.md" ]; then
