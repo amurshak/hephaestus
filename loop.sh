@@ -7,7 +7,7 @@
 #   ~/.hephaestus/loop.sh                          # every 30 min (Claude)
 #   ~/.hephaestus/loop.sh 15                       # every 15 min
 #   ~/.hephaestus/loop.sh 30 /tmp/autopilot.log    # custom log path
-#   HEPH_HARNESS=opencode ~/.hephaestus/loop.sh 30 # OpenCode instead of Claude
+#   HEPH_HARNESS=codex ~/.hephaestus/loop.sh 30    # claude|codex|cursor|hermes|opencode
 #
 # Background (unattended):
 #   nohup ~/.hephaestus/loop.sh 30 /tmp/autopilot.log &
@@ -30,25 +30,64 @@ fi
 
 INTERVAL_SECONDS=$((INTERVAL_MINUTES * 60))
 
+# ── Harness dispatch ─────────────────────────────────────────────────────────
+# One entry per harness: the binary to find on PATH, and the argv that runs
+# /autopilot to completion with no TTY and no approval prompt. Each is the
+# harness's own headless mode — deliberately not the TUI-seeding form /worktrees
+# uses to spawn visible sessions, because an interactive session never exits, so
+# the loop would never reach its sleep.
+SUPPORTED_HARNESSES="claude codex cursor hermes opencode"
+
 case "${HARNESS}" in
-  claude|opencode) ;;
+  claude)
+    HARNESS_BIN=claude
+    HARNESS_ARGV=(--dangerously-skip-permissions -p "/autopilot")
+    ;;
+  codex)
+    # `codex exec` is the non-interactive mode. It has no --ask-for-approval —
+    # without a TTY there is nobody to ask — so the sandbox is the only gate,
+    # and it must be opened or `git push`/`gh` fail on blocked network.
+    HARNESS_BIN=codex
+    HARNESS_ARGV=(exec --dangerously-bypass-approvals-and-sandbox "/autopilot")
+    ;;
+  cursor)
+    # -p is both the non-interactive mode and what dispatches the slash command:
+    # the TUI owns the dispatcher, so a bare positional prompt reaches the model
+    # as literal text. --force approves tool calls; --trust answers the
+    # workspace-trust prompt, which would otherwise block with no TTY to take it.
+    HARNESS_BIN=cursor-agent
+    HARNESS_ARGV=(-p --force --trust "/autopilot")
+    ;;
+  hermes)
+    # -q is single-query (non-interactive) mode, which bypasses the slash
+    # dispatcher — so -s preloads the skill instead of sending /autopilot as
+    # text. --yolo bypasses command approval; --accept-hooks is a separate gate
+    # for shell hooks declared in config.yaml. Hermes has no project-local skill
+    # discovery: the project's .hermes/skills must already be reachable via
+    # skills.external_dirs or HERMES_HOME.
+    HARNESS_BIN=hermes
+    HARNESS_ARGV=(chat -s hephaestus/autopilot -q "Run the autopilot workflow." --yolo --accept-hooks)
+    ;;
+  opencode)
+    # --auto approves non-denied permissions for unattended runs.
+    HARNESS_BIN=opencode
+    HARNESS_ARGV=(run --auto --command autopilot)
+    ;;
   *)
-    echo "Error: HEPH_HARNESS must be 'claude' or 'opencode', got: '${HARNESS}'" >&2
+    echo "Error: HEPH_HARNESS must be one of: ${SUPPORTED_HARNESSES// /, }, got: '${HARNESS}'" >&2
     exit 1
     ;;
 esac
 
-# Guard: ensure the selected harness is on PATH
-if [ "${HARNESS}" = "claude" ]; then
-  if ! command -v claude >/dev/null 2>&1; then
-    echo "Error: 'claude' not found on PATH. Ensure the Claude Code CLI is installed and on PATH, or set HEPH_HARNESS=opencode." >&2
-    exit 1
-  fi
-else
-  if ! command -v opencode >/dev/null 2>&1; then
-    echo "Error: 'opencode' not found on PATH. Ensure the OpenCode CLI is installed and on PATH, or unset HEPH_HARNESS." >&2
-    exit 1
-  fi
+# Guard: ensure the selected harness is on PATH. Name the binary that is missing
+# (which is not always the harness name) and every harness that is not it.
+if ! command -v "${HARNESS_BIN}" >/dev/null 2>&1; then
+  ALTERNATIVES=""
+  for h in ${SUPPORTED_HARNESSES}; do
+    [ "$h" = "${HARNESS}" ] || ALTERNATIVES="${ALTERNATIVES}${ALTERNATIVES:+, }$h"
+  done
+  echo "Error: '${HARNESS_BIN}' not found on PATH. Install the ${HARNESS} CLI and put it on PATH, or set HEPH_HARNESS to one of: ${ALTERNATIVES}." >&2
+  exit 1
 fi
 
 # Lockfile: prevent concurrent instances from conflicting.
@@ -77,6 +116,7 @@ trap 'cleanup' EXIT
 
 echo "Hephaestus autopilot loop"
 echo "  Harness  : ${HARNESS}"
+echo "  Command  : ${HARNESS_BIN} ${HARNESS_ARGV[*]}"
 echo "  Interval : ${INTERVAL_MINUTES} min"
 echo "  Log      : ${LOG_FILE}"
 echo "  PID      : $$"
@@ -85,14 +125,10 @@ echo "  Stop     : kill $$"
 echo ""
 
 run_session() {
-  if [ "${HARNESS}" = "claude" ]; then
-    # Tolerate non-zero exit so the loop continues on failure.
-    claude --dangerously-skip-permissions -p "/autopilot" 2>&1 | tee -a "${LOG_FILE}"
-    return "${PIPESTATUS[0]}"
-  fi
-  # OpenCode: project-root cwd is required so .opencode/ commands load.
-  # --auto approves non-denied permissions for unattended runs.
-  opencode run --auto --command autopilot 2>&1 | tee -a "${LOG_FILE}"
+  # </dev/null: nothing here may block on stdin. `codex exec` in particular
+  # reads it whenever one is attached, which would hang the loop indefinitely.
+  # Tolerate non-zero exit so the loop continues on failure.
+  "${HARNESS_BIN}" "${HARNESS_ARGV[@]}" </dev/null 2>&1 | tee -a "${LOG_FILE}"
   return "${PIPESTATUS[0]}"
 }
 
