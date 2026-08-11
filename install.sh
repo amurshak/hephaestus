@@ -844,4 +844,4 @@ fi
 echo ""
 echo "Optional — headless autonomous loop (fresh session per run, from the project root):"
 echo "  nohup $SCRIPT_DIR/loop.sh 30 autopilot.log &"
-echo "  HEPH_HARNESS=opencode nohup $SCRIPT_DIR/loop.sh 30 autopilot-oc.log &"
+echo "  HEPH_HARNESS=codex nohup $SCRIPT_DIR/loop.sh 30 autopilot-codex.log &   # claude|codex|cursor|hermes|opencode"

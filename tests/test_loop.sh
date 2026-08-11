@@ -9,14 +9,47 @@ LOOP_SH="$HEPHAESTUS_ROOT/loop.sh"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-# Create a temporary directory with a mock `claude` on PATH that exits immediately.
-setup_mock_claude() {
+# The harness dispatch table under test: harness|binary|argv…
+# Each row is the headless form loop.sh must invoke — the harness's own
+# non-interactive mode, not the TUI-seeding form /worktrees spawns.
+#
+# The argv is the COMPLETE, ORDERED expected argument vector, asserted whole.
+# Asserting token presence instead would be near-worthless here: order is the
+# invariant that matters most. `-q --accept-hooks` makes Hermes swallow the
+# hooks flag as its query text, and `--dangerously-bypass-approvals-and-sandbox
+# /autopilot exec` demotes Codex's subcommand to a positional — both are
+# argv-token-identical to the correct forms, and both would ship silently.
+HARNESS_CASES=(
+  "claude|claude|--dangerously-skip-permissions|-p|/autopilot"
+  "codex|codex|exec|--dangerously-bypass-approvals-and-sandbox|/autopilot"
+  "cursor|cursor-agent|-p|--force|--trust|/autopilot"
+  "hermes|hermes|chat|-s|hephaestus/autopilot|-q|Run the autopilot skill. If the autopilot skill is not loaded, stop and report that.|--yolo|--accept-hooks"
+  "opencode|opencode|run|--auto|--command|autopilot"
+)
+
+# Create a temp dir holding a mock harness binary that records its argv, one
+# argument per line, to $ARGS_FILE and exits immediately.
+setup_mock_harness() {
   MOCK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-loop-test-XXXXXX")
-  cat > "$MOCK_DIR/claude" <<'MOCK'
-#!/usr/bin/env bash
-exit 0
-MOCK
-  chmod +x "$MOCK_DIR/claude"
+  ARGS_FILE="$MOCK_DIR/last-args"
+  # Embed the absolute args path directly — no sed, no placeholders.
+  {
+    echo '#!/usr/bin/env bash'
+    echo "printf '%s\\n' \"\$@\" > \"$ARGS_FILE\""
+    echo 'exit 0'
+  } > "$MOCK_DIR/$1"
+  chmod +x "$MOCK_DIR/$1"
+}
+
+# Back-compat alias for the lockfile/banner tests, which only need a harness
+# that exits cleanly and default to claude.
+setup_mock_claude() { setup_mock_harness claude; }
+
+# Recorded argv canonicalized to |a|b|c| so it can be compared whole against a
+# table row. Delimited rather than space-joined because Hermes's query argument
+# contains spaces, which a space-joined string could not tell from two arguments.
+recorded_argv() {
+  printf '|%s' "$(tr '\n' '|' < "$ARGS_FILE" 2>/dev/null || echo missing)"
 }
 
 teardown_mock() {
@@ -62,29 +95,48 @@ assert_contains "error mentions interval"  "$output" "positive integer"
 
 # ─────────────────────────────────────────────────────────────────────────────
 
-begin_test "fails when claude is not on PATH"
-# Use empty PATH so claude won't be found (keep basic utils via env -i)
+begin_test "PATH guard names the missing binary and the other harnesses"
+# A PATH with no harness on it, so every case below hits the guard.
+for case_row in "${HARNESS_CASES[@]}"; do
+  IFS='|' read -r harness binary _ <<< "$case_row"
+
+  output=$(env PATH="/usr/bin:/bin" HEPH_HARNESS="$harness" bash "$LOOP_SH" 1 2>&1)
+  exit_code=$?
+  assert_eq       "$harness: exits non-zero"          1 "$exit_code"
+  assert_contains "$harness: names the binary"        "$output" "'$binary' not found on PATH"
+
+  # The remediation must offer the other four and never the one just rejected.
+  # Match on the list alone: the harness name also appears in "Install the
+  # <harness> CLI" earlier in the same message.
+  alternatives=${output##*one of: }
+  assert_not_contains "$harness: alternatives exclude itself" "$alternatives" "$harness"
+  for other_row in "${HARNESS_CASES[@]}"; do
+    IFS='|' read -r other _ <<< "$other_row"
+    [ "$other" = "$harness" ] && continue
+    assert_contains "$harness: alternatives offer $other" "$alternatives" "$other"
+  done
+done
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "default harness is claude when HEPH_HARNESS is unset"
 output=$(env PATH="/usr/bin:/bin" bash "$LOOP_SH" 1 2>&1)
 exit_code=$?
-assert_eq   "exits non-zero"              1 "$exit_code"
-assert_contains "error mentions claude"    "$output" "claude"
+assert_eq   "exits non-zero"            1 "$exit_code"
+assert_contains "guards the claude CLI"  "$output" "'claude' not found on PATH"
 
 # ─────────────────────────────────────────────────────────────────────────────
 
-begin_test "fails when HEPH_HARNESS=opencode and opencode missing"
-output=$(env PATH="/usr/bin:/bin" HEPH_HARNESS=opencode bash "$LOOP_SH" 1 2>&1)
-exit_code=$?
-assert_eq   "exits non-zero"                1 "$exit_code"
-assert_contains "error mentions opencode"   "$output" "opencode"
-
-# ─────────────────────────────────────────────────────────────────────────────
-
-begin_test "rejects unknown HEPH_HARNESS"
+begin_test "rejects unknown HEPH_HARNESS and lists every supported one"
 setup_mock_claude
 output=$(env PATH="$MOCK_DIR:$PATH" HEPH_HARNESS=gemini bash "$LOOP_SH" 1 2>&1)
 exit_code=$?
 assert_eq   "exits non-zero"               1 "$exit_code"
 assert_contains "error mentions HEPH_HARNESS" "$output" "HEPH_HARNESS"
+for case_row in "${HARNESS_CASES[@]}"; do
+  IFS='|' read -r harness _ <<< "$case_row"
+  assert_contains "error lists $harness" "$output" "$harness"
+done
 teardown_mock
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -213,38 +265,77 @@ teardown_mock
 
 # ─────────────────────────────────────────────────────────────────────────────
 
-begin_test "OpenCode harness runs mock opencode autopilot command"
+begin_test "every harness dispatches its documented headless form"
+for case_row in "${HARNESS_CASES[@]}"; do
+  IFS='|' read -r harness binary expected_argv <<< "$case_row"
+
+  setup_mock_harness "$binary"
+
+  EXPECTED_HASH=$(printf '%s' "$(pwd)" | { shasum 2>/dev/null || sha1sum; } | cut -c1-12)
+  EXPECTED_LOCK="/tmp/hephaestus-${EXPECTED_HASH}.lock"
+  rm -rf "$EXPECTED_LOCK" 2>/dev/null || true
+
+  BANNER_FILE=$(mktemp "${TMPDIR:-/tmp}/heph-banner-XXXXXX")
+  env PATH="$MOCK_DIR:$PATH" HEPH_HARNESS="$harness" bash "$LOOP_SH" 1 /dev/null \
+    > "$BANNER_FILE" 2>&1 &
+  LOOP_PID=$!
+  # The session runs after the banner and before the sleep, so a non-empty args
+  # file means both the banner and the dispatch have landed.
+  wait_for 10 '[ -s "$ARGS_FILE" ]'
+
+  BANNER=$(cat "$BANNER_FILE")
+  assert_contains "$harness: banner names the harness" "$BANNER" "Harness  : $harness"
+  assert_contains "$harness: banner echoes the command" "$BANNER" "Command  : $binary "
+
+  assert_eq "$harness: argv matches exactly, in order" \
+    "|$expected_argv|" "$(recorded_argv)"
+
+  kill_loop "$LOOP_PID"
+  rm -f "$BANNER_FILE"
+  teardown_mock
+done
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "the session cannot block on stdin"
+# `codex exec` reads stdin whenever one is attached, so loop.sh runs the harness
+# with </dev/null. Proving that needs a stdin that would otherwise never reach
+# EOF — inherit the test runner's and the check passes vacuously under CI, where
+# stdin is already closed. So: hand loop.sh a FIFO held open by a writer that
+# sends nothing, and give the mock a `cat` that returns only at EOF. With the
+# redirect the mock records its argv at once; without it, it blocks forever and
+# wait_for times out.
 MOCK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-loop-test-XXXXXX")
 ARGS_FILE="$MOCK_DIR/last-args"
-# Write mock with absolute args path embedded (no sed / placeholders).
 {
   echo '#!/usr/bin/env bash'
+  echo 'cat > /dev/null'
   echo "printf '%s\\n' \"\$@\" > \"$ARGS_FILE\""
   echo 'exit 0'
-} > "$MOCK_DIR/opencode"
-chmod +x "$MOCK_DIR/opencode"
+} > "$MOCK_DIR/claude"
+chmod +x "$MOCK_DIR/claude"
+
+STDIN_FIFO="$MOCK_DIR/stdin"
+mkfifo "$STDIN_FIFO"
+# Holds the write end open without writing, so the FIFO never signals EOF.
+sleep 30 > "$STDIN_FIFO" &
+HOLDER_PID=$!
 
 EXPECTED_HASH=$(printf '%s' "$(pwd)" | { shasum 2>/dev/null || sha1sum; } | cut -c1-12)
 EXPECTED_LOCK="/tmp/hephaestus-${EXPECTED_HASH}.lock"
 rm -rf "$EXPECTED_LOCK" 2>/dev/null || true
 
-BANNER_FILE=$(mktemp "${TMPDIR:-/tmp}/heph-banner-XXXXXX")
-env PATH="$MOCK_DIR:$PATH" HEPH_HARNESS=opencode bash "$LOOP_SH" 1 /dev/null > "$BANNER_FILE" 2>&1 &
+env PATH="$MOCK_DIR:$PATH" bash "$LOOP_SH" 1 /dev/null \
+  < "$STDIN_FIFO" > /dev/null 2>&1 &
 LOOP_PID=$!
-# Wait until the mock is invoked — the session runs after the banner, before the sleep
+
 wait_for 10 '[ -s "$ARGS_FILE" ]'
-
-BANNER=$(cat "$BANNER_FILE")
-assert_contains "banner shows opencode harness" "$BANNER" "Harness  : opencode"
-
-ARGS=$(tr '\n' ' ' < "$ARGS_FILE" 2>/dev/null || echo missing)
-assert_contains "invokes opencode run" "$ARGS" "run"
-assert_contains "uses --command autopilot" "$ARGS" "autopilot"
-assert_contains "auto-approves permissions" "$ARGS" "--auto"
+assert_file_exists "harness ran instead of hanging on an open stdin" "$ARGS_FILE"
 
 kill_loop "$LOOP_PID"
-rm -f "$BANNER_FILE"
-rm -rf "$MOCK_DIR"
+kill "$HOLDER_PID" 2>/dev/null || true
+wait "$HOLDER_PID" 2>/dev/null || true
+teardown_mock
 
 # ─────────────────────────────────────────────────────────────────────────────
 

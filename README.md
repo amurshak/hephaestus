@@ -427,7 +427,7 @@ For Claude Code alone, the plugin is the least-friction path. The script install
 - **Every harness** — one install covers Claude Code, OpenCode, Codex, Hermes, and Cursor.
 - **Every project** — the shared set lives in your harness config dirs, so a new repo needs no adapter install at all.
 
-- **Headless mode** — `loop.sh` runs `/autopilot` on a timer in a fresh session each time. Plugins can't do this since they run *inside* the harness; `loop.sh` runs Claude Code or OpenCode as a subprocess.
+- **Headless mode** — `loop.sh` runs `/autopilot` on a timer in a fresh session each time. Plugins can't do this since they run *inside* the harness; `loop.sh` runs your harness as a subprocess.
 - **Forking and upstream sync** — clone the repo, modify commands, `git merge upstream/master` for upstream changes.
 
 ### Install
@@ -509,10 +509,24 @@ Every install records what it wrote — user-level in `$XDG_STATE_HOME/hephaestu
 ```bash
 cd /path/to/your/project
 nohup ~/.hephaestus/loop.sh 30 autopilot.log &
-HEPH_HARNESS=opencode nohup ~/.hephaestus/loop.sh 30 autopilot-oc.log &
+HEPH_HARNESS=codex nohup ~/.hephaestus/loop.sh 30 autopilot-codex.log &
 ```
 
-`loop.sh` runs `/autopilot` in a fresh session every N minutes. Clean context each time — no bloat. Project-scoped lockfile prevents overlap. Survives crashes. Claude path uses `--dangerously-skip-permissions`; OpenCode path uses `opencode run --auto --command autopilot` (start from the project root so `.opencode/` loads). Default harness is Claude; set `HEPH_HARNESS=opencode` for OpenCode.
+`loop.sh` runs `/autopilot` in a fresh session every N minutes. Clean context each time — no bloat. Project-scoped lockfile prevents overlap. Survives crashes. Start from the project root so the project-local adapters load.
+
+`HEPH_HARNESS` picks the harness (default `claude`). Each dispatches that harness's own non-interactive mode — deliberately not the TUI-seeding form `/worktrees` spawns, because an interactive session never exits, so the loop would never reach its sleep:
+
+| `HEPH_HARNESS` | Invocation |
+|---|---|
+| `claude` | `claude --dangerously-skip-permissions -p "/autopilot"` |
+| `codex` | `codex exec --dangerously-bypass-approvals-and-sandbox "/autopilot"` |
+| `cursor` | `cursor-agent -p --force --trust "/autopilot"` |
+| `hermes` | `hermes chat -s hephaestus/autopilot -q "Run the autopilot skill. …" --yolo --accept-hooks` |
+| `opencode` | `opencode run --auto --command autopilot` |
+
+Every form is unattended, and nothing can block on stdin — the session reads `/dev/null`, because `codex exec` reads stdin whenever one is attached. Note that these flags are not all the same kind of permission: `--dangerously-skip-permissions`, `--auto`, `--force`, and `--yolo` bypass *approval* for tool calls, while `--dangerously-bypass-approvals-and-sandbox` also drops Codex's *sandbox* (required, or blocked network fails `git push`/`gh`), and `--trust` and `--accept-hooks` pre-accept a workspace and previously-unseen shell hooks. Point a loop only at a repo you would grant all of that.
+
+Hermes is the one harness without project-local skill discovery, and a `-s` that resolves to nothing starts the session with no skill rather than failing — so its query carries its own guard, and `.hermes/skills` must be reachable through `skills.external_dirs` or `HERMES_HOME`.
 
 ### Forking
 
