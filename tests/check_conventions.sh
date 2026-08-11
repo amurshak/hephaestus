@@ -78,23 +78,23 @@ done
 # so it must be a noun the spec actually uses; a generic one names no loop and
 # cannot be checked against anything.
 #
-# A regex reads only what it recognises, so two further shapes make an
-# unrecognised phrasing loud rather than silent:
+# A regex reads only what it recognises, so three shapes are read, not one:
 #
+#   a. That shape, checked against the spec.
 #   b. A count bound to a noun the spec does not measure in — "max 2 retries",
 #      "3 rounds". The fix is to restate in the spec's noun, not for this check
 #      to guess which loop was meant.
-#   c. A quantifier and a spec noun within four words of each other on a line
-#      carrying neither (a) nor (b), or a count after the noun — "max four
-#      iterations", "a 4-iteration maximum", "max 4 further full critique
-#      iterations", "iterations: 4". The window and the spec noun are what keep
-#      an unrelated cap ("up to 3 explorers, then let the loop finish") out.
+#   c. Whatever is left that still reads as a limit: a quantifier and a spec
+#      noun within four words, or a count after the noun — "max four
+#      iterations", "a 4-iteration maximum", "iterations: 4". The window and the
+#      spec noun are what keep an unrelated cap ("up to 3 explorers, then let
+#      the loop finish") out.
 #
-# The fence is the shape, so the boundary is the shape's vocabulary and window:
-# (c) reads only the four quantifiers and the two spec nouns, within four words,
-# so "no more than four iterations", "four passes", and "max 4 further full plan
-# critique iterations" all still slip. Widen the lists when a phrasing earns it;
-# leave the window, which is what holds the false positives down.
+# The shape is the fence, so the boundary is its vocabulary and window: (c)
+# reads only the four quantifiers and the two spec nouns, within four words, so
+# "no more than four iterations" and "max 4 further full plan critique
+# iterations" still slip. Widen the lists when a phrasing earns it; leave the
+# window, which is what holds the false positives down.
 SPEC_NOUN='iterations?|cycles?'
 OFF_SPEC_NOUN='attempts?|retr(y|ies)|rounds?|passes|loops?|tries'
 QUANTIFIER='max(imum)?|at most|up to'
@@ -104,11 +104,11 @@ OUT_OF_SHAPE="\\b($QUANTIFIER)( +[a-z0-9-]+){0,4} +($SPEC_NOUN)\\b\
 |\\b($SPEC_NOUN)( +[a-z0-9-]+){0,4} +($QUANTIFIER)\\b\
 |\\b($SPEC_NOUN) *: *[0-9]"
 
-# prose_of <file> — the file with fenced blocks and inline code spans dropped
-# and folded to lower case. Only (c) reads it: `max:` in a code span is an
-# identifier (worktrees' concurrency key), not a limit, and (c) is the check a
-# stray quantifier can trip. (a) and (b) read the file whole — they are anchored
-# on a count, and a limit restated inside ship.md's PR-body fence still ships.
+# prose_of <file> — the file with fenced blocks and inline code spans dropped.
+# Only (c) reads it: `max:` in a code span is an identifier (worktrees'
+# concurrency key), not a limit, and (c) is the check a stray quantifier can
+# trip. (a) and (b) read the file whole — they are anchored on a count, and a
+# limit restated inside ship.md's PR-body fence still ships.
 prose_of() {
   awk '/^ *```/{f=!f; next} !f' "$1" | sed -E 's/`[^`]*`//g'
 }
@@ -141,17 +141,19 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
   done <<< "$(echo "$lower" | grep -oE "$OFF_SPEC_RE" | sort -u)"
 
   # (c) limit vocabulary neither shape claimed. What (a) already read is blanked
-  # rather than its whole line: "a maximum of 3 iterations" must not be
-  # second-guessed here, but a second clause on the same line must still be
-  # read — and every line that states a limit carries an (a) match by
-  # definition, so dropping them whole would blind (c) to exactly the lines a
-  # limit-changing edit touches. BSD sed ignores \b, so the right edge is spelt
-  # out; reusing $COUNT_RE here would no-op on macOS and work on Linux.
+  # rather than its whole line — every line that states a limit carries an (a)
+  # match by construction, so dropping them whole would blind (c) to exactly the
+  # lines a limit-changing edit touches. The blank leaves `~` and restores the
+  # delimiter it matched: `~` is outside the window's token class, so removing
+  # text can never pull a quantifier and an unrelated later noun into range, and
+  # a swallowed full stop would have merged two clauses into one window. The
+  # right edge is spelt out because BSD sed ignores \b — reusing $COUNT_RE here
+  # would no-op on macOS and work on Linux.
   while IFS= read -r phrase; do
     [ -n "$phrase" ] || continue
     report "$name says \"$phrase\"; that reads as a limit but not in the restatement shape (<count> <iterations|cycles>) — reword it"
   done <<< "$(prose_of "$workflow" | tr 'A-Z' 'a-z' \
-    | sed -E "s/[0-9]+ +([a-z-]+ +){0,2}($SPEC_NOUN)([^a-z]|\$)/ /g" \
+    | sed -E "s/[0-9]+ +([a-z-]+ +){0,2}($SPEC_NOUN)([^a-z]|\$)/ ~\\3/g" \
     | grep -oE "$OUT_OF_SHAPE" | sort -u)"
 done
 

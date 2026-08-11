@@ -91,6 +91,7 @@ F1B2=$(make_fixture); FIXTURES="$FIXTURES $F1B2"
   echo "Retry the plan 3 attempts."
   echo "Re-review 3 rounds before shipping."
   echo "Give the fix 3 tries."
+  echo "Allow 1 retry, 1 attempt, 1 round and 1 loop."
   echo "Repeat, at most five iterations."
   echo "Repeat, up to six iterations."
   # Clauses sharing a line with a valid restatement — every line that states a
@@ -108,6 +109,7 @@ else
                 'says "iterations: 4"' \
                 'says "4 passes"' 'says "4 loops"' 'says "3 attempts"' \
                 'says "3 rounds"' 'says "3 tries"' \
+                'says "1 retry"' 'says "1 attempt"' 'says "1 round"' 'says "1 loop"' \
                 'says "at most five iterations"' 'says "up to six iterations"' \
                 'says "at most seven iterations"' 'says "iterations: 9"'; do
     assert_contains "reports ${quoted#says }" "$out" "$quoted"
@@ -137,29 +139,35 @@ fi
 # inside ship.md's PR-body fence — the drift this file exists to catch.
 begin_test "verifier reads limits inside fences and code spans"
 
-for placement in '\n```\nRepeat until SOUND (max 9 iterations).\n```\n' \
-                 '\nBound it to `max 9 iterations` here.\n'; do
+while IFS='|' read -r placement expected; do
+  [ -n "$placement" ] || continue
   F=$(make_fixture); FIXTURES="$FIXTURES $F"
   printf "$placement" >> "$F/.ai/workflows/refactor.md"
   if out=$(bash "$F/tests/check_conventions.sh" 2>&1); then
     fail "verifier missed a limit in a code context" "exited 0"
   else
-    assert_contains "reads a limit stated inside code" "$out" \
-      'refactor.md says "9 iterations", but .ai/conventions.md sets a critique loop to 3'
+    assert_contains "reads a limit stated inside code" "$out" "$expected"
   fi
-done
+done <<'PLACEMENTS'
+\n```\nRepeat until SOUND (max 9 iterations).\n```\n|says "9 iterations", but .ai/conventions.md sets a critique loop to 3
+\nBound it to `max 9 iterations` here.\n|says "9 iterations", but .ai/conventions.md sets a critique loop to 3
+\n```\nRepeat until SOUND (max 9 retries).\n```\n|says "9 retries"; .ai/conventions.md measures its loops
+PLACEMENTS
 
 # ── The loop binding is the trailing noun, not a substring of the filler ─────
 begin_test "verifier binds on the noun, not a filler word containing it"
 
 F1B2C=$(make_fixture); FIXTURES="$FIXTURES $F1B2C"
-printf '\nFix within 2 lifecycle iterations.\n' >> "$F1B2C/.ai/workflows/refactor.md"
+printf '\nFix within 2 lifecycle iterations, then 3 more cycle.\n' \
+  >> "$F1B2C/.ai/workflows/refactor.md"
 
 if out=$(bash "$F1B2C/tests/check_conventions.sh" 2>&1); then
-  fail "verifier should reject 2 against the critique limit" "exited 0, output: $out"
+  fail "verifier should reject both counts" "exited 0, output: $out"
 else
   assert_contains "'lifecycle' in the filler does not reroute to the test-fix loop" "$out" \
     'says "2 lifecycle iterations", but .ai/conventions.md sets a critique loop to 3'
+  assert_contains "a singular trailing noun still binds its loop" "$out" \
+    'says "3 more cycle", but .ai/conventions.md sets the test-fix loop to 2'
 fi
 
 # ── A generic noun names no loop, so it may not be read as one ───────────────
@@ -196,6 +204,13 @@ F1B4=$(make_fixture); FIXTURES="$FIXTURES $F1B4"
   echo "Use 5 iterationsx as the placeholder token."
   # A word merely ending in a quantifier: the leading boundary keeps it out.
   echo "Set HEPH_MAX before the plan iterations begin."
+  # Blanking a restatement must not merge its clause with the next one, nor
+  # pull a later noun into the window — the `~` and the restored delimiter.
+  echo "Refine until SOUND, max 3 iterations. Iterations beyond that need approval."
+  echo "Cap the loop at max 3 iterations so later iterations never run."
+  # A restatement ending the line: only the \$ arm of the blank's right edge
+  # reaches it, and BSD sed would ignore a \\b there.
+  echo "Refine until SOUND, max 3 iterations"
   # Spec nouns four and eleven words off the quantifier: only the window keeps
   # these out, and the shorter one pins it at four rather than merely below ten.
   echo "Spawn at most 3 explorers before the plan iterations begin."
