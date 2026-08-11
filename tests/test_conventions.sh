@@ -225,10 +225,11 @@ else
 fi
 
 # ── Each spec noun must resolve to exactly one value ─────────────────────────
-# The other two arms of the guard F1B2D exercises: a noun matching two rows
-# with different values, and a noun matching no row at all. The got-clause is
-# asserted whole so the test proves which resolution the guard saw, not merely
-# that some spec edit upset it.
+# The other two arms of the guard F1B2D exercises — a noun matching two rows
+# with different values, and a noun matching no row at all — each taken from
+# both sides, since the guard's conjuncts are per-noun and deleting one side
+# alone must not survive. The got-clause is asserted whole so the test proves
+# which resolution the guard saw, not merely that some spec edit upset it.
 begin_test "verifier rejects a spec noun resolving to more than one value"
 
 F1B2G=$(make_fixture); FIXTURES="$FIXTURES $F1B2G"
@@ -239,14 +240,27 @@ rm -f "$F1B2G/.ai/conventions.md.bak"
 if out=$(bash "$F1B2G/tests/check_conventions.sh" 2>&1); then
   fail "verifier should reject a noun bound to two values" "exited 0, output: $out"
 else
-  assert_contains "reports both values the noun resolves to" "$out" \
+  assert_contains "reports both values 'iterations' resolves to" "$out" \
     "must bind 'iterations' and 'cycles' to one distinct value each (got '3 5 ' and '2 ')"
+fi
+
+F1B2J=$(make_fixture); FIXTURES="$FIXTURES $F1B2J"
+sed -i.bak 's/| Pre-ship code critique | 3 iterations |/| Pre-ship code critique | 5 review cycles |/' \
+  "$F1B2J/.ai/conventions.md"
+rm -f "$F1B2J/.ai/conventions.md.bak"
+
+if out=$(bash "$F1B2J/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should reject a noun bound to two values" "exited 0, output: $out"
+else
+  assert_contains "reports both values 'cycles' resolves to" "$out" \
+    "must bind 'iterations' and 'cycles' to one distinct value each (got '3 ' and '2 5 ')"
 fi
 
 begin_test "verifier rejects a spec noun resolving to no value"
 
-# The Test-fix row stays — only its noun leaves the spec's vocabulary — so this
-# cannot pass for the wrong reason via the missing-row guard below.
+# The rows stay: deleting one outright would fire this same guard with
+# byte-identical output, so changing only the noun isolates the vocabulary
+# loss as the cause.
 F1B2H=$(make_fixture); FIXTURES="$FIXTURES $F1B2H"
 sed -i.bak 's/| Test-fix | 2 full plan-implement-test cycles |/| Test-fix | 2 full plan-implement-test rounds |/' \
   "$F1B2H/.ai/conventions.md"
@@ -255,14 +269,27 @@ rm -f "$F1B2H/.ai/conventions.md.bak"
 if out=$(bash "$F1B2H/tests/check_conventions.sh" 2>&1); then
   fail "verifier should reject a noun bound to no value" "exited 0, output: $out"
 else
-  assert_contains "reports the noun that resolved to nothing" "$out" \
+  assert_contains "reports 'cycles' resolving to nothing" "$out" \
     "must bind 'iterations' and 'cycles' to one distinct value each (got '3 ' and ' ')"
 fi
 
+F1B2K=$(make_fixture); FIXTURES="$FIXTURES $F1B2K"
+sed -i.bak 's/| 3 iterations |/| 3 rounds |/' "$F1B2K/.ai/conventions.md"
+rm -f "$F1B2K/.ai/conventions.md.bak"
+
+if out=$(bash "$F1B2K/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should reject a noun bound to no value" "exited 0, output: $out"
+else
+  assert_contains "reports 'iterations' resolving to nothing" "$out" \
+    "must bind 'iterations' and 'cycles' to one distinct value each (got ' ' and '2 ')"
+fi
+
 # ── A loop row the spec no longer names is drift ─────────────────────────────
-# Pre-ship is the row to drop: "iterations" still resolves through the
-# Plan-critique row, so the value guards stay quiet and only the row check can
-# catch the loss.
+# The iteration rows are the ones to drop: each leaves "iterations" resolving
+# through the other, so the value guards stay quiet and only the row check can
+# catch the loss — one fixture per name, since the check is a per-name list.
+# Test-fix has no such fixture by construction: dropping its only "cycles" row
+# empties the noun, and the value guard exits first.
 begin_test "verifier rejects a spec that drops a loop's row"
 
 F1B2I=$(make_fixture); FIXTURES="$FIXTURES $F1B2I"
@@ -274,6 +301,17 @@ if out=$(bash "$F1B2I/tests/check_conventions.sh" 2>&1); then
 else
   assert_contains "names the loop whose row vanished" "$out" \
     "spec is missing a retry limit for 'Pre-ship code critique'"
+fi
+
+F1B2L=$(make_fixture); FIXTURES="$FIXTURES $F1B2L"
+sed -i.bak '/^| Plan-critique | 3 iterations |$/d' "$F1B2L/.ai/conventions.md"
+rm -f "$F1B2L/.ai/conventions.md.bak"
+
+if out=$(bash "$F1B2L/tests/check_conventions.sh" 2>&1); then
+  fail "verifier should reject a spec missing a loop row" "exited 0, output: $out"
+else
+  assert_contains "checks every name on its list, not just one" "$out" \
+    "spec is missing a retry limit for 'Plan-critique'"
 fi
 
 # ── A generic noun names no loop, so it may not be read as one ───────────────
