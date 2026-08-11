@@ -79,6 +79,7 @@ Target projects adopt the same convention with `install.sh --project --changelog
 - `scripts/sync-hermes-adapters.sh` — generates/checks Hermes skills and delegate briefs
 - `scripts/sync-cursor-adapters.sh` — generates/checks Cursor commands, subagents, and the project rule
 - `changelog.d/` — one changelog fragment per PR; `scripts/collect-changelog.sh <version>` folds them into CHANGELOG.md at release
+- `docs/announcements/` — release-ready announcement copy for work that earns its own beat; lifted verbatim into the release body at publish time
 - `install.sh` — Three modes: default symlinks the shared adapters into the harness config dirs (`~/.claude/`, `~/.config/opencode/`, `~/.codex/`, `~/.hermes/`, `~/.cursor/`); `--project` scaffolds the files a repo owns; `--vendor` commits the shared set into a repo. Every mode records what it wrote in a manifest. `--migrate` first strips a pre-2.2 `.hephaestus` submodule install from the target repo
 - `update.sh` — Pulls the clone and re-installs (`--vendor <path>` for a vendored repo)
 - `uninstall.sh` — Removes exactly what the matching manifest records
