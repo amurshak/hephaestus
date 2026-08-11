@@ -340,6 +340,33 @@ assert_contains "names the missing flag"         "$output" "no longer documents 
 assert_contains "points at the dispatch table"   "$output" "dispatch table"
 assert_file_not_exists "no session dispatched"   "$ARGS_FILE"
 assert_file_not_exists "no lock left behind"     "$EXPECTED_LOCK"
+
+# =0 must not disable the check: every doc says =1, and an env var somebody
+# exported as 0 to mean "off is off" would otherwise silently skip it.
+output=$(env PATH="$MOCK_DIR:$PATH" HEPH_HARNESS=cursor HEPH_NO_PREFLIGHT=0 \
+  bash "$LOOP_SH" 1 /dev/null 2>&1)
+assert_eq "HEPH_NO_PREFLIGHT=0 still preflights" 1 "$?"
+teardown_mock
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "preflight reports a help call that fails or prints nothing"
+# A help that exits non-zero (or hangs into the timeout) leaves nothing to
+# verify against; the loop must say so and stop, not proceed unverified.
+setup_mock_harness claude
+printf '#!/usr/bin/env bash\n[ "$1" = "--help" ] && exit 3\nexit 0\n' > "$MOCK_DIR/claude"
+chmod +x "$MOCK_DIR/claude"
+
+output=$(env PATH="$MOCK_DIR:$PATH" bash "$LOOP_SH" 1 /dev/null 2>&1)
+assert_eq       "exits non-zero"        1 "$?"
+assert_contains "names the failed help" "$output" "failed or printed nothing"
+
+# Exit 0 with empty output is the same dead end and takes the same branch.
+printf '#!/usr/bin/env bash\nexit 0\n' > "$MOCK_DIR/claude"
+chmod +x "$MOCK_DIR/claude"
+output=$(env PATH="$MOCK_DIR:$PATH" bash "$LOOP_SH" 1 /dev/null 2>&1)
+assert_eq       "empty help exits non-zero" 1 "$?"
+assert_contains "names the empty help"      "$output" "failed or printed nothing"
 teardown_mock
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -48,16 +48,15 @@ if ! run_help=$(opencode run --help 2>&1); then
   echo "ERR: opencode run --help failed" >&2
   exit 1
 fi
+# Word-boundary grep, not substring: a rename to --auto-approve or
+# --command-file must fail this check, not satisfy it.
 for flag in --auto --command; do
-  case "$run_help" in
-    *"$flag"*) ;;
-    *)
-      echo "ERR: opencode run --help no longer documents ${flag}" >&2
-      echo "     the opencode entry in loop.sh's dispatch table depends on it to run" >&2
-      echo "     unattended — re-measure and update the dispatch table" >&2
-      fail=1
-      ;;
-  esac
+  if ! grep -qE "(^|[[:space:],])${flag}([[:space:],=]|$)" <<< "$run_help"; then
+    echo "ERR: opencode run --help no longer documents ${flag}" >&2
+    echo "     the opencode entry in loop.sh's dispatch table depends on it to run" >&2
+    echo "     unattended — re-measure and update the dispatch table" >&2
+    fail=1
+  fi
 done
 for cmd in autopilot ship finish start-issue critique; do
   case "$cfg" in

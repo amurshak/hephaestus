@@ -8,8 +8,9 @@
 # Requires `hermes` on PATH. Exit 0 when the CLI is absent so the script can stay
 # in CI optionally; pass --require to fail instead.
 #
-# Every check below is a layout assertion, which is free but only proves a skill
-# *resolves*. It cannot prove Hermes injects the skill's **body** — `-s` could
+# Every check below is free — layout assertions plus unbilled CLI calls like
+# `chat --help` and `skills list` — and so only proves a skill *resolves*.
+# It cannot prove Hermes injects the skill's **body** — `-s` could
 # preload nothing but the description and every assertion here would still pass,
 # which is precisely how #154 lost two measurement runs to a workflow the model
 # never actually received. Nothing offline closes that gap: `hermes skills

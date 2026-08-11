@@ -164,6 +164,14 @@ assert_exit_code "fails when --auto is gone" 1 "$?"
 assert_contains  "names the dropped flag" "$out" "no longer documents --auto"
 assert_contains  "points at the dispatch table" "$out" "loop.sh's dispatch table"
 
+# The likelier drift is a rename to a superset flag. A substring match would
+# call --auto-approve healthy for --auto — the check must match whole words.
+printf -- '--auto-approve  approve permissions\n--command-file  read from file\n' > "$STUB_DIR/run-help"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-opencode-load.sh" 2>&1)
+assert_exit_code "fails on a superstring rename" 1 "$?"
+assert_contains  "names --auto despite --auto-approve"     "$out" "no longer documents --auto"
+assert_contains  "names --command despite --command-file"  "$out" "no longer documents --command"
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 begin_test "hand-written files in .opencode dirs survive the stale sweep"

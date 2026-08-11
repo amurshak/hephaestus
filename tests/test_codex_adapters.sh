@@ -219,8 +219,9 @@ assert_contains  "names the spawn regression" "$out" "no longer documents a posi
 
 # An exec that dropped the approvals bypass would not fail loop.sh — it would
 # hang it: exec has no --ask-for-approval, so the sandbox gate re-arms and the
-# first blocked write stalls with no TTY to answer. The verifier must catch it.
-make_stub "codex [OPTIONS] [PROMPT]" "--full-auto low-friction sandboxed execution"
+# first blocked write stalls with no TTY to answer. The broken stub keeps a
+# superstring of the flag, so a substring match would wave the rename through.
+make_stub "codex [OPTIONS] [PROMPT]" "--dangerously-bypass-approvals-and-sandbox-v2 the renamed bypass"
 out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-codex-load.sh" 2>&1)
 assert_exit_code "fails when the exec unattended flag is gone" 1 "$?"
 assert_contains  "names the dropped flag" "$out" "no longer documents --dangerously-bypass-approvals-and-sandbox"

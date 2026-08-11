@@ -108,15 +108,26 @@ fi
 # ceiling here (cf. the Hermes config-parsing preflight rejected in #191); a
 # harness that hides a working flag from its help can be waved through with
 # HEPH_NO_PREFLIGHT=1.
-if [ -z "${HEPH_NO_PREFLIGHT:-}" ]; then
+case "${HEPH_NO_PREFLIGHT:-0}" in ""|0) PREFLIGHT=1 ;; *) PREFLIGHT=0 ;; esac
+if [ "${PREFLIGHT}" -eq 1 ]; then
   HELP_ARGV=(--help)
   case "${HARNESS_ARGV[0]}" in
     -*) ;;
     *) HELP_ARGV=("${HARNESS_ARGV[0]}" --help) ;;
   esac
-  if ! HELP_TEXT=$("${HARNESS_BIN}" "${HELP_ARGV[@]}" </dev/null 2>&1) || [ -z "${HELP_TEXT}" ]; then
-    echo "Error: '${HARNESS_BIN} ${HELP_ARGV[*]}' failed, so the unattended flags cannot be verified." >&2
-    echo "       Fix the ${HARNESS} install, or skip this check with HEPH_NO_PREFLIGHT=1." >&2
+  # `timeout` is coreutils, absent from a stock macOS, so it is best-effort: a
+  # help call that blocks (auth probe, update check) must not stall the loop
+  # before its first log line — that would be a quieter version of the very
+  # hang this preflight exists to prevent.
+  if command -v timeout >/dev/null 2>&1; then
+    HELP_TEXT=$(timeout 60 "${HARNESS_BIN}" "${HELP_ARGV[@]}" </dev/null 2>&1)
+  else
+    HELP_TEXT=$("${HARNESS_BIN}" "${HELP_ARGV[@]}" </dev/null 2>&1)
+  fi
+  if [ $? -ne 0 ] || [ -z "${HELP_TEXT}" ]; then
+    echo "Error: '${HARNESS_BIN} ${HELP_ARGV[*]}' failed or printed nothing, so the unattended" >&2
+    echo "       flags cannot be verified. Fix the ${HARNESS} install, or skip this check" >&2
+    echo "       with HEPH_NO_PREFLIGHT=1." >&2
     exit 1
   fi
   for flag in "${HARNESS_ARGV[@]}"; do

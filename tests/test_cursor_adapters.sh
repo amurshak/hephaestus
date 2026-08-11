@@ -338,13 +338,15 @@ assert_contains  "names the dropped approval flag" "$out" "no longer documents -
 assert_contains  "points at the dispatch table" "$out" "loop.sh's dispatch table"
 
 # Losing --trust is quieter still: the session blocks on the workspace-trust
-# prompt before any tool call, with no TTY to answer it.
+# prompt before any tool call, with no TTY to answer it. Rename-shaped drift
+# (--trust-workspace) is the likelier form, and a substring match would wave it
+# through — so the broken stub keeps the superstring.
 make_stub "agent [options] [command] [prompt...]" \
   "-p, --print                  Print responses to console" \
-  "-f, --force                  Force allow commands"
+  "-f, --force                  Force allow commands; --trust-workspace  Trust the workspace"
 out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" 2>&1)
-assert_exit_code "fails when --trust is gone" 1 "$?"
-assert_contains  "names the dropped trust flag" "$out" "no longer documents --trust"
+assert_exit_code "fails when --trust is renamed" 1 "$?"
+assert_contains  "names --trust despite --trust-workspace" "$out" "no longer documents --trust"
 
 # A `--project` install scaffolds only .cursor/commands/orient.md and no
 # .cursor/agents; the shared set stays in $CURSOR_HOME. Must not false-fail.

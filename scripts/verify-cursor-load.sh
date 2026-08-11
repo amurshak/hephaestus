@@ -125,15 +125,14 @@ case "$help" in
     fail=1
     ;;
 esac
-case "$help" in
-  *"--trust"*) ;;
-  *)
+# Word-boundary grep, not substring: a rename to --trust-workspace must fail
+# this check, not satisfy it.
+if ! grep -qE '(^|[[:space:],])--trust([[:space:],=]|$)' <<< "$help"; then
     echo "ERR: cursor-agent --help no longer documents --trust" >&2
     echo "     the cursor entry in loop.sh's dispatch table depends on it to answer the" >&2
     echo "     workspace-trust prompt unattended — re-measure and update the dispatch table" >&2
     fail=1
-    ;;
-esac
+fi
 
 CURSOR_HOME_DIR="${CURSOR_HOME:-$HOME/.cursor}"
 
@@ -196,7 +195,7 @@ fi
 
 # Name the roots: the fallback is silent, and which one answered decides
 # whether a drifted copy in the other root would be what Cursor actually loads.
-echo "✓ Cursor takes the -p spawn form"
+echo "✓ Cursor takes the -p spawn form and the unattended flags"
 echo "  commands:  $COMMANDS_DIR"
 echo "  subagents: $AGENTS_DIR"
 echo "  rule:      $RULES_DIR/hephaestus.mdc"

@@ -92,15 +92,14 @@ if ! exec_help=$(codex exec --help 2>&1); then
   echo "ERR: codex exec --help failed" >&2
   exit 1
 fi
-case "$exec_help" in
-  *"--dangerously-bypass-approvals-and-sandbox"*) ;;
-  *)
-    echo "ERR: codex exec --help no longer documents --dangerously-bypass-approvals-and-sandbox" >&2
-    echo "     the codex entry in loop.sh's dispatch table depends on it to run" >&2
-    echo "     unattended — re-measure the CLI and update the dispatch table" >&2
-    fail=1
-    ;;
-esac
+# Word-boundary grep, not substring: a renamed superset flag must fail this
+# check, not satisfy it.
+if ! grep -qE '(^|[[:space:],])--dangerously-bypass-approvals-and-sandbox([[:space:],=]|$)' <<< "$exec_help"; then
+  echo "ERR: codex exec --help no longer documents --dangerously-bypass-approvals-and-sandbox" >&2
+  echo "     the codex entry in loop.sh's dispatch table depends on it to run" >&2
+  echo "     unattended — re-measure the CLI and update the dispatch table" >&2
+  fail=1
+fi
 
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 
