@@ -923,6 +923,7 @@ interactive_models_conf() {
       [ -f "$conf" ] || echo "# hephaestus model-tier overrides — harness.tier.key = value" > "$conf"
       if grep -qxF -- "$line" "$conf"; then
         echo "  [ok] already present: $line"
+        wrote=true
       else
         printf '%s\n' "$line" >> "$conf"
         echo "  [written] $line"
@@ -948,7 +949,7 @@ interactive_models_conf() {
 show_dev_commands() {
   awk '
     /^#/ {
-      if (insec) { match($0, /^#+/); if (RLENGTH <= depth) exit }
+      if (insec) { match($0, /^#+/); if (RLENGTH <= depth) insec = 0 }
       if (!insec && tolower($0) ~ /^##+ +development commands/) {
         match($0, /^#+/); depth = RLENGTH; insec = 1
       }

@@ -692,6 +692,7 @@ assert_file_exists "models.conf written" "$conf"
 assert_contains "valid override recorded" "$(cat "$conf")" "opencode.opus.model = openai/gpt-5"
 assert_not_contains "invalid line rejected" "$(cat "$conf")" "not a valid line"
 assert_contains "invalid line reported" "$output" "[skip] not harness.tier.key = value"
+assert_contains "warns overrides are build-time" "$output" "when adapters are next generated"
 
 # Same answers again: the override must not duplicate
 printf 'claude\ny\nopencode.opus.model = openai/gpt-5\n\n' \
@@ -919,6 +920,11 @@ assert_contains "names the vendor conflict" "$output" "stays non-interactive"
 output=$(bash "$SOURCE_REPO/install.sh" --project --audit --interactive "$TARGET" </dev/null 2>&1)
 assert_exit_code "--audit + --interactive" 1 $?
 assert_contains "names the audit conflict" "$output" "read-only"
+
+# Piped script + prompts share stdin — the prompts would eat the script body
+output=$(cat "$SOURCE_REPO/install.sh" | bash -s -- --interactive 2>&1)
+assert_exit_code "piped --interactive refused" 1 $?
+assert_contains "explains the pipe refusal" "$output" "needs a checkout"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
