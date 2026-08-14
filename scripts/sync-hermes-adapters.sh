@@ -163,7 +163,7 @@ render_hermes_skill() {
     echo ""
     echo "> **Hermes:** this skill is the \`/${name}\` adapter."
     if [ "$requires" != "none" ]; then
-      echo "> Where a step below names a role (${requires}), you **must** call \`delegate_task\` for it rather than doing that step yourself — measured: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in \`.hermes/agents/<role>.md\`. A delegate inherits **none** of your conversation, and the cwd it does inherit is frozen at session **launch** — confidently stale if you work in a worktree — so give \`context\` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work."
+      echo "> Where a step below names a role (${requires}), you **must** call \`delegate_task\` for it rather than doing that step yourself — measured on \`/refactor\`: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in \`.hermes/agents/<role>.md\`. A delegate inherits **none** of your conversation, and the cwd it does inherit is frozen at session **launch** — confidently stale if you work in a worktree — so give \`context\` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work."
     fi
     if [ "$chains" != "none" ]; then
       echo "> For chained workflows (${chains}), invoke the matching skill (\`/<workflow>\`) when it is installed; otherwise read and follow \`.hermes/skills/hephaestus/<workflow>/SKILL.md\`."

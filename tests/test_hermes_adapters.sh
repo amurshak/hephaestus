@@ -155,7 +155,11 @@ assert_contains "refactor skill says the inherited cwd is stale" "$(cat "$refact
 assert_contains "refactor skill demands absolute paths" "$(cat "$refactor")" "absolute paths"
 assert_contains "research skill maps researcher delegates" "$(cat "$research")" "researcher delegates"
 assert_not_contains "research skill drops subagent wording" "$(cat "$research")" "researcher subagents"
-assert_not_contains "orient skill has no delegation note" "$(cat "$orient")" "Delegate to \`delegate_task\`"
+assert_not_contains "orient skill has no delegation note" "$(cat "$orient")" "you **must** call \`delegate_task\`"
+# #174 measured live /start-issue runs delegating with and without the
+# imperative wording, so the "never delegate" claim holds only where it was
+# taken. Pin the provenance so a reword cannot silently restore the overclaim.
+assert_contains "callout scopes its measured claim" "$(cat "$start")" "measured on \`/refactor\`:"
 
 begin_test "Hermes delegate briefs map toolsets and constraints"
 
