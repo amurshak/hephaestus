@@ -25,6 +25,13 @@
 #              CHANGELOG.md if absent, scripts/collect-changelog.sh, and
 #              `CHANGELOG.md merge=union` in .gitattributes. Opt-in, because it
 #              changes where /ship writes. Once adopted, later runs keep it.
+#   --interactive
+#              Guided setup. User mode asks which harnesses to install and
+#              offers ~/.hephaestus/models.conf overrides; project mode confirms
+#              the inferred Development Commands, offers a `## Worktrees`
+#              section, and offers changelog fragments. Answers are read from
+#              stdin (scriptable); Enter keeps every default. Not with --vendor
+#              or --audit — those paths stay non-interactive.
 #
 # Every install records what it wrote in a manifest, and reads that manifest on
 # the next run — so re-installing updates its own files, never yours.
@@ -43,6 +50,9 @@ FORCE_MODE=false
 CLEAN_MODE=false
 MIGRATE=false
 CHANGELOG_FRAGMENTS=false
+INTERACTIVE=false
+ALL_HARNESSES="claude opencode codex hermes cursor"
+SELECTED_HARNESSES="$ALL_HARNESSES"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -54,10 +64,11 @@ while [[ $# -gt 0 ]]; do
     --clean)   CLEAN_MODE=true; shift ;;
     --migrate) MIGRATE=true; shift ;;
     --changelog-fragments) CHANGELOG_FRAGMENTS=true; shift ;;
+    --interactive) INTERACTIVE=true; shift ;;
     # Track the header rather than a line range — a hardcoded range silently
     # truncates --help every time the block grows.
     -h|--help) awk 'NR>1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$0"; exit 0 ;;
-    -*) echo "Error: unknown flag '$1'"; echo "Usage: ./install.sh [--user | --project | --vendor] [--audit | --force | --clean | --migrate | --changelog-fragments] [path]"; exit 1 ;;
+    -*) echo "Error: unknown flag '$1'"; echo "Usage: ./install.sh [--user | --project | --vendor] [--audit | --force | --clean | --migrate | --changelog-fragments | --interactive] [path]"; exit 1 ;;
     *) break ;;
   esac
 done
@@ -77,6 +88,14 @@ if [ "$AUDIT_MODE" = true ] && [ "$CLEAN_MODE" = true ]; then
 fi
 if [ "$CHANGELOG_FRAGMENTS" = true ] && [ "$MODE" = user ]; then
   echo "Error: --changelog-fragments scaffolds a repo, so it needs --project or --vendor."
+  exit 1
+fi
+if [ "$INTERACTIVE" = true ] && [ "$MODE" = vendor ]; then
+  echo "Error: --vendor is a scripted path and stays non-interactive. Configure with flags instead."
+  exit 1
+fi
+if [ "$INTERACTIVE" = true ] && [ "$AUDIT_MODE" = true ]; then
+  echo "Error: --audit is read-only; --interactive writes answers. Use one or the other."
   exit 1
 fi
 
@@ -145,6 +164,25 @@ EOF
 .cursor/rules|$TARGET/.cursor/rules|file
 EOF
   fi
+}
+
+# Each row's source prefix maps 1:1 to a harness; the interactive walkthrough
+# narrows SELECTED_HARNESSES, everything else installs the full set.
+row_harness() {
+  case "$1" in
+    .claude/*)           echo claude ;;
+    .opencode/*)         echo opencode ;;
+    .agents/*|.codex/*)  echo codex ;;
+    .hermes/*)           echo hermes ;;
+    .cursor/*)           echo cursor ;;
+  esac
+}
+
+harness_selected() {
+  case " $SELECTED_HARNESSES " in
+    *" $1 "*) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 # ── Manifest ─────────────────────────────────────────────────────────────────
@@ -252,6 +290,7 @@ write_item() {
 install_adapters() {
   while IFS='|' read -r src_sub dest_dir kind; do
     [ -n "$src_sub" ] || continue
+    harness_selected "$(row_harness "$src_sub")" || continue
     local src_dir="$SCRIPT_DIR/$src_sub"
     [ -d "$src_dir" ] || continue
 
@@ -788,6 +827,203 @@ health_check() {
   echo ""
 }
 
+# ── Interactive walkthrough (--interactive) ──────────────────────────────────
+# Fills the config surfaces that already exist — CLAUDE.md prose and
+# ~/.hephaestus/models.conf — it never invents a new format or file schema.
+# Answers come from stdin so the walkthrough is scriptable; EOF or Enter keeps
+# every default, which makes an unanswered run behave like a non-interactive one.
+
+# The marker /orient's bootstrap leaves on a Development Commands section it
+# inferred but no human verified. Byte-exact; matched with grep -F only.
+INFERRED_MARKER='<!-- inferred by hephaestus — verify these commands -->'
+
+# ask <prompt> <default> — prompt on stderr (the answer is command-substituted),
+# one line from stdin; EOF or blank keeps the default.
+ask() {
+  local reply
+  printf '%s' "$1" >&2
+  IFS= read -r reply || reply=""
+  [ -n "$reply" ] && printf '%s\n' "$reply" || printf '%s\n' "$2"
+}
+
+ask_yn() {
+  local reply
+  reply=$(ask "$1 [y/N] " "n")
+  case "$reply" in y|Y|yes|Yes|YES) return 0 ;; *) return 1 ;; esac
+}
+
+interactive_harnesses() {
+  local reply picked="" h
+  reply=$(ask "Harnesses to install ($ALL_HARNESSES) [all]: " "all")
+  [ "$reply" = all ] && return 0
+  for h in $(printf '%s' "$reply" | tr ',' ' '); do
+    case " $ALL_HARNESSES " in
+      *" $h "*) picked="${picked:+$picked }$h" ;;
+      *) echo "  [skip] unknown harness '$h'" ;;
+    esac
+  done
+  if [ -n "$picked" ]; then
+    SELECTED_HARNESSES="$picked"
+    echo "  [ok] installing: $SELECTED_HARNESSES"
+  else
+    echo "  [warn] no valid harness named — installing all"
+  fi
+}
+
+interactive_models_conf() {
+  local conf="$HOME/.hephaestus/models.conf" line
+  ask_yn "Map model tiers for a non-Anthropic provider (writes $conf)?" || return 0
+  echo "  One override per line, as harness.tier.key = value, e.g.:"
+  echo "    opencode.opus.model = openai/gpt-5"
+  echo "    codex.haiku.effort = low"
+  echo "  Blank line finishes."
+  while IFS= read -r line && [ -n "$line" ]; do
+    if printf '%s\n' "$line" | grep -qE '^(opencode|codex|cursor|hermes)\.(opus|sonnet|haiku)\.(model|effort)[[:space:]]*='; then
+      mkdir -p "${conf%/*}"
+      [ -f "$conf" ] || echo "# hephaestus model-tier overrides — harness.tier.key = value" > "$conf"
+      if grep -qxF -- "$line" "$conf"; then
+        echo "  [ok] already present: $line"
+      else
+        printf '%s\n' "$line" >> "$conf"
+        echo "  [written] $line"
+      fi
+    else
+      echo "  [skip] not harness.tier.key = value: $line"
+    fi
+  done
+  return 0
+}
+
+# show_dev_commands — print the Development Commands section, indented.
+show_dev_commands() {
+  awk '
+    /^#/ {
+      if (insec && $0 ~ /^## /) exit
+      if (tolower($0) ~ /^##+ +development commands/) insec = 1
+    }
+    insec { print "  | " $0 }
+  ' "$TARGET/CLAUDE.md"
+}
+
+# strip_dev_commands — stdin → stdout minus inferred markers and the
+# Development Commands section (heading through the next ## heading).
+strip_dev_commands() {
+  awk -v marker="$INFERRED_MARKER" '
+    index($0, marker) { next }
+    /^#/ {
+      if (insec && $0 ~ /^## /) insec = 0
+      if (tolower($0) ~ /^##+ +development commands/) insec = 1
+    }
+    !insec { print }
+  '
+}
+
+# append_dev_commands <test> <lint> <build> — empty values drop their line.
+append_dev_commands() {
+  local md="$TARGET/CLAUDE.md"
+  {
+    [ -s "$md" ] && echo ""
+    echo "## Development Commands"
+    echo ""
+    [ -n "$1" ] && echo "- **Test**: \`$1\`"
+    [ -n "$2" ] && echo "- **Lint**: \`$2\`"
+    [ -n "$3" ] && echo "- **Build**: \`$3\`"
+  } >> "$md"
+}
+
+interactive_dev_commands() {
+  local md="$TARGET/CLAUDE.md" t l b tmp
+  if [ -f "$md" ] && grep -qF "$INFERRED_MARKER" "$md"; then
+    echo "CLAUDE.md Development Commands were inferred by /orient and never verified:"
+    show_dev_commands
+    if ask_yn "Are these commands correct?"; then
+      tmp="$md.heph-tmp"
+      grep -vF "$INFERRED_MARKER" "$md" > "$tmp" && mv "$tmp" "$md"
+      echo "  [ok] Development Commands confirmed — inferred marker removed"
+    else
+      echo "  Enter the real commands (Enter on all three keeps the section unverified):"
+      t=$(ask "  Test command: " "")
+      l=$(ask "  Lint command: " "")
+      b=$(ask "  Build command: " "")
+      if [ -n "$t$l$b" ]; then
+        tmp="$md.heph-tmp"
+        strip_dev_commands < "$md" > "$tmp" && mv "$tmp" "$md"
+        append_dev_commands "$t" "$l" "$b"
+        echo "  [ok] Development Commands corrected — inferred marker removed"
+      else
+        echo "  [keep] Development Commands left unverified — the inferred marker stays"
+      fi
+    fi
+  elif [ -f "$md" ] && grep -qiE '^#{2,} .*(development commands|test(s|ing)?|lint(ing)?|build)' "$md"; then
+    echo "[ok] CLAUDE.md already has development commands"
+  else
+    echo "CLAUDE.md has no Development Commands — they drive every quality gate."
+    t=$(ask "  Test command (Enter to skip): " "")
+    l=$(ask "  Lint command (Enter to skip): " "")
+    b=$(ask "  Build command (Enter to skip): " "")
+    if [ -n "$t$l$b" ]; then
+      append_dev_commands "$t" "$l" "$b"
+      echo "  [ok] Development Commands written to CLAUDE.md"
+    else
+      echo "  [skip] Development Commands — add later: cat $SCRIPT_DIR/templates/CLAUDE.md.snippet >> $md"
+    fi
+  fi
+}
+
+interactive_worktrees() {
+  local md="$TARGET/CLAUDE.md" max ser setup p entry
+  if [ -f "$md" ] && grep -qE '^##+ +[Ww]orktrees' "$md"; then
+    echo "[ok] CLAUDE.md already has a Worktrees section"
+    return 0
+  fi
+  ask_yn "Add a ## Worktrees section (caps parallel sessions, serializes colliding files)?" || return 0
+  max=$(ask "  Max concurrent worktree sessions [3]: " "3")
+  case "$max" in
+    *[!0-9]*|'') echo "  [warn] '$max' is not a number — using 3"; max=3 ;;
+  esac
+  ser=$(ask "  serialize_paths — files parallel issues must not share, comma-separated (Enter for none): " "none")
+  setup=$(ask "  Per-worktree setup command (Enter for none): " "none")
+  if [ "$ser" != none ]; then
+    entry=""
+    for p in $(printf '%s' "$ser" | tr ',' ' '); do
+      entry="${entry:+$entry, }\`$p\`"
+    done
+    ser="$entry"
+  fi
+  {
+    [ -s "$md" ] && echo ""
+    echo "## Worktrees"
+    echo ""
+    echo "- \`max:\` $max"
+    echo "- \`serialize_paths:\` $ser"
+    echo "- \`setup:\` $setup"
+  } >> "$md"
+  echo "  [ok] Worktrees section written to CLAUDE.md"
+}
+
+interactive_changelog() {
+  [ "$CHANGELOG_FRAGMENTS" = true ] && return 0
+  changelog_adopted && return 0
+  if ask_yn "Adopt changelog fragments (one changelog.d/ file per PR; changes where /ship writes)?"; then
+    CHANGELOG_FRAGMENTS=true
+    echo "  [ok] will scaffold changelog.d/"
+  fi
+}
+
+run_walkthrough() {
+  echo "Interactive setup — Enter keeps every default; only the files named are touched."
+  echo ""
+  if [ "$MODE" = user ]; then
+    interactive_harnesses
+    interactive_models_conf
+  else
+    interactive_dev_commands
+    interactive_worktrees
+    interactive_changelog
+  fi
+  echo ""
+}
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "unknown")
@@ -803,6 +1039,10 @@ echo ""
 
 if [ "$MIGRATE" = true ]; then
   migrate_legacy
+fi
+
+if [ "$INTERACTIVE" = true ]; then
+  run_walkthrough
 fi
 
 if [ "$MODE" != project ]; then
