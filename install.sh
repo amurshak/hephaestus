@@ -929,6 +929,9 @@ append_dev_commands() {
     [ -n "$2" ] && echo "- **Lint**: \`$2\`"
     [ -n "$3" ] && echo "- **Build**: \`$3\`"
   } >> "$md"
+  # An empty build command fails the last && above; don't let set -e read that
+  # as this function failing.
+  return 0
 }
 
 interactive_dev_commands() {
