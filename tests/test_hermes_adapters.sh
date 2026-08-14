@@ -145,10 +145,13 @@ assert_not_contains "start skill drops TodoWrite" "$(cat "$start")" "TodoWrite"
 assert_contains "start skill maps coder delegates" "$(cat "$start")" "coder delegates"
 assert_not_contains "start skill drops worktree subagent wording" "$(cat "$start")" "coder subagents (in worktrees)"
 assert_contains "refactor skill warns no per-child worktree" "$(cat "$refactor")" "no per-child worktree"
-# Verified against Hermes v0.15.1: delegate_task builds the child from a fresh
-# conversation and passes only a workspace *hint* in its system prompt — cwd is
-# not inherited, so the orchestrator must hand over absolute paths.
-assert_contains "refactor skill says cwd is not inherited" "$(cat "$refactor")" "not your working directory"
+# Verified against Hermes v0.15.1 via HERMES_DUMP_REQUESTS (issue #175): the
+# child's sent prompt carries the parent's cwd twice — a "Current working
+# directory:" line and a WORKSPACE PATH hint — but both resolve from
+# launch-time values (TERMINAL_CWD / process getcwd), so they go stale the
+# moment the workflow operates in a different worktree. The orchestrator must
+# still hand over absolute paths; the reason is staleness, not absence.
+assert_contains "refactor skill says the inherited cwd is stale" "$(cat "$refactor")" "frozen at session **launch**"
 assert_contains "refactor skill demands absolute paths" "$(cat "$refactor")" "absolute paths"
 assert_contains "research skill maps researcher delegates" "$(cat "$research")" "researcher delegates"
 assert_not_contains "research skill drops subagent wording" "$(cat "$research")" "researcher subagents"
@@ -176,7 +179,7 @@ assert_contains "researcher is marked read-only" "$(cat "$researcher")" "**Read-
 # with no error, so the brief must say so rather than claim plain "narrowing".
 assert_contains "brief warns toolsets are intersected" "$(cat "$researcher")" "intersected with yours, silently"
 assert_contains "brief warns the drop is silent" "$(cat "$coder")" "dropped with no error"
-assert_contains "brief says cwd is not inherited" "$(cat "$coder")" "**No inherited cwd**"
+assert_contains "brief says the inherited cwd is stale" "$(cat "$coder")" "**Stale inherited cwd**"
 
 begin_test "Hermes delegate briefs render model tiers from models.conf"
 
