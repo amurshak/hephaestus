@@ -2,13 +2,15 @@
 # verify-codex-load.sh — Confirm a live Codex CLI still takes the /worktrees
 # spawn form, and that the generated adapters sit where Codex reads them.
 #
-# Two checks, and only the first one is live: Codex exposes no skill-listing
+# Three checks, and only the first two are live: Codex exposes no skill-listing
 # command, so the adapters can only be checked on disk.
 #
 #   1. `codex --help` still documents a bare positional prompt. /worktrees
 #      Step 6 spawns `codex "/start-issue <N>"`, which seeds a session only
 #      while that form holds.
-#   2. The generated skills and agent roles are present in a root Codex reads.
+#   2. `codex exec --help` still documents the unattended flag loop.sh passes.
+#      exec's flag set differs from the top level, so it is checked separately.
+#   3. The generated skills and agent roles are present in a root Codex reads.
 #      Either root counts: $CODEX_HOME/{skills,agents} for a user install, the
 #      project's .agents/skills and .codex/agents when vendored. A `--project`
 #      install scaffolds only .agents/skills/orient and no .codex/agents at all
@@ -81,6 +83,24 @@ case "$help" in
     ;;
 esac
 
+# ── Unattended contract ──────────────────────────────────────────────────────
+# loop.sh runs `codex exec --dangerously-bypass-approvals-and-sandbox` — exec
+# has no --ask-for-approval (no TTY, nobody to ask), so this flag is the only
+# thing keeping an unattended session from stalling on a re-armed sandbox gate.
+# The exec flag set differs from the top level, so it gets its own help call.
+if ! exec_help=$(codex exec --help 2>&1); then
+  echo "ERR: codex exec --help failed" >&2
+  exit 1
+fi
+# Word-boundary grep, not substring: a renamed superset flag must fail this
+# check, not satisfy it.
+if ! grep -qE '(^|[[:space:],])--dangerously-bypass-approvals-and-sandbox([[:space:],=]|$)' <<< "$exec_help"; then
+  echo "ERR: codex exec --help no longer documents --dangerously-bypass-approvals-and-sandbox" >&2
+  echo "     the codex entry in loop.sh's dispatch table depends on it to run" >&2
+  echo "     unattended — re-measure the CLI and update the dispatch table" >&2
+  fail=1
+fi
+
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 
 # ── Skills ───────────────────────────────────────────────────────────────────
@@ -125,6 +145,6 @@ fi
 
 # Name the roots: the fallback is silent, and which one answered decides
 # whether a drifted copy in the other root would be what Codex actually loads.
-echo "✓ Codex takes the positional-prompt spawn form"
+echo "✓ Codex takes the positional-prompt spawn form and the exec unattended flag"
 echo "  skills:      $SKILLS_DIR"
 echo "  agent roles: $AGENTS_DIR"

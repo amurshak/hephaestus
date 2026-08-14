@@ -8,8 +8,9 @@
 # Requires `hermes` on PATH. Exit 0 when the CLI is absent so the script can stay
 # in CI optionally; pass --require to fail instead.
 #
-# Every check below is a layout assertion, which is free but only proves a skill
-# *resolves*. It cannot prove Hermes injects the skill's **body** — `-s` could
+# Every check below is free — layout assertions plus unbilled CLI calls like
+# `chat --help` and `skills list` — and so only proves a skill *resolves*.
+# It cannot prove Hermes injects the skill's **body** — `-s` could
 # preload nothing but the description and every assertion here would still pass,
 # which is precisely how #154 lost two measurement runs to a workflow the model
 # never actually received. Nothing offline closes that gap: `hermes skills
@@ -65,6 +66,26 @@ if ! command -v hermes >/dev/null 2>&1; then
 fi
 
 fail=0
+
+# ── Unattended contract ──────────────────────────────────────────────────────
+# loop.sh runs `hermes chat -s … -q … --yolo --accept-hooks`, and /worktrees
+# spawns with the same -s/-q pair. --yolo bypasses command approval and
+# --accept-hooks is the separate gate for shell hooks — losing either leaves an
+# unattended session parked on a prompt with no TTY to answer. Checked against
+# `hermes chat --help` because chat's flag set is its own, not the top level's.
+# Word-boundary grep, not substring: -s alone would match inside --skills.
+if ! chat_help=$(hermes chat --help 2>&1); then
+  echo "ERR: hermes chat --help failed" >&2
+  exit 1
+fi
+for flag in -s -q --yolo --accept-hooks; do
+  if ! grep -qE "(^|[[:space:],])${flag}([[:space:],=]|$)" <<< "$chat_help"; then
+    echo "ERR: hermes chat --help no longer documents ${flag}" >&2
+    echo "     the hermes entry in loop.sh's dispatch table depends on it to run" >&2
+    echo "     unattended — re-measure and update the dispatch table" >&2
+    fail=1
+  fi
+done
 
 # ── Delegate briefs ──────────────────────────────────────────────────────────
 for agent in coder explorer reviewer tester researcher; do

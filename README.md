@@ -530,6 +530,8 @@ Every form is unattended, and nothing can block on stdin — the session reads `
 
 Hermes is the one harness without project-local skill discovery, and a `-s` that resolves to nothing starts the session with no skill rather than failing — so its query carries its own guard, and `.hermes/skills` must be reachable through `skills.external_dirs` or `HERMES_HOME`.
 
+Because a renamed approval flag would hang the session on a prompt no TTY can answer, `loop.sh` verifies at startup that every flag in its row above still appears in the harness's help, and refuses to start otherwise. It matches whole words, not help layout — a flag surviving only in prose (say, an alias's description) can slip through, which the stricter `verify-*-load.sh` gates catch at CI time. `HEPH_NO_PREFLIGHT=1` skips the startup check if a flag works but is undocumented.
+
 ### Forking
 
 Fork hephaestus to customize commands for your org while still pulling upstream updates — which files are safe to edit and which conflict on `git merge upstream/master` is in [CONTRIBUTING.md § Forking](CONTRIBUTING.md#forking).

@@ -136,6 +136,44 @@ fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 
+begin_test "verify-opencode-load.sh guards the unattended flags"
+
+# A stub `opencode` on a scratch PATH makes the checks hermetic: the real CLI
+# is absent on CI, and its presence would otherwise decide what gets asserted.
+# `run --help` reads from a file so each flag can be dropped per-case.
+STUB_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-opencodestub-XXXXXX")
+trap 'rm -rf "$FIXTURE" "$FIXTURE2" "$STUB_DIR"' EXIT
+printf -- '--auto  auto-approve permissions\n--command  the command to run\n' > "$STUB_DIR/run-help"
+cat > "$STUB_DIR/opencode" <<STUB
+#!/bin/sh
+case "\$1 \$2" in
+  "debug config") echo '"autopilot" "ship" "finish" "start-issue" "critique"' ;;
+  "run --help") cat "$STUB_DIR/run-help" ;;
+  *) exit 1 ;;
+esac
+STUB
+chmod +x "$STUB_DIR/opencode"
+
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-opencode-load.sh" 2>&1)
+assert_exit_code "passes while run documents the flags" 0 "$?"
+
+# Losing --auto stalls an unattended loop.sh session on its first gated write.
+printf -- '--command  the command to run\n' > "$STUB_DIR/run-help"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-opencode-load.sh" 2>&1)
+assert_exit_code "fails when --auto is gone" 1 "$?"
+assert_contains  "names the dropped flag" "$out" "no longer documents --auto"
+assert_contains  "points at the dispatch table" "$out" "loop.sh's dispatch table"
+
+# The likelier drift is a rename to a superset flag. A substring match would
+# call --auto-approve healthy for --auto — the check must match whole words.
+printf -- '--auto-approve  approve permissions\n--command-file  read from file\n' > "$STUB_DIR/run-help"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-opencode-load.sh" 2>&1)
+assert_exit_code "fails on a superstring rename" 1 "$?"
+assert_contains  "names --auto despite --auto-approve"     "$out" "no longer documents --auto"
+assert_contains  "names --command despite --command-file"  "$out" "no longer documents --command"
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 begin_test "hand-written files in .opencode dirs survive the stale sweep"
 
 FIXTURE_OWN=$(mktemp -d "${TMPDIR:-/tmp}/heph-opencode-XXXXXX")

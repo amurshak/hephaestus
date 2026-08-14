@@ -282,11 +282,13 @@ begin_test "verify-cursor-load.sh judges the spawn form and adapter roots"
 STUB_DIR=$(mktemp -d "${TMPDIR:-/tmp}/heph-cursorstub-XXXXXX")
 trap 'rm -rf "$FIXTURE" "$FIXTURE_RULE" "$FIXTURE2" "$FIXTURE3" "$STUB_DIR"' EXIT
 
-# make_stub <usage-line> [print-flag-line] — the spawn form needs both halves of
-# the contract, so the stub renders both and each can be broken independently.
+# make_stub <usage-line> [print-flag-line] [approval-flags-line] — the spawn
+# form needs both halves of its contract and loop.sh needs the approval flags,
+# so the stub renders all three lines and each can be broken independently.
 make_stub() {
-  printf '#!/bin/sh\necho "Usage: %s"\necho "  %s"\n' \
+  printf '#!/bin/sh\necho "Usage: %s"\necho "  %s"\necho "  %s"\n' \
     "$1" "${2--p, --print                  Print responses to console}" \
+    "${3--f, --force                  Force allow commands; --trust  Trust the workspace}" \
     > "$STUB_DIR/cursor-agent"
   chmod +x "$STUB_DIR/cursor-agent"
 }
@@ -323,6 +325,28 @@ make_stub "agent [options] [command] [prompt...]" "--output-format <format>     
 out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" 2>&1)
 assert_exit_code "fails when -p is gone" 1 "$?"
 assert_contains  "names the dispatch regression" "$out" "no longer documents -p, --print"
+
+# Losing --force stalls an unattended loop.sh session on its first tool call.
+# The --yolo alias line still carries "--force" as a substring, so this also
+# proves the check matches the flag itself (-f, --force), not the alias's text.
+make_stub "agent [options] [command] [prompt...]" \
+  "-p, --print                  Print responses to console" \
+  "--yolo                       Alias for --force (Run Everything); --trust  Trust the workspace"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" 2>&1)
+assert_exit_code "fails when --force is gone" 1 "$?"
+assert_contains  "names the dropped approval flag" "$out" "no longer documents -f, --force"
+assert_contains  "points at the dispatch table" "$out" "loop.sh's dispatch table"
+
+# Losing --trust is quieter still: the session blocks on the workspace-trust
+# prompt before any tool call, with no TTY to answer it. Rename-shaped drift
+# (--trust-workspace) is the likelier form, and a substring match would wave it
+# through — so the broken stub keeps the superstring.
+make_stub "agent [options] [command] [prompt...]" \
+  "-p, --print                  Print responses to console" \
+  "-f, --force                  Force allow commands; --trust-workspace  Trust the workspace"
+out=$(PATH="$STUB_DIR:/usr/bin:/bin" bash "$HEPHAESTUS_ROOT/scripts/verify-cursor-load.sh" 2>&1)
+assert_exit_code "fails when --trust is renamed" 1 "$?"
+assert_contains  "names --trust despite --trust-workspace" "$out" "no longer documents --trust"
 
 # A `--project` install scaffolds only .cursor/commands/orient.md and no
 # .cursor/agents; the shared set stays in $CURSOR_HOME. Must not false-fail.

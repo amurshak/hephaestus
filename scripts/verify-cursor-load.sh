@@ -7,7 +7,8 @@
 #
 #   1. `cursor-agent --help` still documents a bare positional prompt.
 #      /worktrees Step 6 spawns `cursor-agent "<prompt>"`, which seeds a session
-#      only while that form holds.
+#      only while that form holds. The same help output must document the
+#      unattended flags loop.sh passes (--force, --trust).
 #   2. The generated commands, subagents, and project rule are present in a root
 #      Cursor reads. Either root counts: $CURSOR_HOME/{commands,agents,rules}
 #      for a user install, the project's .cursor/* when vendored. A `--project`
@@ -108,6 +109,31 @@ case "$help" in
     ;;
 esac
 
+# ── Unattended contract ──────────────────────────────────────────────────────
+# loop.sh runs `cursor-agent -p --force --trust`: --force approves tool calls,
+# --trust answers the workspace-trust prompt. Losing either does not fail like
+# a missing binary — the session starts, prompts, and hangs with no TTY to
+# answer, stalling the loop silently. `-f, --force` is matched in full because
+# `--yolo` is documented as "Alias for --force", so the bare substring would
+# survive the flag itself being dropped.
+case "$help" in
+  *"-f, --force"*) ;;
+  *)
+    echo "ERR: cursor-agent --help no longer documents -f, --force" >&2
+    echo "     the cursor entry in loop.sh's dispatch table depends on it to approve" >&2
+    echo "     tool calls unattended — re-measure and update the dispatch table" >&2
+    fail=1
+    ;;
+esac
+# Word-boundary grep, not substring: a rename to --trust-workspace must fail
+# this check, not satisfy it.
+if ! grep -qE '(^|[[:space:],])--trust([[:space:],=]|$)' <<< "$help"; then
+    echo "ERR: cursor-agent --help no longer documents --trust" >&2
+    echo "     the cursor entry in loop.sh's dispatch table depends on it to answer the" >&2
+    echo "     workspace-trust prompt unattended — re-measure and update the dispatch table" >&2
+    fail=1
+fi
+
 CURSOR_HOME_DIR="${CURSOR_HOME:-$HOME/.cursor}"
 
 # ── Commands ─────────────────────────────────────────────────────────────────
@@ -169,7 +195,7 @@ fi
 
 # Name the roots: the fallback is silent, and which one answered decides
 # whether a drifted copy in the other root would be what Cursor actually loads.
-echo "✓ Cursor takes the -p spawn form"
+echo "✓ Cursor takes the -p spawn form and the unattended flags"
 echo "  commands:  $COMMANDS_DIR"
 echo "  subagents: $AGENTS_DIR"
 echo "  rule:      $RULES_DIR/hephaestus.mdc"
