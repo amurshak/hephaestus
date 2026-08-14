@@ -163,7 +163,7 @@ render_hermes_skill() {
     echo ""
     echo "> **Hermes:** this skill is the \`/${name}\` adapter."
     if [ "$requires" != "none" ]; then
-      echo "> Where a step below names a role (${requires}), you **must** call \`delegate_task\` for it rather than doing that step yourself — measured: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in \`.hermes/agents/<role>.md\`. A delegate inherits **none** of your conversation and **not your working directory** — give \`context\` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work."
+      echo "> Where a step below names a role (${requires}), you **must** call \`delegate_task\` for it rather than doing that step yourself — measured: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in \`.hermes/agents/<role>.md\`. A delegate inherits **none** of your conversation, and the cwd it does inherit is frozen at session **launch** — confidently stale if you work in a worktree — so give \`context\` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work."
     fi
     if [ "$chains" != "none" ]; then
       echo "> For chained workflows (${chains}), invoke the matching skill (\`/<workflow>\`) when it is installed; otherwise read and follow \`.hermes/skills/hephaestus/<workflow>/SKILL.md\`."
@@ -228,7 +228,7 @@ render_hermes_agent() {
     echo ""
     echo "- **Toolsets**: \`${toolsets}\` — intersected with yours, silently. A toolset you lack is dropped with no error, so confirm the session holds these before delegating."
     echo "- **Role**: \`leaf\` — cannot delegate further, and Hermes already blocks \`memory\`, \`clarify\`, \`send_message\` and \`cronjob\` for children."
-    echo "- **No inherited cwd**: the child gets only a workspace *hint* in its system prompt. Put the absolute repo or worktree path in \`context\`."
+    echo "- **Stale inherited cwd**: the child's prompt carries the session *launch* dir, not necessarily where you work now. Put the absolute repo or worktree path in \`context\`."
     if [ -n "$model" ]; then
       echo "- **Model tier**: \`${tier}\` → \`${model}\`. Advisory: Hermes applies one global \`delegation.model\`, so set it from the highest tier a workflow uses."
     else
