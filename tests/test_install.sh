@@ -260,8 +260,27 @@ mkdir -p "$TARGET/changelog.d"
 echo "scriv fragment" > "$TARGET/changelog.d/20230101_120000_someone.md"
 output=$(bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET" 2>&1)
 
-assert_contains    "warns about the existing directory" "$output" "another tool may own it"
+assert_contains    "warns about the existing directory" "$output" "another tool may own"
+assert_contains    "names the migration path" "$output" "Fold them with the tool that wrote them"
 assert_file_exists "foreign fragment untouched" "$TARGET/changelog.d/20230101_120000_someone.md"
+
+# The pointer must outlive the run that adopts: the first run scaffolds our
+# README into changelog.d/, but the foreign fragments are still there.
+output=$(bash "$SOURCE_REPO/install.sh" --project "$TARGET" 2>&1)
+assert_contains    "warning persists after adoption" "$output" "Fold them with the tool that wrote them"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "a placeholder-only changelog.d/ is not called foreign"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+mkdir -p "$TARGET/changelog.d"
+touch "$TARGET/changelog.d/.gitkeep"
+output=$(bash "$SOURCE_REPO/install.sh" --project --changelog-fragments "$TARGET" 2>&1)
+
+assert_not_contains "no ownership warning for .gitkeep" "$output" "another tool may own"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────

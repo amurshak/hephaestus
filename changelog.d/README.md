@@ -17,6 +17,13 @@ $ cat changelog.d/129.fixed.md
 `claude`, leaking into the OpenCode and Codex adapters verbatim.
 ```
 
+**Migrating from another tool** (scriv also claims this directory): fold its
+pending fragments with the tool that wrote them (`scriv collect`) so the
+directory starts empty, or rewrite each as `<id>.<category>.md` — scriv keeps
+the category inside the fragment body, so there is nothing to rename
+mechanically. `collect-changelog.sh` folds only `<id>.<category>.md`; `--check`
+rejects other `.md` names and never sees the rest.
+
 At release, `scripts/collect-changelog.sh <version>` folds every fragment into a
 dated `## <version>` section in CHANGELOG.md and deletes them. Use
 `--preview` to see the assembled section without writing, `--check` to validate
