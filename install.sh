@@ -101,6 +101,12 @@ if [ "$INTERACTIVE" = true ] && [ "$AUDIT_MODE" = true ]; then
   echo "Error: --audit is read-only; --interactive writes answers. Use one or the other."
   exit 1
 fi
+# A piped script (curl | bash) shares stdin with the prompts, which would read
+# the script body as answers. Prompting needs a real checkout.
+if [ "$INTERACTIVE" = true ] && [ ! -f "${BASH_SOURCE[0]:-}" ]; then
+  echo "Error: --interactive needs a checkout to run from — a piped script would feed itself to its own prompts."
+  exit 1
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -378,7 +384,7 @@ handle_stale() {
   done <<< "$OLD_ENTRIES"
 
   if [ "$deselected" = true ]; then
-    echo "  [kept] adapters for harnesses outside this run's selection stay installed (remove with uninstall.sh)"
+    echo "  [kept] adapters for harnesses outside this run's selection stay installed (uninstall.sh removes the entire install; delete one harness's config-dir entries by hand)"
     echo ""
   fi
   if [ "$stale" = true ]; then
@@ -884,9 +890,13 @@ ask_yn() {
 
 interactive_harnesses() {
   local reply picked="" h
+  local -a hs
   reply=$(ask "Harnesses to install ($ALL_HARNESSES) [all]: " "all")
   [ "$reply" = all ] && return 0
-  for h in $(printf '%s' "$reply" | tr ',' ' '); do
+  # read -ra, not an unquoted expansion — an answer like * must not glob.
+  IFS=', ' read -ra hs <<< "$reply"
+  for h in "${hs[@]}"; do
+    [ -n "$h" ] || continue
     case " $ALL_HARNESSES " in
       *" $h "*) picked="${picked:+$picked }$h" ;;
       *) echo "  [skip] unknown harness '$h'" ;;
@@ -901,7 +911,7 @@ interactive_harnesses() {
 }
 
 interactive_models_conf() {
-  local conf="$HOME/.hephaestus/models.conf" line
+  local conf="$HOME/.hephaestus/models.conf" line wrote=false
   ask_yn "Map model tiers for a non-Anthropic provider (writes $conf)?" || return 0
   echo "  One override per line, as harness.tier.key = value, e.g.:"
   echo "    opencode.opus.model = openai/gpt-5"
@@ -916,20 +926,32 @@ interactive_models_conf() {
       else
         printf '%s\n' "$line" >> "$conf"
         echo "  [written] $line"
+        wrote=true
       fi
     else
       echo "  [skip] not harness.tier.key = value: $line"
     fi
   done
+  if [ "$wrote" = true ]; then
+    # models.conf is read by the sync generators at build time; the committed
+    # adapters this run installs were generated with the shipped defaults.
+    echo "  [note] overrides apply when adapters are next generated — run the matching"
+    echo "         scripts/sync-*-adapters.sh in the clone, then re-run install.sh"
+    echo "         (the regenerated adapters diverge from upstream; commit or discard them before update.sh)"
+  fi
   return 0
 }
 
-# show_dev_commands — print the Development Commands section, indented.
+# show_dev_commands — print the Development Commands section, indented. The
+# section ends at the next heading at the opener's depth or shallower — an H1
+# or a sibling ### after it is outside the section, whatever depth opened it.
 show_dev_commands() {
   awk '
     /^#/ {
-      if (insec && $0 ~ /^## /) exit
-      if (tolower($0) ~ /^##+ +development commands/) insec = 1
+      if (insec) { match($0, /^#+/); if (RLENGTH <= depth) exit }
+      if (!insec && tolower($0) ~ /^##+ +development commands/) {
+        match($0, /^#+/); depth = RLENGTH; insec = 1
+      }
     }
     insec { print "  | " $0 }
   ' "$TARGET/CLAUDE.md"
@@ -950,18 +972,23 @@ remove_inferred_marker() {
       if (line ~ /^[[:space:]]*$/) next
       print line
     }
-  ' "$1" > "$tmp" && mv "$tmp" "$1"
+  ' "$1" > "$tmp" && cat "$tmp" > "$1" && rm -f "$tmp"
+  # cat-over, not mv: CLAUDE.md may be a symlink (commonly to AGENTS.md) or
+  # carry a tightened mode, and a rename would replace both with a fresh file.
 }
 
 # strip_dev_commands — stdin → stdout minus the Development Commands section
-# (heading through the next ## heading) and any stray inferred marker outside
-# it. Section detection runs first: a marker inline on the heading must not
-# stop the heading from opening the section.
+# and any stray inferred marker outside it. Section detection runs first (a
+# marker inline on the heading must not stop the heading from opening the
+# section) and the section ends at the next heading at the opener's depth or
+# shallower — terminating only on `## ` would swallow an H1 or a ### sibling.
 strip_dev_commands() {
   awk -v marker="$INFERRED_MARKER" '
     /^#/ {
-      if (insec && $0 ~ /^## /) insec = 0
-      if (tolower($0) ~ /^##+ +development commands/) insec = 1
+      if (insec) { match($0, /^#+/); if (RLENGTH <= depth) insec = 0 }
+      if (!insec && tolower($0) ~ /^##+ +development commands/) {
+        match($0, /^#+/); depth = RLENGTH; insec = 1
+      }
     }
     insec { next }
     {
@@ -1006,7 +1033,7 @@ interactive_dev_commands() {
       b=$(ask "  Build command: " "")
       if [ -n "$t$l$b" ]; then
         tmp="$md.heph-tmp"
-        strip_dev_commands < "$md" > "$tmp" && mv "$tmp" "$md"
+        strip_dev_commands < "$md" > "$tmp" && cat "$tmp" > "$md" && rm -f "$tmp"
         append_dev_commands "$t" "$l" "$b"
         echo "  [ok] Development Commands corrected — inferred marker removed"
       else

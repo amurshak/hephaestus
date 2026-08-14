@@ -830,6 +830,46 @@ assert_not_contains "marker removed"       "$md" "$INFERRED_MARKER"
 assert_not_contains "old section replaced" "$md" 'wrong'
 assert_contains "corrected test command"   "$md" '- **Test**: `make test`'
 assert_contains "rest of file intact"      "$md" "keep me"
+
+# CLAUDE.md as a symlink (commonly to AGENTS.md) must keep its identity —
+# a tmp+mv rewrite would swap it for a regular file and strand the real one.
+printf '## Development Commands\n%s\n\n- **Test**: `npm test`\n' \
+  "$INFERRED_MARKER" > "$TARGET/REAL.md"
+rm -f "$TARGET/CLAUDE.md"
+ln -s REAL.md "$TARGET/CLAUDE.md"
+printf 'y\nn\nn\n' | bash "$SOURCE_REPO/install.sh" --project --interactive "$TARGET" >/dev/null 2>&1
+assert_symlink_valid "CLAUDE.md still a symlink" "$TARGET/CLAUDE.md"
+assert_not_contains "marker removed through the link" "$(cat "$TARGET/REAL.md")" "$INFERRED_MARKER"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "correction strips exactly the section, not what follows it"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+# The section ends at the next heading at the opener's depth or shallower.
+# An H1 after it is outside the section — terminating only on ## would
+# silently delete it and everything under it.
+printf '## Development Commands\n%s\n\n- **Test**: `wrong`\n\n# Architecture\n\nLOAD-BEARING PROSE\n' \
+  "$INFERRED_MARKER" > "$TARGET/CLAUDE.md"
+printf 'n\nmake test\n\n\nn\nn\n' \
+  | bash "$SOURCE_REPO/install.sh" --project --interactive "$TARGET" >/dev/null 2>&1
+md=$(cat "$TARGET/CLAUDE.md")
+assert_contains "H1 after the section survives"   "$md" "# Architecture"
+assert_contains "its prose survives"              "$md" "LOAD-BEARING PROSE"
+assert_not_contains "old command still replaced"  "$md" 'wrong'
+assert_contains "corrected command written"       "$md" '- **Test**: `make test`'
+
+# A ### opener must not swallow its ### sibling either
+printf '## Setup\n\n### Development Commands %s\n\n- **Test**: `wrong`\n\n### Other subsection\n\nkeep me\n' \
+  "$INFERRED_MARKER" > "$TARGET/CLAUDE.md"
+printf 'n\nmake test\n\n\nn\n' \
+  | bash "$SOURCE_REPO/install.sh" --project --interactive "$TARGET" >/dev/null 2>&1
+md=$(cat "$TARGET/CLAUDE.md")
+assert_contains "sibling subsection survives" "$md" "### Other subsection"
+assert_contains "sibling prose survives"      "$md" "keep me"
+assert_not_contains "old command replaced"    "$md" 'wrong'
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -839,21 +879,30 @@ setup_fixture
 sandbox_home
 bash "$SOURCE_REPO/install.sh" >/dev/null 2>&1
 
-# Re-run selecting only claude: nothing is stale, nothing is dropped
+# A genuinely dropped-upstream entry in a SELECTED harness must still be
+# reported stale — the deselection guard must not swallow real staleness.
+echo "GHOST" > "$CLAUDE_DIR/commands/ghost.md"
+echo "$CLAUDE_DIR/commands/ghost.md" >> "$USER_MANIFEST"
+
+# Re-run selecting only claude: the ghost is stale, nothing else is
 output=$(printf 'claude\nn\n' | bash "$SOURCE_REPO/install.sh" --interactive 2>&1)
 rc=$?
 assert_exit_code "exits 0" 0 "$rc"
-assert_not_contains "no stale reports"      "$output" "[stale]"
-assert_not_contains "no dropped-upstream claim" "$output" "dropped upstream"
+assert_contains "real stale entry still reported" "$output" "ghost.md (dropped upstream)"
+assert_eq "the ghost is the only stale entry" 1 "$(echo "$output" | grep -c '\[stale\]')"
 assert_contains "explains what was kept"    "$output" "[kept]"
 assert_symlink_valid "unselected harness still installed" "$OPENCODE_DIR/commands/ship.md"
-assert_eq "manifest still records every adapter" "$TOTAL_ADAPTERS" "$(grep -cv '^#' "$USER_MANIFEST")"
+# 86 adapters re-recorded plus the ghost held as stale-kept for a later --clean
+assert_eq "manifest records every adapter plus the stale ghost" \
+  "$((TOTAL_ADAPTERS + 1))" "$(grep -cv '^#' "$USER_MANIFEST")"
 
-# Even with --clean, a narrowed selection must not remove working adapters
+# --clean under a narrowed selection removes the genuinely stale entry and
+# nothing else — deselected harnesses are not its business
 output=$(printf 'claude\nn\n' | bash "$SOURCE_REPO/install.sh" --interactive --clean 2>&1)
-assert_not_contains "--clean removes nothing" "$output" "[cleaned]"
+assert_contains "ghost cleaned" "$output" "ghost.md (dropped upstream)"
+assert_eq "the ghost is the only cleaned entry" 1 "$(echo "$output" | grep -c '\[cleaned\]')"
 assert_symlink_valid "unselected harness survives --clean" "$HERMES_DIR/skills/hephaestus/ship"
-assert_eq "manifest intact after --clean" "$TOTAL_ADAPTERS" "$(grep -cv '^#' "$USER_MANIFEST")"
+assert_eq "manifest back to every adapter" "$TOTAL_ADAPTERS" "$(grep -cv '^#' "$USER_MANIFEST")"
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
