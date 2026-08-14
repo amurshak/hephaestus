@@ -667,6 +667,157 @@ bash "$SOURCE_REPO/install.sh" --project "$plain_dir" >/dev/null 2>&1
 assert_exit_code "non-git target" 1 $?
 teardown_fixture
 
+# ── Interactive walkthrough (--interactive) ──────────────────────────────────
+
+INFERRED_MARKER='<!-- inferred by hephaestus — verify these commands -->'
+
+begin_test "interactive user install narrows harnesses and writes models.conf"
+setup_fixture
+sandbox_home
+output=$(printf 'claude\ny\nopencode.opus.model = openai/gpt-5\nnot a valid line\n\n' \
+  | bash "$SOURCE_REPO/install.sh" --interactive 2>&1)
+rc=$?
+
+assert_exit_code "exits 0" 0 "$rc"
+assert_symlink_valid "claude adapters installed" "$CLAUDE_DIR/commands/ship.md"
+assert_file_not_exists "opencode not installed" "$OPENCODE_DIR/commands/ship.md"
+assert_file_not_exists "codex not installed"    "$CODEX_DIR/skills/ship"
+assert_file_not_exists "hermes not installed"   "$HERMES_DIR/skills/hephaestus/ship"
+assert_file_not_exists "cursor not installed"   "$CURSOR_DIR/commands/ship.md"
+# 12 commands + 5 agents for one harness — the manifest records exactly what ran
+assert_eq "manifest records only claude" 17 "$(grep -cv '^#' "$USER_MANIFEST")"
+
+conf="$SANDBOX_HOME/.hephaestus/models.conf"
+assert_file_exists "models.conf written" "$conf"
+assert_contains "valid override recorded" "$(cat "$conf")" "opencode.opus.model = openai/gpt-5"
+assert_not_contains "invalid line rejected" "$(cat "$conf")" "not a valid line"
+assert_contains "invalid line reported" "$output" "[skip] not harness.tier.key = value"
+
+# Same answers again: the override must not duplicate
+printf 'claude\ny\nopencode.opus.model = openai/gpt-5\n\n' \
+  | bash "$SOURCE_REPO/install.sh" --interactive >/dev/null 2>&1
+assert_eq "re-run does not duplicate the override" 1 \
+  "$(grep -cF 'opencode.opus.model = openai/gpt-5' "$conf")"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "interactive with exhausted stdin keeps every default"
+setup_fixture
+sandbox_home
+output=$(bash "$SOURCE_REPO/install.sh" --interactive </dev/null 2>&1)
+rc=$?
+
+assert_exit_code "exits 0" 0 "$rc"
+assert_eq "all harnesses installed" "$TOTAL_ADAPTERS" "$(grep -cv '^#' "$USER_MANIFEST")"
+assert_file_not_exists "no models.conf written" "$SANDBOX_HOME/.hephaestus/models.conf"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "without --interactive nothing prompts — no-TTY runs are unchanged"
+setup_fixture
+sandbox_home
+output=$(bash "$SOURCE_REPO/install.sh" </dev/null 2>&1)
+rc=$?
+
+assert_exit_code "exits 0" 0 "$rc"
+assert_not_contains "no walkthrough banner" "$output" "Interactive setup"
+assert_not_contains "no harness prompt"     "$output" "Harnesses to install"
+assert_eq "full adapter set installed" "$TOTAL_ADAPTERS" "$(grep -cv '^#' "$USER_MANIFEST")"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "interactive confirm removes the inferred marker, decline keeps it"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+printf '# P\n\n## Development Commands\n%s\n\n- **Test**: `npm test`\n\n## Tail\n\nkeep me\n' \
+  "$INFERRED_MARKER" > "$TARGET/CLAUDE.md"
+
+# Decline the confirm, enter nothing: unconfirmed commands keep the marker
+output=$(printf 'n\n\n\n\nn\nn\n' \
+  | bash "$SOURCE_REPO/install.sh" --project --interactive "$TARGET" 2>&1)
+assert_contains "reports section kept unverified" "$output" "left unverified"
+assert_contains "marker still present" "$(cat "$TARGET/CLAUDE.md")" "$INFERRED_MARKER"
+
+# Confirm: the marker goes, the commands and the rest of the file stay
+printf 'y\nn\nn\n' | bash "$SOURCE_REPO/install.sh" --project --interactive "$TARGET" >/dev/null 2>&1
+assert_not_contains "marker removed on confirm" "$(cat "$TARGET/CLAUDE.md")" "$INFERRED_MARKER"
+assert_contains "commands preserved"  "$(cat "$TARGET/CLAUDE.md")" '- **Test**: `npm test`'
+assert_contains "rest of file intact" "$(cat "$TARGET/CLAUDE.md")" "keep me"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "interactive correction rewrites the section without the marker"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+printf '# P\n\n## Development Commands\n%s\n\n- **Test**: `wrong`\n\n## Tail\n\nkeep me\n' \
+  "$INFERRED_MARKER" > "$TARGET/CLAUDE.md"
+
+printf 'n\nmake test\nmake lint\n\nn\nn\n' \
+  | bash "$SOURCE_REPO/install.sh" --project --interactive "$TARGET" >/dev/null 2>&1
+
+md=$(cat "$TARGET/CLAUDE.md")
+assert_not_contains "marker removed"      "$md" "$INFERRED_MARKER"
+assert_not_contains "old command replaced" "$md" 'wrong'
+assert_contains "corrected test command"  "$md" '- **Test**: `make test`'
+assert_contains "corrected lint command"  "$md" '- **Lint**: `make lint`'
+assert_not_contains "empty build omitted" "$md" '**Build**'
+assert_contains "rest of file intact"     "$md" "keep me"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "interactive project setup writes dev commands, worktrees, changelog"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+
+output=$(printf 'make test\n\n\ny\n2\ninstall.sh\n\ny\n' \
+  | bash "$SOURCE_REPO/install.sh" --project --interactive "$TARGET" 2>&1)
+rc=$?
+assert_exit_code "exits 0" 0 "$rc"
+
+md=$(cat "$TARGET/CLAUDE.md")
+assert_contains "dev commands written"      "$md" '- **Test**: `make test`'
+assert_not_contains "no marker on human answers" "$md" "$INFERRED_MARKER"
+assert_contains "worktrees section written" "$md" "## Worktrees"
+assert_contains "max recorded"              "$md" '- `max:` 2'
+assert_contains "serialize_paths recorded"  "$md" '- `serialize_paths:` `install.sh`'
+assert_contains "setup defaulted to none"   "$md" '- `setup:` none'
+assert_dir_exists "changelog.d adopted via walkthrough" "$TARGET/changelog.d"
+assert_file_exists "collect script distributed" "$TARGET/scripts/collect-changelog.sh"
+
+# Re-run with no answers: everything reads as configured, nothing changes
+before=$(cat "$TARGET/CLAUDE.md")
+output=$(bash "$SOURCE_REPO/install.sh" --project --interactive "$TARGET" </dev/null 2>&1)
+rc=$?
+assert_exit_code "re-run exits 0" 0 "$rc"
+assert_eq "CLAUDE.md unchanged on re-run" "$before" "$(cat "$TARGET/CLAUDE.md")"
+assert_contains "dev commands recognized"  "$output" "already has development commands"
+assert_contains "worktrees recognized"     "$output" "already has a Worktrees section"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "interactive refuses the non-interactive paths"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+
+output=$(bash "$SOURCE_REPO/install.sh" --vendor --interactive "$TARGET" </dev/null 2>&1)
+assert_exit_code "--vendor + --interactive" 1 $?
+assert_contains "names the vendor conflict" "$output" "stays non-interactive"
+
+output=$(bash "$SOURCE_REPO/install.sh" --project --audit --interactive "$TARGET" </dev/null 2>&1)
+assert_exit_code "--audit + --interactive" 1 $?
+assert_contains "names the audit conflict" "$output" "read-only"
+teardown_fixture
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 print_summary
