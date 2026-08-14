@@ -30,8 +30,11 @@
 #              offers ~/.hephaestus/models.conf overrides; project mode confirms
 #              the inferred Development Commands, offers a `## Worktrees`
 #              section, and offers changelog fragments. Answers are read from
-#              stdin (scriptable); Enter keeps every default. Not with --vendor
-#              or --audit — those paths stay non-interactive.
+#              stdin (scriptable); Enter keeps every default. Selection narrows
+#              what a run installs or refreshes — it never uninstalls. Not with
+#              --vendor or --audit — those paths stay non-interactive, and not
+#              via curl|bash, whose pipe would feed the script to its own
+#              prompts — run it from the clone.
 #
 # Every install records what it wrote in a manifest, and reads that manifest on
 # the next run — so re-installing updates its own files, never yours.
@@ -185,6 +188,20 @@ harness_selected() {
   esac
 }
 
+# path_harness <abs-path> — classify an installed destination by config dir.
+# Only consulted when a walkthrough narrowed the selection, to tell "you chose
+# not to refresh this harness" apart from "dropped upstream".
+path_harness() {
+  case "$1" in
+    "$CLAUDE_HOME"/*)     echo claude ;;
+    "$OPENCODE_HOME"/*)   echo opencode ;;
+    "$CODEX_HOME_DIR"/*)  echo codex ;;
+    "$HERMES_HOME_DIR"/*) echo hermes ;;
+    "$CURSOR_HOME_DIR"/*) echo cursor ;;
+    *) echo "" ;;
+  esac
+}
+
 # ── Manifest ─────────────────────────────────────────────────────────────────
 # Vendored manifests hold project-relative paths so the repo stays portable;
 # user-level manifests hold absolute paths across three config dirs.
@@ -333,12 +350,21 @@ install_adapters() {
 
 handle_stale() {
   [ -n "$OLD_ENTRIES" ] || return 0
-  local stale=false key path
+  local stale=false deselected=false key path
   while IFS= read -r key; do
     [ -n "$key" ] || continue
     printf '%s' "$NEW_ENTRIES" | grep -qxF -- "$key" && continue
     path=$(manifest_path "$key")
     { [ -e "$path" ] || [ -L "$path" ]; } || continue
+    # A narrowed walkthrough selection installs and refreshes; it never
+    # uninstalls. Harnesses outside the selection stay installed and recorded —
+    # calling them stale would point --clean at working adapters.
+    if [ "$SELECTED_HARNESSES" != "$ALL_HARNESSES" ] \
+      && ! harness_selected "$(path_harness "$path")"; then
+      record "$key"
+      deselected=true
+      continue
+    fi
     stale=true
     if [ "$CLEAN_MODE" = true ]; then
       rm -rf "$path"
@@ -351,6 +377,10 @@ handle_stale() {
     fi
   done <<< "$OLD_ENTRIES"
 
+  if [ "$deselected" = true ]; then
+    echo "  [kept] adapters for harnesses outside this run's selection stay installed (remove with uninstall.sh)"
+    echo ""
+  fi
   if [ "$stale" = true ]; then
     [ "$CLEAN_MODE" = true ] || echo "  Run with --clean to remove."
     echo ""
@@ -905,16 +935,43 @@ show_dev_commands() {
   ' "$TARGET/CLAUDE.md"
 }
 
-# strip_dev_commands — stdin → stdout minus inferred markers and the
-# Development Commands section (heading through the next ## heading).
+# remove_inferred_marker <file> — cut the marker wherever /orient put it: a
+# marker-only line goes entirely; a marker inline on a heading or bullet is cut
+# out of its line, which stays. awk (not grep -v) so a file that is nothing but
+# the marker still exits 0 and the mv runs.
+remove_inferred_marker() {
+  local tmp="$1.heph-tmp"
+  awk -v marker="$INFERRED_MARKER" '
+    {
+      i = index($0, marker)
+      if (i == 0) { print; next }
+      line = substr($0, 1, i - 1) substr($0, i + length(marker))
+      sub(/[[:space:]]+$/, "", line)
+      if (line ~ /^[[:space:]]*$/) next
+      print line
+    }
+  ' "$1" > "$tmp" && mv "$tmp" "$1"
+}
+
+# strip_dev_commands — stdin → stdout minus the Development Commands section
+# (heading through the next ## heading) and any stray inferred marker outside
+# it. Section detection runs first: a marker inline on the heading must not
+# stop the heading from opening the section.
 strip_dev_commands() {
   awk -v marker="$INFERRED_MARKER" '
-    index($0, marker) { next }
     /^#/ {
       if (insec && $0 ~ /^## /) insec = 0
       if (tolower($0) ~ /^##+ +development commands/) insec = 1
     }
-    !insec { print }
+    insec { next }
+    {
+      i = index($0, marker)
+      if (i == 0) { print; next }
+      line = substr($0, 1, i - 1) substr($0, i + length(marker))
+      sub(/[[:space:]]+$/, "", line)
+      if (line ~ /^[[:space:]]*$/) next
+      print line
+    }
   '
 }
 
@@ -940,8 +997,7 @@ interactive_dev_commands() {
     echo "CLAUDE.md Development Commands were inferred by /orient and never verified:"
     show_dev_commands
     if ask_yn "Are these commands correct?"; then
-      tmp="$md.heph-tmp"
-      grep -vF "$INFERRED_MARKER" "$md" > "$tmp" && mv "$tmp" "$md"
+      remove_inferred_marker "$md"
       echo "  [ok] Development Commands confirmed — inferred marker removed"
     else
       echo "  Enter the real commands (Enter on all three keeps the section unverified):"
@@ -975,6 +1031,7 @@ interactive_dev_commands() {
 
 interactive_worktrees() {
   local md="$TARGET/CLAUDE.md" max ser setup p entry
+  local -a parts
   if [ -f "$md" ] && grep -qE '^##+ +[Ww]orktrees' "$md"; then
     echo "[ok] CLAUDE.md already has a Worktrees section"
     return 0
@@ -982,17 +1039,23 @@ interactive_worktrees() {
   ask_yn "Add a ## Worktrees section (caps parallel sessions, serializes colliding files)?" || return 0
   max=$(ask "  Max concurrent worktree sessions [3]: " "3")
   case "$max" in
-    *[!0-9]*|'') echo "  [warn] '$max' is not a number — using 3"; max=3 ;;
+    *[!0-9]*|''|0) echo "  [warn] '$max' is not a positive number — using 3"; max=3 ;;
   esac
-  ser=$(ask "  serialize_paths — files parallel issues must not share, comma-separated (Enter for none): " "none")
+  ser=$(ask "  serialize_paths — files where parallel issues collide semantically, comma-separated (not files every PR touches; Enter for none): " "none")
   setup=$(ask "  Per-worktree setup command (Enter for none): " "none")
   if [ "$ser" != none ]; then
+    # read -ra, not an unquoted expansion — a glob answer like *.md must land
+    # verbatim, never expand against whatever the cwd happens to hold.
     entry=""
-    for p in $(printf '%s' "$ser" | tr ',' ' '); do
+    IFS=',' read -ra parts <<< "$ser"
+    for p in "${parts[@]}"; do
+      p=$(printf '%s' "$p" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+      [ -n "$p" ] || continue
       entry="${entry:+$entry, }\`$p\`"
     done
-    ser="$entry"
+    ser="${entry:-none}"
   fi
+  case "$setup" in *[![:space:]]*) ;; *) setup=none ;; esac
   {
     [ -s "$md" ] && echo ""
     echo "## Worktrees"

@@ -804,6 +804,60 @@ teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
 
+begin_test "interactive handles a marker inline on the heading line"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+# Nothing pins where an LLM puts the marker — attached to the heading, the
+# confirm path must strip the marker without eating the heading.
+printf '# P\n\n## Development Commands %s\n\n- **Test**: `npm test`\n\n## Tail\n\nkeep me\n' \
+  "$INFERRED_MARKER" > "$TARGET/CLAUDE.md"
+
+printf 'y\nn\nn\n' | bash "$SOURCE_REPO/install.sh" --project --interactive "$TARGET" >/dev/null 2>&1
+md=$(cat "$TARGET/CLAUDE.md")
+assert_not_contains "marker removed"   "$md" "$INFERRED_MARKER"
+assert_contains "heading survives"     "$md" "## Development Commands"
+assert_contains "commands preserved"   "$md" '- **Test**: `npm test`'
+
+# Same placement through the correction path: the old section must go whole —
+# a leftover old Test line is exactly the wrong-green /ship failure.
+printf '# P\n\n## Development Commands %s\n\n- **Test**: `wrong`\n\n## Tail\n\nkeep me\n' \
+  "$INFERRED_MARKER" > "$TARGET/CLAUDE.md"
+printf 'n\nmake test\n\n\nn\nn\n' \
+  | bash "$SOURCE_REPO/install.sh" --project --interactive "$TARGET" >/dev/null 2>&1
+md=$(cat "$TARGET/CLAUDE.md")
+assert_not_contains "marker removed"       "$md" "$INFERRED_MARKER"
+assert_not_contains "old section replaced" "$md" 'wrong'
+assert_contains "corrected test command"   "$md" '- **Test**: `make test`'
+assert_contains "rest of file intact"      "$md" "keep me"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "narrowed re-run keeps unselected harnesses installed and recorded"
+setup_fixture
+sandbox_home
+bash "$SOURCE_REPO/install.sh" >/dev/null 2>&1
+
+# Re-run selecting only claude: nothing is stale, nothing is dropped
+output=$(printf 'claude\nn\n' | bash "$SOURCE_REPO/install.sh" --interactive 2>&1)
+rc=$?
+assert_exit_code "exits 0" 0 "$rc"
+assert_not_contains "no stale reports"      "$output" "[stale]"
+assert_not_contains "no dropped-upstream claim" "$output" "dropped upstream"
+assert_contains "explains what was kept"    "$output" "[kept]"
+assert_symlink_valid "unselected harness still installed" "$OPENCODE_DIR/commands/ship.md"
+assert_eq "manifest still records every adapter" "$TOTAL_ADAPTERS" "$(grep -cv '^#' "$USER_MANIFEST")"
+
+# Even with --clean, a narrowed selection must not remove working adapters
+output=$(printf 'claude\nn\n' | bash "$SOURCE_REPO/install.sh" --interactive --clean 2>&1)
+assert_not_contains "--clean removes nothing" "$output" "[cleaned]"
+assert_symlink_valid "unselected harness survives --clean" "$HERMES_DIR/skills/hephaestus/ship"
+assert_eq "manifest intact after --clean" "$TOTAL_ADAPTERS" "$(grep -cv '^#' "$USER_MANIFEST")"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 begin_test "interactive refuses the non-interactive paths"
 setup_fixture
 sandbox_home
