@@ -13,7 +13,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKFLOWS_DIR="$ROOT/.ai/workflows"
-CLAUDE_AGENTS_DIR="$ROOT/.claude/agents"
+AI_AGENTS_DIR="$ROOT/.ai/agents"
 OPENCODE_COMMANDS_DIR="$ROOT/.opencode/commands"
 OPENCODE_AGENTS_DIR="$ROOT/.opencode/agents"
 MODE="${1:-sync}"
@@ -192,7 +192,7 @@ render_opencode_agent() {
 
   {
     echo "---"
-    echo "# generated from .claude/agents/${name}.md; do not edit directly"
+    echo "# generated from .ai/agents/${name}.md; do not edit directly"
     echo "description: \"$description\""
     echo "mode: subagent"
     [ -n "$model" ] && echo "model: $model"
@@ -274,7 +274,7 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
   rm -f "$tmp"
 done
 
-for agent in "$CLAUDE_AGENTS_DIR"/*.md; do
+for agent in "$AI_AGENTS_DIR"/*.md; do
   [ -e "$agent" ] || continue
   name=$(field "$agent" "name")
   if [ -z "$name" ]; then
@@ -295,7 +295,7 @@ done
 # destroy a live command or agent.
 [ "$MODE" = "sync" ] && [ "$drift" -ne 0 ] && exit 1
 check_stale "$OPENCODE_COMMANDS_DIR" "$expected_commands" "$WORKFLOWS_DIR" || drift=1
-check_stale "$OPENCODE_AGENTS_DIR" "$expected_agents" "$CLAUDE_AGENTS_DIR" || drift=1
+check_stale "$OPENCODE_AGENTS_DIR" "$expected_agents" "$AI_AGENTS_DIR" || drift=1
 
 if [ "$MODE" = "--check" ]; then
   [ "$drift" -eq 0 ] && echo "✓ OpenCode adapters in sync"

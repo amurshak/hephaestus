@@ -1,4 +1,4 @@
-# generated from .claude/agents/researcher.md; do not edit directly
+# generated from .ai/agents/researcher.md; do not edit directly
 name = "researcher"
 description = "Research a topic using web search and return findings. Spawn multiple researchers in parallel for different aspects of a complex question."
 model_reasoning_effort = "medium"

@@ -5,13 +5,13 @@
 # remain the source of truth for shared subagent prompts. This script renders
 # Codex-compatible adapters from those sources so adapter metadata cannot drift:
 #   .ai/workflows/<name>.md   → .agents/skills/<name>/SKILL.md  (Codex skill)
-#   .claude/agents/<name>.md  → .codex/agents/<name>.toml       (Codex agent role)
+#   .ai/agents/<name>.md  → .codex/agents/<name>.toml       (Codex agent role)
 
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKFLOWS_DIR="$ROOT/.ai/workflows"
-CLAUDE_AGENTS_DIR="$ROOT/.claude/agents"
+AI_AGENTS_DIR="$ROOT/.ai/agents"
 CODEX_SKILLS_DIR="$ROOT/.agents/skills"
 CODEX_AGENTS_DIR="$ROOT/.codex/agents"
 MODE="${1:-sync}"
@@ -181,7 +181,7 @@ render_codex_agent() {
   description=$(quote_escape "$description")
 
   {
-    echo "# generated from .claude/agents/${name}.md; do not edit directly"
+    echo "# generated from .ai/agents/${name}.md; do not edit directly"
     echo "name = \"${name}\""
     echo "description = \"${description}\""
     [ -n "$model" ] && echo "model = \"${model}\""
@@ -253,11 +253,11 @@ check_stale_agents() {
       *" $base "*) continue ;;
     esac
     # Only sweep files this generator wrote, matching check_stale_skills.
-    if ! grep -q "generated from .claude/agents/" "$adapter"; then
+    if ! grep -q "generated from .ai/agents/" "$adapter"; then
       echo "ERR: unexpected non-generated file $adapter in .codex/agents — move it or remove it manually" >&2
       rc=1
     elif [ "$MODE" = "--check" ]; then
-      echo "ERR: stale Codex agent adapter $adapter (no matching source in $CLAUDE_AGENTS_DIR)" >&2
+      echo "ERR: stale Codex agent adapter $adapter (no matching source in $AI_AGENTS_DIR)" >&2
       rc=1
     else
       rm -f "$adapter"
@@ -287,7 +287,7 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
   rm -f "$tmp"
 done
 
-for agent in "$CLAUDE_AGENTS_DIR"/*.md; do
+for agent in "$AI_AGENTS_DIR"/*.md; do
   [ -e "$agent" ] || continue
   name=$(field "$agent" "name")
   if [ -z "$name" ]; then

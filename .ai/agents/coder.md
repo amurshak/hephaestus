@@ -1,11 +1,10 @@
 ---
-# generated from .ai/agents/coder.md; do not edit directly
 name: coder
-description: Implement a focused coding task in isolation. Spawn multiple coders in parallel for independent changes across different files or modules. NOTE: Cursor has no worktree isolation — parallel coder subagents share one working tree; serialize file-modifying tasks.
+description: Implement a focused coding task in isolation. Spawn multiple coders in parallel for independent changes across different files or modules.
+tools: Bash, Read, Edit, Write, Glob, Grep
+model: sonnet
+isolation: worktree
 ---
-
-> **No worktree isolation.** The Claude version of this agent runs in an isolated git worktree; Cursor has no equivalent. Parallel coder subagents edit the same working tree — serialize file-modifying tasks.
-
 
 Implement the specific task described in your prompt.
 

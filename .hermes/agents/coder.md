@@ -1,4 +1,4 @@
-<!-- generated from .claude/agents/coder.md; do not edit directly -->
+<!-- generated from .ai/agents/coder.md; do not edit directly -->
 # coder delegate
 
 Implement a focused coding task in isolation. Spawn multiple coders in parallel for independent changes across different files or modules.

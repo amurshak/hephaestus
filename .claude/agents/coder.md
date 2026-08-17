@@ -5,6 +5,7 @@ tools: Bash, Read, Edit, Write, Glob, Grep
 model: sonnet
 isolation: worktree
 ---
+<!-- generated from .ai/agents/coder.md; do not edit directly -->
 
 Implement the specific task described in your prompt.
 

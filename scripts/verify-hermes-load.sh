@@ -92,8 +92,8 @@ for agent in coder explorer reviewer tester researcher; do
   if [ ! -f ".hermes/agents/$agent.md" ]; then
     echo "ERR: missing Hermes delegate brief .hermes/agents/$agent.md" >&2
     fail=1
-  elif ! grep -q "generated from .claude/agents/$agent.md" ".hermes/agents/$agent.md"; then
-    echo "ERR: Hermes delegate brief $agent is not generated from .claude/agents/$agent.md" >&2
+  elif ! grep -q "generated from .ai/agents/$agent.md" ".hermes/agents/$agent.md"; then
+    echo "ERR: Hermes delegate brief $agent is not generated from .ai/agents/$agent.md" >&2
     fail=1
   fi
 done

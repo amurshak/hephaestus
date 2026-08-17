@@ -4,6 +4,7 @@ description: Adversarial code review with security, architecture, and test adequ
 tools: Bash, Read, Glob, Grep
 model: opus
 ---
+<!-- generated from .ai/agents/reviewer.md; do not edit directly -->
 
 Perform a thorough code review of uncommitted changes.
 
