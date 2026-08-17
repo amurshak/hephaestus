@@ -1,6 +1,7 @@
 <!-- Announcement copy for the Hermes integration (#108, shipped in #141; filed by #142).
-     Lift verbatim into the next release body as its own section — do not fold it into
-     the file-drop adapter beat — or publish standalone. -->
+     Published verbatim as its own section of the v2.2.0 release body (#197); kept here as
+     the source of that copy. Already published — do not carry it into a later release, and
+     never fold it into the file-drop adapter beat. -->
 
 # Hermes: hephaestus as a skill package
 

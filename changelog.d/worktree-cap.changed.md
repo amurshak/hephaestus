@@ -1,1 +1,0 @@
-**This repo's own worktree cap is 6, up from 3** — the `max:` that `/worktrees` reads when planning a wave here. It bounds slots, not conflicts: `serialize_paths: install.sh` still keeps two installer-touching issues out of the same wave, so a wider cap widens waves only across independent areas. Repo-internal; nothing in an installed project changes.
