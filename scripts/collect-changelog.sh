@@ -48,7 +48,7 @@ label_for() {
   esac
 }
 
-# ── Validate fragment filenames ──────────────────────────────────────────────
+# ── Validate fragments ───────────────────────────────────────────────────────
 # Returns 1 if any fragment is malformed. Prints every problem, not just the first.
 validate_fragments() {
   local ok=0 f base category
@@ -70,6 +70,15 @@ validate_fragments() {
     fi
     if [ ! -s "$f" ]; then
       echo -e "${RED}✗${NC} $base — empty fragment" >&2
+      ok=1
+      continue
+    fi
+    # A fragment left conflicted mid-merge would otherwise publish its markers
+    # verbatim into the release section (#209). Unanchored right: that covers
+    # conflict-marker-size > 7. `=======` is skipped: alone it is also a
+    # setext underline, and it never appears without these two.
+    if grep -qE '^(<<<<<<<|>>>>>>>)' "$f"; then
+      echo -e "${RED}✗${NC} $base — unresolved merge conflict markers" >&2
       ok=1
     fi
   done
@@ -185,7 +194,7 @@ if [ "$MODE" = "release" ] && [ -z "$VERSION" ]; then
 fi
 
 if ! validate_fragments; then
-  die "malformed fragments — fix the names above"
+  die "malformed fragments — fix the problems above"
 fi
 
 if [ "$MODE" = "check" ]; then
