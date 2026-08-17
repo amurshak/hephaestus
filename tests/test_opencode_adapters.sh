@@ -52,7 +52,7 @@ cp "$HEPHAESTUS_ROOT/scripts/sync-opencode-adapters.sh" "$FIXTURE2/scripts/sync-
 cp "$HEPHAESTUS_ROOT/scripts/models.sh" "$FIXTURE2/scripts/models.sh"
 
 rm "$FIXTURE2/.ai/workflows/research.md"
-rm "$FIXTURE2/.claude/agents/tester.md"
+rm "$FIXTURE2/.ai/agents/tester.md"
 
 if stale_output=$(bash "$FIXTURE2/scripts/sync-opencode-adapters.sh" --check 2>&1); then
   fail "OpenCode check should detect orphaned adapters" "exited 0, output: $stale_output"
@@ -66,7 +66,7 @@ assert_contains "sync reports stale adapter removal" "$sync_output" "removed sta
 assert_file_not_exists "sync removes orphaned command adapter" "$FIXTURE2/.opencode/commands/research.md"
 assert_file_not_exists "sync removes orphaned agent adapter" "$FIXTURE2/.opencode/agents/tester.md"
 
-sed -i.bak '/^name:/d' "$FIXTURE2/.claude/agents/coder.md"
+sed -i.bak '/^name:/d' "$FIXTURE2/.ai/agents/coder.md"
 bash "$FIXTURE2/scripts/sync-opencode-adapters.sh" >/dev/null 2>&1
 assert_exit_code "sync fails on unparseable source" 1 "$?"
 assert_file_exists "sync keeps adapter of unparseable source" "$FIXTURE2/.opencode/agents/coder.md"

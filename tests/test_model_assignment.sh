@@ -28,7 +28,7 @@ copy_fixture() {
 # ─────────────────────────────────────────────────────────────────────────────
 begin_test "Every agent declares a valid model tier"
 
-for agent in "$HEPHAESTUS_ROOT"/.claude/agents/*.md; do
+for agent in "$HEPHAESTUS_ROOT"/.ai/agents/*.md; do
   name=$(basename "$agent" .md)
   tier=$(awk -F': *' '/^---$/ { if (++f == 2) exit; next } f == 1 && $1 == "model" { print $2; exit }' "$agent")
   case "$tier" in
@@ -43,7 +43,7 @@ begin_test "Tiers are assigned by role cost, not uniformly"
 
 tier_of() {
   awk -F': *' '/^---$/ { if (++f == 2) exit; next } f == 1 && $1 == "model" { print $2; exit }' \
-    "$HEPHAESTUS_ROOT/.claude/agents/$1.md"
+    "$HEPHAESTUS_ROOT/.ai/agents/$1.md"
 }
 
 assert_eq "reviewer runs on the strong tier" "opus" "$(tier_of reviewer)"
@@ -78,8 +78,8 @@ assert_not_contains "shipped defaults pin no Codex model" \
 begin_test "An invalid tier fails generation instead of emitting a bad adapter"
 
 copy_fixture "$FIXTURE"
-sed -i.bak 's/^model: opus$/model: gigantic/' "$FIXTURE/.claude/agents/reviewer.md"
-rm -f "$FIXTURE/.claude/agents/reviewer.md.bak"
+sed -i.bak 's/^model: opus$/model: gigantic/' "$FIXTURE/.ai/agents/reviewer.md"
+rm -f "$FIXTURE/.ai/agents/reviewer.md.bak"
 
 bad_output=$(bash "$FIXTURE/scripts/sync-opencode-adapters.sh" 2>&1)
 assert_exit_code "sync rejects an unknown tier" 1 "$?"
@@ -94,8 +94,8 @@ FIXTURE2=$(mktemp -d "${TMPDIR:-/tmp}/heph-models-XXXXXX")
 trap 'rm -rf "$FIXTURE" "$FIXTURE2"' EXIT
 copy_fixture "$FIXTURE2"
 
-sed -i.bak 's/^model: opus$/model: inherit/' "$FIXTURE2/.claude/agents/reviewer.md"
-rm -f "$FIXTURE2/.claude/agents/reviewer.md.bak"
+sed -i.bak 's/^model: opus$/model: inherit/' "$FIXTURE2/.ai/agents/reviewer.md"
+rm -f "$FIXTURE2/.ai/agents/reviewer.md.bak"
 bash "$FIXTURE2/scripts/sync-opencode-adapters.sh" >/dev/null 2>&1
 bash "$FIXTURE2/scripts/sync-codex-adapters.sh" >/dev/null 2>&1
 

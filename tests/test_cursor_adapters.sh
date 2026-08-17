@@ -68,7 +68,7 @@ trap 'rm -rf "$FIXTURE" "$FIXTURE_RULE" "$FIXTURE2"' EXIT
 copy_fixture "$FIXTURE2"
 
 rm "$FIXTURE2/.ai/workflows/research.md"
-rm "$FIXTURE2/.claude/agents/tester.md"
+rm "$FIXTURE2/.ai/agents/tester.md"
 
 if stale_output=$(bash "$FIXTURE2/scripts/sync-cursor-adapters.sh" --check 2>&1); then
   fail "Cursor check should detect orphaned adapters" "exited 0, output: $stale_output"
@@ -82,7 +82,7 @@ assert_contains "sync reports stale adapter removal" "$sync_output" "removed sta
 assert_file_not_exists "sync removes orphaned command adapter" "$FIXTURE2/.cursor/commands/research.md"
 assert_file_not_exists "sync removes orphaned subagent adapter" "$FIXTURE2/.cursor/agents/tester.md"
 
-sed -i.bak '/^name:/d' "$FIXTURE2/.claude/agents/coder.md"
+sed -i.bak '/^name:/d' "$FIXTURE2/.ai/agents/coder.md"
 bash "$FIXTURE2/scripts/sync-cursor-adapters.sh" >/dev/null 2>&1
 assert_exit_code "sync fails on unparseable source" 1 "$?"
 assert_file_exists "sync keeps adapter of unparseable source" "$FIXTURE2/.cursor/agents/coder.md"
@@ -135,7 +135,7 @@ assert_contains    "renamed subagent copy is reported"      "$copy_output" "revi
 
 # A genuinely stale adapter names its OWN, now-missing source — still reclaimed.
 rm -f "$FIXTURE3/.cursor/agents/reviewer-strict.md"
-sed 's|generated from .claude/agents/reviewer.md|generated from .claude/agents/retired.md|' \
+sed 's|generated from .ai/agents/reviewer.md|generated from .ai/agents/retired.md|' \
   "$FIXTURE3/.cursor/agents/reviewer.md" > "$FIXTURE3/.cursor/agents/retired.md"
 reclaim_output=$(bash "$FIXTURE3/scripts/sync-cursor-adapters.sh" 2>&1)
 assert_contains        "sync reclaims a genuinely stale adapter" "$reclaim_output" "removed stale Cursor adapter"
@@ -250,7 +250,7 @@ begin_test "Cursor rule carries the chain graph and harness mapping"
 rule="$HEPHAESTUS_ROOT/.cursor/rules/hephaestus.mdc"
 
 assert_contains "rule always applies" "$(cat "$rule")" "alwaysApply: true"
-assert_contains "rule names its sources" "$(cat "$rule")" "generated from .ai/workflows/ and .claude/agents/"
+assert_contains "rule names its sources" "$(cat "$rule")" "generated from .ai/workflows/ and .ai/agents/"
 assert_contains "rule lists a chain edge" "$(cat "$rule")" "| /ship | /critique |"
 assert_contains "rule explains worktree mapping" "$(cat "$rule")" "Subagents, no worktrees."
 assert_contains "rule explains verbatim injection" "$(cat "$rule")" "injected verbatim"

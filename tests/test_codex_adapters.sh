@@ -53,7 +53,7 @@ trap 'rm -rf "$FIXTURE" "$FIXTURE2"' EXIT
 copy_fixture "$FIXTURE2"
 
 rm "$FIXTURE2/.ai/workflows/research.md"
-rm "$FIXTURE2/.claude/agents/tester.md"
+rm "$FIXTURE2/.ai/agents/tester.md"
 
 if stale_output=$(bash "$FIXTURE2/scripts/sync-codex-adapters.sh" --check 2>&1); then
   fail "Codex check should detect orphaned adapters" "exited 0, output: $stale_output"
@@ -67,7 +67,7 @@ assert_contains "sync reports stale skill removal" "$sync_output" "removed stale
 assert_file_not_exists "sync removes orphaned skill" "$FIXTURE2/.agents/skills/research/SKILL.md"
 assert_file_not_exists "sync removes orphaned agent adapter" "$FIXTURE2/.codex/agents/tester.toml"
 
-sed -i.bak '/^name:/d' "$FIXTURE2/.claude/agents/coder.md"
+sed -i.bak '/^name:/d' "$FIXTURE2/.ai/agents/coder.md"
 bash "$FIXTURE2/scripts/sync-codex-adapters.sh" >/dev/null 2>&1
 assert_exit_code "sync fails on unparseable source" 1 "$?"
 assert_file_exists "sync keeps adapter of unparseable source" "$FIXTURE2/.codex/agents/coder.toml"
@@ -97,7 +97,7 @@ trap 'rm -rf "$FIXTURE" "$FIXTURE2" "$FIXTURE3" "$FIXTURE4"' EXIT
 
 copy_fixture "$FIXTURE4"
 
-printf "\nUse ''' for emphasis.\n" >> "$FIXTURE4/.claude/agents/explorer.md"
+printf "\nUse ''' for emphasis.\n" >> "$FIXTURE4/.ai/agents/explorer.md"
 bash "$FIXTURE4/scripts/sync-codex-adapters.sh" >/dev/null 2>&1
 assert_exit_code "sync fails on ''' in agent body" 1 "$?"
 assert_file_exists "adapter of unrenderable agent preserved" "$FIXTURE4/.codex/agents/explorer.toml"

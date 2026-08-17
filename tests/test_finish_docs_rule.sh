@@ -18,7 +18,7 @@ required_docs_for_diff() {
     required="$required README.md"
   fi
 
-  if echo "$files" | grep -Eq '^\.claude/agents/[^/]+\.md$|^scripts/'; then
+  if echo "$files" | grep -Eq '^\.ai/agents/[^/]+\.md$|^scripts/'; then
     required="$required CLAUDE.md"
   fi
 
@@ -79,7 +79,7 @@ assert_eq "installer change missing README runs update-docs" \
   "$(decision_for_diff "$installer_diff")"
 
 begin_test "/finish docs rule detects contributor-surface changes"
-agent_diff=$'.claude/agents/reviewer.md\nchangelog.d/42.changed.md'
+agent_diff=$'.ai/agents/reviewer.md\nchangelog.d/42.changed.md'
 assert_eq "agent change missing CLAUDE runs update-docs" \
   "run:CLAUDE.md" \
   "$(decision_for_diff "$agent_diff")"
@@ -89,7 +89,7 @@ assert_eq "generator change missing CLAUDE runs update-docs" \
   "run:CLAUDE.md" \
   "$(decision_for_diff "$script_diff")"
 
-both_missing=$'install.sh\n.claude/agents/coder.md'
+both_missing=$'install.sh\n.ai/agents/coder.md'
 assert_eq "change missing every required doc lists them all" \
   "run:CLAUDE.md README.md changelog.d/" \
   "$(decision_for_diff "$both_missing")"
