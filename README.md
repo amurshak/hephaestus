@@ -451,6 +451,17 @@ Both are idempotent and never overwrite a file they did not install. If a config
 ~/.hephaestus/install.sh --audit
 ```
 
+### Guided setup
+
+Install is the one moment a human is present by construction, so `--interactive` uses it to get the values every later autonomous run depends on:
+
+```bash
+~/.hephaestus/install.sh --interactive                              # pick harnesses, offer model-tier overrides
+~/.hephaestus/install.sh --project --interactive /path/to/project   # confirm commands, worktrees, changelog
+```
+
+User mode asks which harnesses to install (default: all) and offers to write `~/.hephaestus/models.conf` overrides for non-Anthropic providers — noting that overrides take effect when the adapters are next generated, since the committed set installs with shipped defaults. Selection narrows what that run installs or refreshes — harnesses already installed stay installed and recorded, and removal stays `uninstall.sh`'s job. Project mode confirms the Development Commands that `/orient` inferred — the marker it left comes off once a human vouches for them, since a wrong test command means `/ship` reports green on the wrong thing — and offers a `## Worktrees` section and changelog fragments. Answers land in the files that already hold those settings; no new config format. Every question reads from stdin (so the walkthrough is scriptable) and Enter keeps the default, which makes an unanswered run identical to a non-interactive one. Without the flag, nothing prompts — CI, `--vendor`, and `curl | bash` paths are unchanged.
+
 ### Pin the workflow to a repo instead
 
 Teams that want everyone's `/ship` to behave identically — and CI to be reproducible — can commit the adapters alongside the code:
@@ -494,6 +505,7 @@ It removes the submodule (deinit, `git rm`, the `.git/modules` entry, and `.gitm
 | | |
 |---|---|
 | `install.sh --audit`         | Preview what would change without modifying anything |
+| `install.sh --interactive`   | Guided setup — harness choice, Development Commands, worktrees, changelog (also with `--project`) |
 | `install.sh --force`         | Take over a same-named file the installer did not write; project `orient` files stay protected |
 | `install.sh --clean`         | Remove adapters dropped upstream since the last install |
 | `install.sh --migrate <path>` | Convert a pre-2.2 submodule install, then scaffold |
