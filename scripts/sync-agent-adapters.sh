@@ -20,6 +20,13 @@ if [ "$MODE" != "sync" ] && [ "$MODE" != "--check" ]; then
   exit 2
 fi
 
+# A missing source dir must not read as "every source deleted" — the stale
+# sweep would then remove every generated adapter and report success.
+for dir in "$WORKFLOWS_DIR" "$AI_AGENTS_DIR"; do
+  [ -d "$dir" ] || { echo "ERR: canonical source dir $dir missing" >&2; exit 1; }
+done
+[ "$MODE" = "sync" ] && mkdir -p "$CLAUDE_COMMANDS_DIR" "$CLAUDE_AGENTS_DIR"
+
 field() {
   local file=$1 key=$2
   awk -F': *' -v key="$key" '
@@ -106,7 +113,15 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
     fi
     rm -f "$tmp"
   else
-    render_claude_wrapper "$workflow" > "$target" || drift=1
+    # Render to a temp file first: `> "$target"` truncates the committed
+    # adapter before a mid-render parse failure can be noticed.
+    tmp=$(mktemp "${TMPDIR:-/tmp}/heph-adapter-XXXXXX")
+    if render_claude_wrapper "$workflow" > "$tmp"; then
+      cat "$tmp" > "$target"
+    else
+      drift=1
+    fi
+    rm -f "$tmp"
   fi
 done
 
@@ -137,7 +152,13 @@ for agent in "$AI_AGENTS_DIR"/*.md; do
     fi
     rm -f "$tmp"
   else
-    render_claude_agent "$agent" > "$target" || drift=1
+    tmp=$(mktemp "${TMPDIR:-/tmp}/heph-adapter-XXXXXX")
+    if render_claude_agent "$agent" > "$tmp"; then
+      cat "$tmp" > "$target"
+    else
+      drift=1
+    fi
+    rm -f "$tmp"
   fi
 done
 

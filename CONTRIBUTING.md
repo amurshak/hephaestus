@@ -60,7 +60,7 @@ Fork hephaestus to customize commands for your org while still pulling upstream 
 
 **Will conflict if modified** — actively developed upstream:
 - `.ai/conventions.md`, `.ai/workflows/`, and `.ai/agents/` — the behavior spec, workflows, and agents
-- `.claude/commands/` — generated Claude adapters; update via `scripts/sync-agent-adapters.sh`
+- `.claude/commands/` and `.claude/agents/` — generated Claude adapters; update via `scripts/sync-agent-adapters.sh`
 - `.opencode/commands/` and `.opencode/agents/` — generated OpenCode adapters; update via `scripts/sync-opencode-adapters.sh`
 - `.agents/skills/` and `.codex/agents/` — generated Codex adapters; update via `scripts/sync-codex-adapters.sh`
 - `.hermes/skills/` and `.hermes/agents/` — generated Hermes adapters; update via `scripts/sync-hermes-adapters.sh`

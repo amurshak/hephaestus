@@ -114,10 +114,26 @@ bash "$FIXTURE3/scripts/sync-agent-adapters.sh" >/dev/null 2>&1
 assert_file_exists "hand-written agent survives sync" "$FIXTURE3/.claude/agents/my-agent.md"
 rm "$FIXTURE3/.claude/agents/my-agent.md"
 
-sed -i.bak '/^name:/d' "$FIXTURE3/.ai/agents/coder.md"
+# Drop the closing --- so `name` still parses but the render itself fails —
+# the write must not truncate the committed adapter on the way down.
+awk '/^---$/ { if (++n == 2) next } { print }' "$FIXTURE3/.ai/agents/coder.md" \
+  > "$FIXTURE3/.ai/agents/coder.md.tmp" && mv "$FIXTURE3/.ai/agents/coder.md.tmp" "$FIXTURE3/.ai/agents/coder.md"
 bash "$FIXTURE3/scripts/sync-agent-adapters.sh" >/dev/null 2>&1
 assert_exit_code "sync fails on unparseable agent source" 1 "$?"
-assert_file_exists "sync keeps adapter of unparseable agent source" "$FIXTURE3/.claude/agents/coder.md"
+assert_contains "sync keeps adapter content of unparseable agent source" \
+  "$(cat "$FIXTURE3/.claude/agents/coder.md")" "Implement the specific task"
+
+begin_test "generated Claude agent adapters keep frontmatter first"
+
+# Claude Code parses the YAML frontmatter only when it opens the file, so the
+# render must keep it first and place the marker immediately after it.
+for adapter in "$HEPHAESTUS_ROOT"/.claude/agents/*.md; do
+  name=$(basename "$adapter")
+  assert_eq "$name line 1 opens frontmatter" "---" "$(head -n 1 "$adapter")"
+  close=$(awk '/^---$/ { if (++f == 2) { print NR; exit } }' "$adapter")
+  marker=$(grep -n "generated from .ai/agents/" "$adapter" | head -n 1 | cut -d: -f1)
+  assert_eq "$name marker sits right after frontmatter" "$((close + 1))" "$marker"
+done
 
 begin_test "plugin manifest agents list matches .claude/agents/ contents"
 

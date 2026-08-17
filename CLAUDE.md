@@ -39,7 +39,7 @@ The trigger list `/finish` uses here, overriding its defaults:
 - **CLAUDE.md** — when the PR changes the contributor surface: `.ai/agents/*.md`, `scripts/*`, or this file's own conventions
 - **CONTRIBUTING.md** — never required mechanically; update it when the gates or the canonical-source rules change
 
-Generated adapters (`.claude/commands/`, `.claude/agents/`, `.opencode/`, `.agents/skills/`, `.hermes/`, `.cursor/`) trigger nothing on their own. They regenerate on every workflow change, so triggering README from them made README a required file on essentially every PR — which is what made it a contention hotspot rather than a documentation rule.
+Generated adapters (`.claude/commands/`, `.claude/agents/`, `.opencode/`, `.agents/skills/`, `.hermes/`, `.cursor/`) trigger nothing on their own. They regenerate on every workflow or agent change, so triggering README from them made README a required file on essentially every PR — which is what made it a contention hotspot rather than a documentation rule.
 
 ## Worktrees
 
