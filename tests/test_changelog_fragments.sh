@@ -84,6 +84,56 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+begin_test "preview renders every entry release mode would"
+
+# Regression (#206): preview called render_fragments without the Unreleased
+# body, so hand-written legacy entries were invisible in the one safeguard
+# before the fragment-deleting fold — the 2.2.0 preview showed 41 entries
+# while the release wrote 46.
+R="$FIXTURE/preview-legacy"
+make_repo "$R" '### Added
+- **Legacy entry** (#100): written before fragments existed.
+
+### Deprecated
+- **Old thing** (#101): a category outside the known set.'
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+frag "$R" "129.fixed.md" '**Spawn CLI** (#129): a fix.'
+before=$(cat "$R/CHANGELOG.md")
+out=$("$R/scripts/collect-changelog.sh" --preview 2>/dev/null); rc=$?
+summary=$("$R/scripts/collect-changelog.sh" --preview 2>&1 >/dev/null)
+assert_exit_code "preview exits 0" 0 "$rc"
+assert_contains "legacy entry rendered" "$out" "- **Legacy entry** (#100)"
+assert_contains "unknown legacy category rendered" "$out" "### Deprecated"
+assert_eq "legacy Added merges into one heading" "1" "$(printf '%s\n' "$out" | grep -c '^### Added')"
+assert_contains "summary counts fragments" "$summary" "2 fragment(s)"
+assert_contains "summary counts legacy entries" "$summary" "2 hand-written Unreleased entry(ies)"
+assert_eq "CHANGELOG.md untouched" "$before" "$(cat "$R/CHANGELOG.md")"
+
+# Parity: the headers and entries preview printed are exactly the ones the
+# release folds into the version section.
+preview_lines=$(printf '%s\n' "$out" | grep -E '^(### |- )')
+"$R/scripts/collect-changelog.sh" 2.2.0 >/dev/null 2>&1
+release_lines=$(awk '/^## 2.2.0/,/^## 2.1.0/' "$R/CHANGELOG.md" | grep -E '^(### |- )')
+assert_eq "preview matches the released section" "$release_lines" "$preview_lines"
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "preview renders legacy content even with no fragments"
+
+R="$FIXTURE/preview-legacy-only"
+make_repo "$R" '### Fixed
+- **Only legacy** (#102): no fragments exist.'
+out=$("$R/scripts/collect-changelog.sh" --preview 2>&1); rc=$?
+assert_exit_code "legacy-only preview exits 0" 0 "$rc"
+assert_contains "renders the legacy entry" "$out" "- **Only legacy** (#102)"
+assert_contains "summary counts zero fragments" "$out" "0 fragment(s)"
+
+R="$FIXTURE/preview-nothing"
+make_repo "$R"
+out=$("$R/scripts/collect-changelog.sh" --preview 2>&1); rc=$?
+assert_exit_code "empty preview exits 0" 0 "$rc"
+assert_contains "reports nothing to preview" "$out" "nothing to preview"
+
+# ─────────────────────────────────────────────────────────────────────────────
 begin_test "release folds fragments and consumes them"
 
 R="$FIXTURE/release"
@@ -178,7 +228,9 @@ for form in "2.9.0 --preview" "--preview 2.9.0" "--preview" "--check" "2.9.0 --c
   assert_exit_code "'$form' exits 0" 0 "$rc"
   assert_eq "'$form' leaves CHANGELOG.md untouched" "$before" "$(cat "$R/CHANGELOG.md")"
   assert_eq "'$form' consumes no fragments" "2" "$(count_frags "$R")"
-  assert_not_contains "'$form' does not claim a release" "$out" "released"
+  # The sentinel is the release success line, not the bare word "released" —
+  # the preview summary legitimately says "Unreleased".
+  assert_not_contains "'$form' does not claim a release" "$out" "released 2.9.0"
 done
 
 # The version reaches preview output, so previewing a release is a real rehearsal.

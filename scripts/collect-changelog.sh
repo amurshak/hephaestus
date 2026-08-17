@@ -195,15 +195,29 @@ fi
 
 FRAGMENT_COUNT="$(count_fragments)"
 
+# Existing Unreleased body: everything between "## Unreleased" and the next "## ".
+# Extracted for preview AND release, so preview renders exactly what release
+# would fold — under-reporting here hid a five-entry gap in the 2.2.0 cut (#206).
+UNRELEASED_BODY="$(mktemp)"
+trap 'rm -f "$UNRELEASED_BODY"' EXIT
+awk '
+  /^## Unreleased/ { inside = 1; next }
+  /^## / && inside { inside = 0 }
+  inside          { print }
+' "$CHANGELOG" > "$UNRELEASED_BODY"
+LEGACY_COUNT="$(grep -c '^- ' "$UNRELEASED_BODY")"
+
 if [ "$MODE" = "preview" ]; then
-  if [ "$FRAGMENT_COUNT" -eq 0 ]; then
-    echo -e "${YELLOW}no fragments in changelog.d/${NC}"
+  if [ "$FRAGMENT_COUNT" -eq 0 ] && ! grep -q '[^[:space:]]' "$UNRELEASED_BODY"; then
+    echo -e "${YELLOW}nothing to preview — no fragments and no Unreleased content${NC}"
     exit 0
   fi
-  # Show the heading the release would write, so previewing a specific version
-  # is a real rehearsal rather than a bare list of entries.
+  # Show the heading the release would write and merge the hand-written
+  # Unreleased body, so previewing a version is a real rehearsal rather than a
+  # bare list of fragments. Summary goes to stderr: stdout is the exact body.
   [ -n "$VERSION" ] && printf '## %s — %s\n\n' "$VERSION" "$(date +%Y-%m-%d)"
-  render_fragments
+  render_fragments "$UNRELEASED_BODY"
+  echo -e "${GREEN}✓${NC} previewed $FRAGMENT_COUNT fragment(s) + $LEGACY_COUNT hand-written Unreleased entry(ies) — nothing written" >&2
   exit 0
 fi
 
@@ -221,15 +235,7 @@ grep -q "^## $VERSION — " "$CHANGELOG" && die "CHANGELOG.md already has a ## $
 
 DATE="$(date +%Y-%m-%d)"
 TMP="$(mktemp)"
-UNRELEASED_BODY="$(mktemp)"
 trap 'rm -f "$TMP" "$UNRELEASED_BODY"' EXIT
-
-# Existing Unreleased body: everything between "## Unreleased" and the next "## ".
-awk '
-  /^## Unreleased/ { inside = 1; next }
-  /^## / && inside { inside = 0 }
-  inside          { print }
-' "$CHANGELOG" > "$UNRELEASED_BODY"
 
 # -s is not enough: an Unreleased section holding only blank lines has nonzero
 # size but nothing to publish.
@@ -297,4 +303,4 @@ done
 LEFTOVER="$(count_fragments)"
 [ "$LEFTOVER" -eq 0 ] || die "folded $FRAGMENT_COUNT fragment(s) into CHANGELOG.md for $VERSION, but $LEFTOVER survived in changelog.d/ — remove them before the next release"
 
-echo -e "${GREEN}✓${NC} released $VERSION — folded $FRAGMENT_COUNT fragment(s) into CHANGELOG.md"
+echo -e "${GREEN}✓${NC} released $VERSION — folded $FRAGMENT_COUNT fragment(s) + $LEGACY_COUNT hand-written Unreleased entry(ies) into CHANGELOG.md"
