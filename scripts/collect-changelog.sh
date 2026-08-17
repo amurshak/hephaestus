@@ -273,15 +273,23 @@ awk -v bodyfile="$BODY" -v version="$VERSION" '
 ' "$TMP" > "$CHANGELOG"
 
 # Fragments are consumed — remove them (git rm when tracked, plain rm otherwise).
+# -f: the fold reads the working tree, so the on-disk content is exactly what was
+# just published; the local modification a bare `git rm` refuses to discard is
+# already in CHANGELOG.md, and refusing left the fragment to fold again next
+# release (#205).
 for f in "$FRAGMENT_DIR"/*.md; do
   [ -e "$f" ] || continue
   base="$(basename "$f")"
   [ "$base" = "README.md" ] && continue
   if git -C "$REPO_ROOT" ls-files --error-unmatch "$f" >/dev/null 2>&1; then
-    git -C "$REPO_ROOT" rm --quiet "$f"
+    git -C "$REPO_ROOT" rm --quiet -f "$f"
   else
     rm -f "$f"
   fi
 done
+
+# Never report a clean fold over a leftover — it re-folds next release.
+LEFTOVER="$(count_fragments)"
+[ "$LEFTOVER" -eq 0 ] || die "folded $FRAGMENT_COUNT fragment(s) into CHANGELOG.md for $VERSION, but $LEFTOVER survived in changelog.d/ — remove them before the next release"
 
 echo -e "${GREEN}✓${NC} released $VERSION — folded $FRAGMENT_COUNT fragment(s) into CHANGELOG.md"
