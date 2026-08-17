@@ -4,7 +4,7 @@
 
 ## Ground rules
 
-- **Edit canonical sources, never generated adapters.** The behavior spec is `.ai/conventions.md`, workflows live in `.ai/workflows/`, agents in `.claude/agents/`. Everything in `.claude/commands/`, `.opencode/`, `.agents/skills/`, `.codex/agents/`, `.hermes/`, and `.cursor/` is generated — regenerate with:
+- **Edit canonical sources, never generated adapters.** The behavior spec is `.ai/conventions.md`, workflows live in `.ai/workflows/`, agents in `.ai/agents/`. Everything in `.claude/commands/`, `.claude/agents/`, `.opencode/`, `.agents/skills/`, `.codex/agents/`, `.hermes/`, and `.cursor/` is generated — regenerate with:
   ```bash
   ./scripts/sync-agent-adapters.sh
   ./scripts/sync-opencode-adapters.sh
@@ -59,7 +59,7 @@ Fork hephaestus to customize commands for your org while still pulling upstream 
 - `VERSION` — your fork's version track
 
 **Will conflict if modified** — actively developed upstream:
-- `.ai/conventions.md`, `.ai/workflows/`, and `.claude/agents/` — the behavior spec, workflows, and agents
+- `.ai/conventions.md`, `.ai/workflows/`, and `.ai/agents/` — the behavior spec, workflows, and agents
 - `.claude/commands/` — generated Claude adapters; update via `scripts/sync-agent-adapters.sh`
 - `.opencode/commands/` and `.opencode/agents/` — generated OpenCode adapters; update via `scripts/sync-opencode-adapters.sh`
 - `.agents/skills/` and `.codex/agents/` — generated Codex adapters; update via `scripts/sync-codex-adapters.sh`
