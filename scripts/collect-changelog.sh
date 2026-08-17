@@ -147,6 +147,27 @@ unknown_sections() {
   ' "$file"
 }
 
+# Legacy lines exactly as render_fragments will emit them. Counting anything
+# else (say raw "^- " lines) claims entries the fold never publishes — a bullet
+# above the first ### heading is dropped, not folded.
+render_legacy() {
+  local category
+  for category in $CATEGORIES; do
+    section_entries "$(label_for "$category")" "$1"
+  done
+  unknown_sections "$1"
+}
+
+# Collapse runs of blank lines to one and trim both ends. Release needs it so
+# the spliced section doesn't collide with the heading that follows; preview
+# shares it so its stdout is byte-identical to what release splices.
+collapse_blanks() {
+  awk '
+    NF == 0 { blanks++; next }
+    { if (printed && blanks) print ""; blanks = 0; print; printed = 1 }
+  '
+}
+
 count_fragments() {
   local n=0 f base
   for f in "$FRAGMENT_DIR"/*.md; do
@@ -205,18 +226,26 @@ awk '
   /^## / && inside { inside = 0 }
   inside          { print }
 ' "$CHANGELOG" > "$UNRELEASED_BODY"
-LEGACY_COUNT="$(grep -c '^- ' "$UNRELEASED_BODY")"
+LEGACY_COUNT="$(render_legacy "$UNRELEASED_BODY" | grep -c '^[-*+] ')"
 
 if [ "$MODE" = "preview" ]; then
+  # Rehearse the release preconditions as warnings: a rehearsal that passes
+  # where the release would die is not a rehearsal.
+  grep -q '^## Unreleased' "$CHANGELOG" \
+    || echo -e "${YELLOW}warning:${NC} CHANGELOG.md has no '## Unreleased' section — the release will refuse" >&2
+  if [ -n "$VERSION" ] && grep -q "^## $VERSION — " "$CHANGELOG"; then
+    echo -e "${YELLOW}warning:${NC} CHANGELOG.md already has a ## $VERSION section — the release will refuse" >&2
+  fi
   if [ "$FRAGMENT_COUNT" -eq 0 ] && ! grep -q '[^[:space:]]' "$UNRELEASED_BODY"; then
     echo -e "${YELLOW}nothing to preview — no fragments and no Unreleased content${NC}"
     exit 0
   fi
   # Show the heading the release would write and merge the hand-written
   # Unreleased body, so previewing a version is a real rehearsal rather than a
-  # bare list of fragments. Summary goes to stderr: stdout is the exact body.
+  # bare list of fragments. Summary goes to stderr: stdout is byte-identical
+  # to the body the release splices in.
   [ -n "$VERSION" ] && printf '## %s — %s\n\n' "$VERSION" "$(date +%Y-%m-%d)"
-  render_fragments "$UNRELEASED_BODY"
+  render_fragments "$UNRELEASED_BODY" | collapse_blanks
   echo -e "${GREEN}✓${NC} previewed $FRAGMENT_COUNT fragment(s) + $LEGACY_COUNT hand-written Unreleased entry(ies) — nothing written" >&2
   exit 0
 fi
@@ -262,14 +291,8 @@ awk -v version="$VERSION" -v date="$DATE" '
 BODY="$(mktemp)"
 trap 'rm -f "$TMP" "$UNRELEASED_BODY" "$BODY"' EXIT
 # Hand-written Unreleased entries merge into the fragment sections by category,
-# so a legacy "### Added" never produces a second header. Normalize spacing:
-# collapse runs of blank lines to one and trim the ends, so the spliced section
-# doesn't collide with the heading that follows it.
-render_fragments "$UNRELEASED_BODY" \
-  | awk '
-      NF == 0 { blanks++; next }
-      { if (printed && blanks) print ""; blanks = 0; print; printed = 1 }
-    ' > "$BODY"
+# so a legacy "### Added" never produces a second header.
+render_fragments "$UNRELEASED_BODY" | collapse_blanks > "$BODY"
 
 awk -v bodyfile="$BODY" -v version="$VERSION" '
   {

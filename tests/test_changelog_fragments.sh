@@ -109,12 +109,12 @@ assert_contains "summary counts fragments" "$summary" "2 fragment(s)"
 assert_contains "summary counts legacy entries" "$summary" "2 hand-written Unreleased entry(ies)"
 assert_eq "CHANGELOG.md untouched" "$before" "$(cat "$R/CHANGELOG.md")"
 
-# Parity: the headers and entries preview printed are exactly the ones the
-# release folds into the version section.
-preview_lines=$(printf '%s\n' "$out" | grep -E '^(### |- )')
+# Parity: preview stdout is byte-identical to the body release splices under
+# the version heading (modulo the blank lines the splice adds around it, which
+# command substitution and the leading-blank sed strip on both sides).
 "$R/scripts/collect-changelog.sh" 2.2.0 >/dev/null 2>&1
-release_lines=$(awk '/^## 2.2.0/,/^## 2.1.0/' "$R/CHANGELOG.md" | grep -E '^(### |- )')
-assert_eq "preview matches the released section" "$release_lines" "$preview_lines"
+release_body=$(awk '/^## 2.2.0 /{f=1;next} /^## 2.1.0 /{f=0} f' "$R/CHANGELOG.md" | sed '/./,$!d')
+assert_eq "preview matches the released body byte-for-byte" "$release_body" "$out"
 
 # ─────────────────────────────────────────────────────────────────────────────
 begin_test "preview renders legacy content even with no fragments"
@@ -132,6 +132,31 @@ make_repo "$R"
 out=$("$R/scripts/collect-changelog.sh" --preview 2>&1); rc=$?
 assert_exit_code "empty preview exits 0" 0 "$rc"
 assert_contains "reports nothing to preview" "$out" "nothing to preview"
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "preview warns where release would refuse, counts only rendered entries"
+
+# A bullet above any ### heading never renders — the summary must not claim it.
+R="$FIXTURE/preview-bare"
+make_repo "$R" '- **Bare bullet** (#103): no category heading above it.'
+out=$("$R/scripts/collect-changelog.sh" --preview 2>&1); rc=$?
+assert_exit_code "bare-bullet preview exits 0" 0 "$rc"
+assert_contains "unrendered bullet not counted" "$out" "0 hand-written Unreleased entry(ies)"
+
+R="$FIXTURE/preview-no-unreleased"
+make_repo "$R"
+printf '# Changelog\n\n## 2.1.0 — 2026-07-28\n\n### Added\n- Older stuff.\n' > "$R/CHANGELOG.md"
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+out=$("$R/scripts/collect-changelog.sh" --preview 2>&1); rc=$?
+assert_exit_code "preview without Unreleased still exits 0" 0 "$rc"
+assert_contains "warns the release will refuse" "$out" "no '## Unreleased' section"
+
+R="$FIXTURE/preview-rerelease"
+make_repo "$R"
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+out=$("$R/scripts/collect-changelog.sh" 2.1.0 --preview 2>&1); rc=$?
+assert_exit_code "preview of an existing version exits 0" 0 "$rc"
+assert_contains "warns about the existing section" "$out" "already has a ## 2.1.0 section"
 
 # ─────────────────────────────────────────────────────────────────────────────
 begin_test "release folds fragments and consumes them"
