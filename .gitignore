@@ -4,5 +4,9 @@
 # Runtime files
 .claude/scheduled_tasks.lock
 
+# The documented user-level model override lands at ~/.hephaestus/models.conf,
+# which is this clone's root under the script-install layout
+/models.conf
+
 # macOS
 .DS_Store
