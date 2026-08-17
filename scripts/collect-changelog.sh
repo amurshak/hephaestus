@@ -214,6 +214,11 @@ fi
 
 grep -q '^## Unreleased' "$CHANGELOG" || die "CHANGELOG.md has no '## Unreleased' section"
 
+# Refuse a version that already has a section: the splice injects the body at
+# every matching heading, so re-running a release (say, after the leftover guard
+# below fired) would duplicate the section and triple the entries (#205).
+grep -q "^## $VERSION — " "$CHANGELOG" && die "CHANGELOG.md already has a ## $VERSION section — pick a new version"
+
 DATE="$(date +%Y-%m-%d)"
 TMP="$(mktemp)"
 UNRELEASED_BODY="$(mktemp)"
