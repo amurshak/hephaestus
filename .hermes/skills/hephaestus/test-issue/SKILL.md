@@ -14,7 +14,7 @@ metadata:
 <!-- generated from .ai/workflows/test-issue.md; do not edit directly -->
 
 > **Hermes:** this skill is the `/test-issue` adapter.
-> Where a step below names a role (tester), you **must** call `delegate_task` for it rather than doing that step yourself — measured: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation, and the cwd it does inherit is frozen at session **launch** — confidently stale if you work in a worktree — so give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
+> Where a step below names a role (tester), you **must** call `delegate_task` for it rather than doing that step yourself — measured on `/refactor`: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation, and the cwd it does inherit is frozen at session **launch** — confidently stale if you work in a worktree — so give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
 
 > Hermes does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
 
