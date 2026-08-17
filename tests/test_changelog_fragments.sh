@@ -208,6 +208,79 @@ assert_exit_code "no arguments exits 1" 1 "$rc"
 assert_contains "no arguments prints usage" "$out" "usage:"
 
 # ─────────────────────────────────────────────────────────────────────────────
+begin_test "release consumes a tracked fragment with unstaged modifications"
+
+# Regression (#205): `git rm` refuses a locally-modified file, the script never
+# checked, so the fragment survived the fold and re-folded next release — while
+# the run still printed the success line.
+# gpgsign off: with a global `commit.gpgsign = true` and no gpg, the baseline
+# commit would fail silently and the fixture would test staged, not committed.
+git_t() { git -C "$1" -c user.email="test@test.com" -c user.name="Test" -c commit.gpgsign=false "${@:2}"; }
+
+R="$FIXTURE/modified"
+make_repo "$R"
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+frag "$R" "205.changed.md" '**Worktree cap** (#205): original wording.'
+git_t "$R" init --quiet
+git_t "$R" add -A
+git_t "$R" commit -m "baseline" --quiet
+frag "$R" "205.changed.md" '**Worktree cap** (#205): reconciled wording.'
+out=$("$R/scripts/collect-changelog.sh" 2.2.0 2>&1); rc=$?
+body=$(cat "$R/CHANGELOG.md")
+assert_exit_code "release exits 0" 0 "$rc"
+assert_contains "publishes the on-disk (modified) content" "$body" "- **Worktree cap** (#205): reconciled wording."
+assert_not_contains "committed wording is not what publishes" "$body" "original wording"
+assert_file_not_exists "modified fragment consumed" "$R/changelog.d/205.changed.md"
+leftovers=$(ls "$R/changelog.d")
+assert_eq "changelog.d/ holds only README.md" "README.md" "$leftovers"
+assert_contains "reports the clean fold" "$out" "released 2.2.0"
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "release refuses to claim success over a leftover fragment"
+
+# When removal genuinely fails (here: an unwritable changelog.d/), the content
+# is still folded, so the run must exit nonzero and name the leftover count
+# instead of printing the success line. The fixture is a git repo with the
+# fragment committed, so this exercises the `git rm -f` branch — the one #205
+# is about. chmod is a no-op for root and for filesystems that don't enforce
+# directory permissions, so probe the precondition instead of inferring it.
+R="$FIXTURE/leftover"
+make_repo "$R"
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+git_t "$R" init --quiet
+git_t "$R" add -A
+git_t "$R" commit -m "baseline" --quiet
+touch "$R/changelog.d/.probe"
+chmod 555 "$R/changelog.d"
+if rm "$R/changelog.d/.probe" 2>/dev/null; then
+  chmod 755 "$R/changelog.d"
+  pass "skipped: filesystem does not enforce directory permissions"
+else
+  out=$("$R/scripts/collect-changelog.sh" 2.2.0 2>&1); rc=$?
+  chmod 755 "$R/changelog.d"
+  assert_exit_code "release exits 1" 1 "$rc"
+  assert_contains "names the leftover" "$out" "1 survived in changelog.d/"
+  assert_not_contains "does not claim a clean fold" "$out" "✓"
+  assert_file_exists "fragment still on disk" "$R/changelog.d/107.added.md"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "release refuses a version CHANGELOG.md already has"
+
+# The splice injects the body at every matching heading, so re-releasing a
+# version (the instinctive retry after the leftover guard fires) would
+# duplicate the section and triple the entries.
+R="$FIXTURE/rerelease"
+make_repo "$R"
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+before=$(cat "$R/CHANGELOG.md")
+out=$("$R/scripts/collect-changelog.sh" 2.1.0 2>&1); rc=$?
+assert_exit_code "re-release exits 1" 1 "$rc"
+assert_contains "names the existing section" "$out" "already has a ## 2.1.0 section"
+assert_eq "CHANGELOG.md untouched" "$before" "$(cat "$R/CHANGELOG.md")"
+assert_file_exists "fragment retained" "$R/changelog.d/107.added.md"
+
+# ─────────────────────────────────────────────────────────────────────────────
 begin_test "repo's own fragments are valid"
 
 out=$("$HEPHAESTUS_ROOT/scripts/collect-changelog.sh" --check 2>&1); rc=$?
