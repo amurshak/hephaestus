@@ -2,7 +2,7 @@
 description: Hephaestus delivery workflow — how its commands, subagents, and chains work in this project
 alwaysApply: true
 ---
-<!-- generated from .ai/workflows/ and .claude/agents/; do not edit directly -->
+<!-- generated from .ai/workflows/ and .ai/agents/; do not edit directly -->
 
 # Hephaestus
 
@@ -26,4 +26,4 @@ A command that chains another must load that command's file and follow it — ne
 - **Subagents, no worktrees.** Under Claude Code the `coder` agent runs in an isolated git worktree. Cursor subagents share one working tree — serialize file-modifying tasks.
 - **Least privilege is only partly enforced.** `researcher`, `reviewer`, and `explorer` carry `readonly: true`, which sandboxes their shell — shell writes fail. It does not withhold the write tools, and those bypass the sandbox, so file writes still rest on instruction. `tester` is exempt: its shell must write for tests to run. `tools:` is prose to Cursor, not an access control.
 - **Commands are injected verbatim.** Cursor strips YAML frontmatter only from imported `.claude/commands` files, so these adapters carry none. `$ARGUMENTS` and `$1`… are substituted.
-- **Never hand-edit `.cursor/`.** Edit `.ai/workflows/` and `.claude/agents/` in the hephaestus clone, then run `scripts/sync-cursor-adapters.sh`.
+- **Never hand-edit `.cursor/`.** Edit `.ai/workflows/` and `.ai/agents/` in the hephaestus clone, then run `scripts/sync-cursor-adapters.sh`.

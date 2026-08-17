@@ -4,6 +4,7 @@ description: Research a topic using web search and return findings. Spawn multip
 tools: WebSearch, WebFetch, Read
 model: sonnet
 ---
+<!-- generated from .ai/agents/researcher.md; do not edit directly -->
 
 Research the specific topic described in your prompt.
 

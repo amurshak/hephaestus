@@ -5,7 +5,7 @@
 # remain the source of truth for shared subagent prompts. This script renders
 # Cursor-compatible adapters from those sources so adapter metadata cannot drift:
 #   .ai/workflows/<name>.md   → .cursor/commands/<name>.md   (Cursor slash command)
-#   .claude/agents/<name>.md  → .cursor/agents/<name>.md     (Cursor subagent)
+#   .ai/agents/<name>.md  → .cursor/agents/<name>.md     (Cursor subagent)
 #   both of the above         → .cursor/rules/hephaestus.mdc (always-apply project rule)
 #
 # Cursor mechanics that shape the output:
@@ -25,7 +25,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKFLOWS_DIR="$ROOT/.ai/workflows"
-CLAUDE_AGENTS_DIR="$ROOT/.claude/agents"
+AI_AGENTS_DIR="$ROOT/.ai/agents"
 CURSOR_COMMANDS_DIR="$ROOT/.cursor/commands"
 CURSOR_AGENTS_DIR="$ROOT/.cursor/agents"
 CURSOR_RULES_DIR="$ROOT/.cursor/rules"
@@ -179,7 +179,7 @@ render_cursor_agent() {
 
   {
     echo "---"
-    echo "# generated from .claude/agents/${name}.md; do not edit directly"
+    echo "# generated from .ai/agents/${name}.md; do not edit directly"
     echo "name: ${name}"
     echo "description: ${description}"
     [ -n "$model" ] && echo "model: $model"
@@ -212,7 +212,7 @@ render_cursor_rule() {
   echo "description: Hephaestus delivery workflow — how its commands, subagents, and chains work in this project"
   echo "alwaysApply: true"
   echo "---"
-  echo "<!-- generated from .ai/workflows/ and .claude/agents/; do not edit directly -->"
+  echo "<!-- generated from .ai/workflows/ and .ai/agents/; do not edit directly -->"
   echo ""
   echo "# Hephaestus"
   echo ""
@@ -231,7 +231,7 @@ render_cursor_rule() {
   echo "- **Subagents, no worktrees.** Under Claude Code the \`coder\` agent runs in an isolated git worktree. Cursor subagents share one working tree — serialize file-modifying tasks."
   echo "- **Least privilege is only partly enforced.** \`researcher\`, \`reviewer\`, and \`explorer\` carry \`readonly: true\`, which sandboxes their shell — shell writes fail. It does not withhold the write tools, and those bypass the sandbox, so file writes still rest on instruction. \`tester\` is exempt: its shell must write for tests to run. \`tools:\` is prose to Cursor, not an access control."
   echo "- **Commands are injected verbatim.** Cursor strips YAML frontmatter only from imported \`.claude/commands\` files, so these adapters carry none. \`\$ARGUMENTS\` and \`\$1\`… are substituted."
-  echo "- **Never hand-edit \`.cursor/\`.** Edit \`.ai/workflows/\` and \`.claude/agents/\` in the hephaestus clone, then run \`scripts/sync-cursor-adapters.sh\`."
+  echo "- **Never hand-edit \`.cursor/\`.** Edit \`.ai/workflows/\` and \`.ai/agents/\` in the hephaestus clone, then run \`scripts/sync-cursor-adapters.sh\`."
 }
 
 check_or_write() {
@@ -325,7 +325,7 @@ if [ "$workflow_parse_error" -eq 0 ]; then
 fi
 drift=$(( drift | workflow_parse_error ))
 
-for agent in "$CLAUDE_AGENTS_DIR"/*.md; do
+for agent in "$AI_AGENTS_DIR"/*.md; do
   [ -e "$agent" ] || continue
   name=$(field "$agent" "name")
   if [ -z "$name" ]; then
@@ -346,7 +346,7 @@ done
 # destroy a live command or subagent.
 [ "$MODE" = "sync" ] && [ "$drift" -ne 0 ] && exit 1
 check_stale "$CURSOR_COMMANDS_DIR" "$expected_commands" "$WORKFLOWS_DIR" ".ai/workflows" || drift=1
-check_stale "$CURSOR_AGENTS_DIR" "$expected_agents" "$CLAUDE_AGENTS_DIR" ".claude/agents" || drift=1
+check_stale "$CURSOR_AGENTS_DIR" "$expected_agents" "$AI_AGENTS_DIR" ".ai/agents" || drift=1
 
 if [ "$MODE" = "--check" ]; then
   [ "$drift" -eq 0 ] && echo "✓ Cursor adapters in sync"

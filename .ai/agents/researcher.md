@@ -1,12 +1,9 @@
 ---
-# generated from .ai/agents/researcher.md; do not edit directly
 name: researcher
 description: Research a topic using web search and return findings. Spawn multiple researchers in parallel for different aspects of a complex question.
-readonly: true
+tools: WebSearch, WebFetch, Read
+model: sonnet
 ---
-
-> **Read-only.** `readonly: true` sandboxes your shell — a shell write fails with `operation not permitted`. It does **not** withhold the write tools, and those bypass the sandbox: do not use them.
-
 
 Research the specific topic described in your prompt.
 

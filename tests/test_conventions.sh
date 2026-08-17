@@ -17,6 +17,7 @@ make_fixture() {
   mkdir -p "$dir/.ai"
   cp "$HEPHAESTUS_ROOT/.ai/conventions.md" "$dir/.ai/conventions.md"
   cp -R "$HEPHAESTUS_ROOT/.ai/workflows" "$dir/.ai/workflows"
+  cp -R "$HEPHAESTUS_ROOT/.ai/agents" "$dir/.ai/agents"
   for d in tests templates .claude .opencode .agents .codex .hermes .cursor; do
     cp -R "$HEPHAESTUS_ROOT/$d" "$dir/$d"
   done

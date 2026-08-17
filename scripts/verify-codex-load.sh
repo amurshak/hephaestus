@@ -128,8 +128,8 @@ if AGENTS_DIR=$(resolve_root "coder.toml" \
     if [ ! -f "$AGENTS_DIR/$agent.toml" ]; then
       echo "ERR: missing Codex agent role $AGENTS_DIR/$agent.toml" >&2
       fail=1
-    elif ! grep -q "generated from .claude/agents/$agent.md" "$AGENTS_DIR/$agent.toml"; then
-      echo "ERR: Codex agent role $agent is not generated from .claude/agents/$agent.md" >&2
+    elif ! grep -q "generated from .ai/agents/$agent.md" "$AGENTS_DIR/$agent.toml"; then
+      echo "ERR: Codex agent role $agent is not generated from .ai/agents/$agent.md" >&2
       fail=1
     fi
   done

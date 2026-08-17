@@ -1,24 +1,13 @@
-<!-- generated from .ai/agents/tester.md; do not edit directly -->
-# tester delegate
-
-Run tests and return structured results. Use after writing or modifying code.
-
-Hermes has no agent-definition file format — it spawns children through
-`delegate_task`. Pass the **Prompt** below as `context` and call with:
-
-```
-delegate_task(goal: "<the task>", context: "<this prompt + everything the delegate needs>",
-              toolsets: ["terminal", "file"], role: "leaf")
-```
-
-- **Toolsets**: `["terminal", "file"]` — intersected with yours, silently. A toolset you lack is dropped with no error, so confirm the session holds these before delegating.
-- **Role**: `leaf` — cannot delegate further, and Hermes already blocks `memory`, `clarify`, `send_message` and `cronjob` for children.
-- **Stale inherited cwd**: the child's prompt carries the session *launch* dir, not necessarily where you work now. Put the absolute repo or worktree path in `context`.
-- **Model tier**: `haiku` → `anthropic/claude-haiku-4-5-20251001`. Advisory: Hermes applies one global `delegation.model`, so set it from the highest tier a workflow uses.
-- **Read-only**: the Claude role grants no edit tools. Hermes's `file` toolset does include writes, so state the constraint in `context` — this delegate reports findings, it does not change files.
-
-## Prompt
-
+---
+name: tester
+description: Run tests and return structured results. Use after writing or modifying code.
+tools: Bash, Read, Glob, Grep
+model: haiku
+# Read-only in intent, but the shell must write: test runs produce artifacts,
+# caches, and temp files. Harnesses that sandbox a read-only shell must exempt
+# this role or the test command fails outright.
+shell: write
+---
 
 Run tests for the project and return a structured summary.
 

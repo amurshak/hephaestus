@@ -4,7 +4,6 @@ description: Investigate a specific area of the codebase and report findings. Sp
 tools: Bash, Read, Glob, Grep
 model: haiku
 ---
-<!-- generated from .ai/agents/explorer.md; do not edit directly -->
 
 Investigate the specific area described in your prompt.
 

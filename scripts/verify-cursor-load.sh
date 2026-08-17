@@ -161,8 +161,8 @@ if AGENTS_DIR=$(resolve_root "coder.md" \
     if [ ! -f "$AGENTS_DIR/$agent.md" ]; then
       echo "ERR: missing Cursor subagent $AGENTS_DIR/$agent.md" >&2
       fail=1
-    elif ! grep -q "generated from .claude/agents/$agent.md" "$AGENTS_DIR/$agent.md"; then
-      echo "ERR: Cursor subagent $agent is not generated from .claude/agents/$agent.md" >&2
+    elif ! grep -q "generated from .ai/agents/$agent.md" "$AGENTS_DIR/$agent.md"; then
+      echo "ERR: Cursor subagent $agent is not generated from .ai/agents/$agent.md" >&2
       fail=1
     fi
   done
@@ -176,8 +176,8 @@ fi
 # A project's own .mdc rules live alongside ours, so probe for our file by name.
 if RULES_DIR=$(resolve_root "hephaestus.mdc" \
       "$ROOT/.cursor/rules" "$CURSOR_HOME_DIR/rules"); then
-  if ! grep -q "generated from .ai/workflows/ and .claude/agents/" "$RULES_DIR/hephaestus.mdc"; then
-    echo "ERR: Cursor rule hephaestus.mdc is not generated from .ai/workflows/ and .claude/agents/" >&2
+  if ! grep -q "generated from .ai/workflows/ and .ai/agents/" "$RULES_DIR/hephaestus.mdc"; then
+    echo "ERR: Cursor rule hephaestus.mdc is not generated from .ai/workflows/ and .ai/agents/" >&2
     fail=1
   elif ! grep -q "alwaysApply: true" "$RULES_DIR/hephaestus.mdc"; then
     echo "ERR: Cursor rule hephaestus.mdc no longer always applies" >&2

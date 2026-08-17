@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# test_agent_adapters.sh — Verify tool adapters stay in sync with .ai workflows.
+# test_agent_adapters.sh — Verify tool adapters stay in sync with .ai workflows
+# and .ai/agents definitions.
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -65,11 +66,82 @@ bash "$FIXTURE2/scripts/sync-agent-adapters.sh" >/dev/null 2>&1
 assert_exit_code "sync fails on unparseable source" 1 "$?"
 assert_file_exists "sync keeps adapter of unparseable source" "$FIXTURE2/.claude/commands/ship.md"
 
+begin_test "agent adapter check detects drift and stale adapters"
+
+FIXTURE3=$(mktemp -d "${TMPDIR:-/tmp}/heph-adapters-XXXXXX")
+trap 'rm -rf "$FIXTURE" "$FIXTURE2" "$FIXTURE3"' EXIT
+
+cp -R "$HEPHAESTUS_ROOT/.ai" "$FIXTURE3/.ai"
+cp -R "$HEPHAESTUS_ROOT/.claude" "$FIXTURE3/.claude"
+mkdir -p "$FIXTURE3/scripts"
+cp "$HEPHAESTUS_ROOT/scripts/sync-agent-adapters.sh" "$FIXTURE3/scripts/sync-agent-adapters.sh"
+
+# A hand-edit to the generated .claude/agents/ must not silently become the source.
+sed -i.bak 's/Keep changes minimal and focused/Keep changes sprawling/' \
+  "$FIXTURE3/.claude/agents/coder.md"
+rm -f "$FIXTURE3/.claude/agents/coder.md.bak"
+
+if agent_drift=$(bash "$FIXTURE3/scripts/sync-agent-adapters.sh" --check 2>&1); then
+  fail "agent check should detect adapter drift" "exited 0, output: $agent_drift"
+else
+  assert_contains "agent check reports coder drift" "$agent_drift" "Claude agent adapter drift for coder"
+fi
+
+bash "$FIXTURE3/scripts/sync-agent-adapters.sh" >/dev/null 2>&1
+rm "$FIXTURE3/.ai/agents/tester.md"
+
+if agent_stale=$(bash "$FIXTURE3/scripts/sync-agent-adapters.sh" --check 2>&1); then
+  fail "agent check should detect orphaned agent adapter" "exited 0, output: $agent_stale"
+else
+  assert_contains "agent check names the stale adapter" "$agent_stale" "stale Claude agent adapter"
+  assert_contains "stale agent adapter path includes tester.md" "$agent_stale" "tester.md"
+fi
+
+agent_sync=$(bash "$FIXTURE3/scripts/sync-agent-adapters.sh" 2>&1)
+assert_contains "sync reports stale agent adapter removal" "$agent_sync" "removed stale Claude agent adapter"
+assert_file_not_exists "sync removes the orphaned agent adapter" "$FIXTURE3/.claude/agents/tester.md"
+
+# A user's own agent carries no generated-from marker, so it is not ours to delete.
+printf -- '---\nname: my-agent\ndescription: my own agent\n---\nbody\n' > "$FIXTURE3/.claude/agents/my-agent.md"
+
+if own_agent_check=$(bash "$FIXTURE3/scripts/sync-agent-adapters.sh" --check 2>&1); then
+  fail "check should flag the unexpected agent file" "exited 0: $own_agent_check"
+else
+  assert_contains "check names the agent file"     "$own_agent_check" "my-agent.md"
+  assert_contains "check says non-generated agent" "$own_agent_check" "unexpected non-generated file"
+fi
+bash "$FIXTURE3/scripts/sync-agent-adapters.sh" >/dev/null 2>&1
+assert_file_exists "hand-written agent survives sync" "$FIXTURE3/.claude/agents/my-agent.md"
+rm "$FIXTURE3/.claude/agents/my-agent.md"
+
+# Drop the closing --- so `name` still parses but the render itself fails —
+# the write must not truncate the committed adapter on the way down.
+awk '/^---$/ { if (++n == 2) next } { print }' "$FIXTURE3/.ai/agents/coder.md" \
+  > "$FIXTURE3/.ai/agents/coder.md.tmp" && mv "$FIXTURE3/.ai/agents/coder.md.tmp" "$FIXTURE3/.ai/agents/coder.md"
+bash "$FIXTURE3/scripts/sync-agent-adapters.sh" >/dev/null 2>&1
+assert_exit_code "sync fails on unparseable agent source" 1 "$?"
+assert_contains "sync keeps adapter content of unparseable agent source" \
+  "$(cat "$FIXTURE3/.claude/agents/coder.md")" "Implement the specific task"
+
+begin_test "generated Claude agent adapters keep frontmatter first"
+
+# Claude Code parses the YAML frontmatter only when it opens the file, so the
+# render must keep it first and place the marker immediately after it.
+for adapter in "$HEPHAESTUS_ROOT"/.claude/agents/*.md; do
+  name=$(basename "$adapter")
+  assert_eq "$name line 1 opens frontmatter" "---" "$(head -n 1 "$adapter")"
+  close=$(awk '/^---$/ { if (++f == 2) { print NR; exit } }' "$adapter")
+  marker=$(grep -n "generated from .ai/agents/" "$adapter" | head -n 1 | cut -d: -f1)
+  assert_eq "$name marker sits right after frontmatter" "$((close + 1))" "$marker"
+done
+
 begin_test "plugin manifest agents list matches .claude/agents/ contents"
 
 # plugin.json must enumerate agent files individually (Claude Code's plugin
 # schema rejects directory paths for agents), so the list can drift when
-# agents are added or removed. Lock it to the directory contents.
+# agents are added or removed. Lock it to the directory contents — the
+# generated .claude/agents/, not canonical .ai/agents/, because that is the
+# directory the plugin loader actually reads.
 manifest_agents=$(grep -oE '\./\.claude/agents/[a-z-]+\.md' "$HEPHAESTUS_ROOT/.claude-plugin/plugin.json" | sed 's|.*/||' | sort)
 dir_agents=$(ls "$HEPHAESTUS_ROOT/.claude/agents/" | grep '\.md$' | sort)
 assert_eq "plugin.json agents == .claude/agents/*.md" "$dir_agents" "$manifest_agents"

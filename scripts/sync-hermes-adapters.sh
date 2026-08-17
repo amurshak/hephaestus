@@ -5,7 +5,7 @@
 # remain the source of truth for shared subagent prompts. This script renders
 # Hermes-compatible adapters from those sources so adapter metadata cannot drift:
 #   .ai/workflows/<name>.md   → .hermes/skills/hephaestus/<name>/SKILL.md
-#   .claude/agents/<name>.md  → .hermes/agents/<name>.md  (delegate_task brief)
+#   .ai/agents/<name>.md  → .hermes/agents/<name>.md  (delegate_task brief)
 #
 # Hermes is not a command-file harness: skills are directories holding a
 # SKILL.md, discovered from ~/.hermes/skills plus any `skills.external_dirs`.
@@ -17,7 +17,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKFLOWS_DIR="$ROOT/.ai/workflows"
-CLAUDE_AGENTS_DIR="$ROOT/.claude/agents"
+AI_AGENTS_DIR="$ROOT/.ai/agents"
 HERMES_SKILLS_DIR="$ROOT/.hermes/skills/hephaestus"
 HERMES_AGENTS_DIR="$ROOT/.hermes/agents"
 MODE="${1:-sync}"
@@ -213,7 +213,7 @@ render_hermes_agent() {
   toolsets=$(render_toolsets "$tools")
 
   {
-    echo "<!-- generated from .claude/agents/${name}.md; do not edit directly -->"
+    echo "<!-- generated from .ai/agents/${name}.md; do not edit directly -->"
     echo "# ${name} delegate"
     echo ""
     echo "${description}"
@@ -303,11 +303,11 @@ check_stale_agents() {
       *" $base "*) continue ;;
     esac
     # Only sweep files this generator wrote, matching check_stale_skills.
-    if ! grep -q "generated from .claude/agents/" "$adapter"; then
+    if ! grep -q "generated from .ai/agents/" "$adapter"; then
       echo "ERR: unexpected non-generated file $adapter in .hermes/agents — move it or remove it manually" >&2
       rc=1
     elif [ "$MODE" = "--check" ]; then
-      echo "ERR: stale Hermes agent adapter $adapter (no matching source in $CLAUDE_AGENTS_DIR)" >&2
+      echo "ERR: stale Hermes agent adapter $adapter (no matching source in $AI_AGENTS_DIR)" >&2
       rc=1
     else
       rm -f "$adapter"
@@ -337,7 +337,7 @@ for workflow in "$WORKFLOWS_DIR"/*.md; do
   rm -f "$tmp"
 done
 
-for agent in "$CLAUDE_AGENTS_DIR"/*.md; do
+for agent in "$AI_AGENTS_DIR"/*.md; do
   [ -e "$agent" ] || continue
   name=$(field "$agent" "name")
   if [ -z "$name" ]; then

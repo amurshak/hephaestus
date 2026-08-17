@@ -559,7 +559,7 @@ This README is the **consumer** surface: installing hephaestus and running it ag
 | [`.ai/conventions.md`](.ai/conventions.md) | The behavior spec the workflows implement — the loop, retry limits, escalation, verdicts, what your project owns |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Working **on** hephaestus — canonical sources, adapter generators, quality gates, forking |
 
-PRs welcome. The short version: edit canonical sources (`.ai/conventions.md`, `.ai/workflows/`, `.claude/agents/`), never generated adapters; run `./tests/run.sh` and every `scripts/sync-*-adapters.sh --check`. Adapter generators for new harnesses are especially welcome.
+PRs welcome. The short version: edit canonical sources (`.ai/conventions.md`, `.ai/workflows/`, `.ai/agents/`), never generated adapters; run `./tests/run.sh` and every `scripts/sync-*-adapters.sh --check`. Adapter generators for new harnesses are especially welcome.
 
 ## License
 

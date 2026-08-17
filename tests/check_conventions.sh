@@ -169,6 +169,7 @@ done
 # was renamed (a new harness generator, a layout change) must fail loudly rather
 # than silently drop its coverage.
 SHIPPED="$WORKFLOWS_DIR
+$ROOT/.ai/agents
 $ROOT/.claude/commands
 $ROOT/.claude/agents
 $ROOT/.opencode/commands

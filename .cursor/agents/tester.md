@@ -1,5 +1,5 @@
 ---
-# generated from .claude/agents/tester.md; do not edit directly
+# generated from .ai/agents/tester.md; do not edit directly
 name: tester
 description: Run tests and return structured results. Use after writing or modifying code.
 ---

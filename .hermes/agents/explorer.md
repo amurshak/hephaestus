@@ -1,4 +1,4 @@
-<!-- generated from .claude/agents/explorer.md; do not edit directly -->
+<!-- generated from .ai/agents/explorer.md; do not edit directly -->
 # explorer delegate
 
 Investigate a specific area of the codebase and report findings. Spawn multiple explorers in parallel to research different subsystems simultaneously.

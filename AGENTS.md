@@ -15,13 +15,13 @@
 - Check README composition drift with `bash tests/check_composition.sh`; `tests/test_composition.sh` wraps this plus negative fixture cases.
 
 ## Sources Of Truth
-- Canonical workflow specs live in `.ai/workflows/*.md`; `.claude/commands/*.md` are generated and should not be edited directly.
-- OpenCode command adapters in `.opencode/commands/*.md` are generated from `.ai/workflows/*.md`; OpenCode agent adapters in `.opencode/agents/*.md` are generated from `.claude/agents/*.md`.
-- Codex skill adapters in `.agents/skills/*/SKILL.md` are generated from `.ai/workflows/*.md`; Codex agent roles in `.codex/agents/*.toml` are generated from `.claude/agents/*.md`.
-- Hermes skill adapters in `.hermes/skills/hephaestus/*/SKILL.md` are generated from `.ai/workflows/*.md`; Hermes `delegate_task` briefs in `.hermes/agents/*.md` are generated from `.claude/agents/*.md`.
+- Canonical workflow specs live in `.ai/workflows/*.md` and agent definitions in `.ai/agents/*.md`; `.claude/commands/*.md` and `.claude/agents/*.md` are generated and should not be edited directly.
+- OpenCode command adapters in `.opencode/commands/*.md` are generated from `.ai/workflows/*.md`; OpenCode agent adapters in `.opencode/agents/*.md` are generated from `.ai/agents/*.md`.
+- Codex skill adapters in `.agents/skills/*/SKILL.md` are generated from `.ai/workflows/*.md`; Codex agent roles in `.codex/agents/*.toml` are generated from `.ai/agents/*.md`.
+- Hermes skill adapters in `.hermes/skills/hephaestus/*/SKILL.md` are generated from `.ai/workflows/*.md`; Hermes `delegate_task` briefs in `.hermes/agents/*.md` are generated from `.ai/agents/*.md`.
 - Workflow frontmatter must include `name`, `requires`, and `chains`; use `requires: none` or `chains: none` when empty.
 - Preserve `$ARGUMENTS` in workflows that accept user input.
-- Agent definitions are hand-edited in `.claude/agents/*.md`; preserve YAML frontmatter, tool lists, isolation mode, and structured output contracts.
+- Agent definitions are hand-edited in `.ai/agents/*.md`; preserve YAML frontmatter, tool lists, isolation mode, and structured output contracts.
 - Retry limits are specified in `.ai/conventions.md`; the workflows restate them at the point of use, and `tests/check_conventions.sh` fails on disagreement. Never reference them by name — an installed project cannot resolve the pointer.
 
 ## Repo Shape

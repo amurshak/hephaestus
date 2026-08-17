@@ -1,5 +1,5 @@
 ---
-# generated from .claude/agents/coder.md; do not edit directly
+# generated from .ai/agents/coder.md; do not edit directly
 description: "Implement a focused coding task in isolation. Spawn multiple coders in parallel for independent changes across different files or modules. NOTE: OpenCode has no worktree isolation — parallel coder agents share one working tree; serialize file-modifying tasks."
 mode: subagent
 model: anthropic/claude-sonnet-5

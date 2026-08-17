@@ -8,6 +8,7 @@ model: haiku
 # this role or the test command fails outright.
 shell: write
 ---
+<!-- generated from .ai/agents/tester.md; do not edit directly -->
 
 Run tests for the project and return a structured summary.
 

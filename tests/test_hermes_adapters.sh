@@ -55,7 +55,7 @@ trap 'rm -rf "$FIXTURE" "$FIXTURE2"' EXIT
 copy_fixture "$FIXTURE2"
 
 rm "$FIXTURE2/.ai/workflows/research.md"
-rm "$FIXTURE2/.claude/agents/tester.md"
+rm "$FIXTURE2/.ai/agents/tester.md"
 
 if stale_output=$(bash "$FIXTURE2/scripts/sync-hermes-adapters.sh" --check 2>&1); then
   fail "Hermes check should detect orphaned adapters" "exited 0, output: $stale_output"
@@ -69,7 +69,7 @@ assert_contains "sync reports stale skill removal" "$sync_output" "removed stale
 assert_file_not_exists "sync removes orphaned skill" "$FIXTURE2/.hermes/skills/hephaestus/research/SKILL.md"
 assert_file_not_exists "sync removes orphaned agent adapter" "$FIXTURE2/.hermes/agents/tester.md"
 
-sed -i.bak '/^name:/d' "$FIXTURE2/.claude/agents/coder.md"
+sed -i.bak '/^name:/d' "$FIXTURE2/.ai/agents/coder.md"
 bash "$FIXTURE2/scripts/sync-hermes-adapters.sh" >/dev/null 2>&1
 assert_exit_code "sync fails on unparseable source" 1 "$?"
 assert_file_exists "sync keeps adapter of unparseable source" "$FIXTURE2/.hermes/agents/coder.md"
@@ -168,7 +168,7 @@ reviewer="$AGENTS/reviewer.md"
 researcher="$AGENTS/researcher.md"
 
 assert_contains "coder gets terminal and file toolsets" "$(cat "$coder")" '["terminal", "file"]'
-assert_contains "coder brief names its source" "$(cat "$coder")" "generated from .claude/agents/coder.md"
+assert_contains "coder brief names its source" "$(cat "$coder")" "generated from .ai/agents/coder.md"
 assert_contains "coder delegates as leaf" "$(cat "$coder")" 'role: "leaf"'
 assert_contains "coder warns about missing worktree isolation" "$(cat "$coder")" "**No worktree isolation**"
 assert_not_contains "coder is not marked read-only" "$(cat "$coder")" "**Read-only**"
@@ -198,7 +198,7 @@ for wf in "$HEPHAESTUS_ROOT"/.ai/workflows/*.md; do
   name=$(basename "$wf" .md)
   assert_file_exists "skill for /$name" "$SKILLS/$name/SKILL.md"
 done
-for ag in "$HEPHAESTUS_ROOT"/.claude/agents/*.md; do
+for ag in "$HEPHAESTUS_ROOT"/.ai/agents/*.md; do
   name=$(basename "$ag" .md)
   assert_file_exists "delegate brief for @$name" "$AGENTS/$name.md"
 done
