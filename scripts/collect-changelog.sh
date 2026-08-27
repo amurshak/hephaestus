@@ -81,6 +81,14 @@ validate_fragments() {
       echo -e "${RED}✗${NC} $base — unresolved merge conflict markers" >&2
       ok=1
     fi
+    # An entry body is list content, not document structure. A `## ` line
+    # splices in verbatim and forges a second version section — which also
+    # poisons the next release, since the duplicate-version guard greps for
+    # exactly that heading shape (#216).
+    if grep -qE '^#{1,2} ' "$f"; then
+      echo -e "${RED}✗${NC} $base — top-level heading in an entry body (use bold text; '### ' and deeper are fine)" >&2
+      ok=1
+    fi
   done
   return $ok
 }
@@ -104,8 +112,11 @@ render_fragments() {
         printf '### %s\n' "$label"
         found=1
       fi
-      # Strip trailing blank lines, prefix the first line with "- ".
-      body="$(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$f")"
+      # Strip trailing blank lines, prefix the first line with "- ". A body
+      # authored with its own leading bullet would otherwise render "- - entry"
+      # (#216); changelog.d/README.md says to omit it, so normalize rather than
+      # fail an otherwise valid entry.
+      body="$(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$f" | sed '1s/^[-*+][[:space:]]\{1,\}//')"
       printf -- '- %s\n' "$body"
     done
 
@@ -167,6 +178,20 @@ render_legacy() {
   unknown_sections "$1"
 }
 
+# Hand-written Unreleased lines that no renderer will emit. render_legacy only
+# reaches content under a `### ` heading, but the release blanks the whole
+# Unreleased body regardless — so anything above the first heading is deleted
+# without ever being published (#214, widened in #216). Prose counts, not just
+# bullets: a lead paragraph is lost exactly the same way.
+legacy_orphans() {
+  awk '
+    /^### / { seen_heading = 1; next }
+    /^#{1,2} / { next }
+    seen_heading { next }
+    NF { print }
+  ' "$1"
+}
+
 # Collapse runs of blank lines to one and trim both ends. Release needs it so
 # the spliced section doesn't collide with the heading that follows; preview
 # shares it so its stdout is byte-identical to what release splices.
@@ -225,6 +250,14 @@ fi
 
 FRAGMENT_COUNT="$(count_fragments)"
 
+# Exactly one Unreleased section. With two, the rebuild prints a version heading
+# at each match and the splice inserts the body at each — every entry published
+# twice, two version sections, both Unreleased headings left behind (#216).
+UNRELEASED_COUNT="$(grep -c '^## Unreleased' "$CHANGELOG")"
+if [ "$UNRELEASED_COUNT" -gt 1 ]; then
+  die "CHANGELOG.md has $UNRELEASED_COUNT '## Unreleased' sections — merge them into one before releasing"
+fi
+
 # Existing Unreleased body: everything between "## Unreleased" and the next "## ".
 # Extracted for preview AND release, so preview renders exactly what release
 # would fold — under-reporting here hid a five-entry gap in the 2.2.0 cut (#206).
@@ -244,6 +277,10 @@ if [ "$MODE" = "preview" ]; then
     || echo -e "${YELLOW}warning:${NC} CHANGELOG.md has no '## Unreleased' section — the release will refuse" >&2
   if [ -n "$VERSION" ] && grep -q "^## $VERSION — " "$CHANGELOG"; then
     echo -e "${YELLOW}warning:${NC} CHANGELOG.md already has a ## $VERSION section — the release will refuse" >&2
+  fi
+  if [ -n "$(legacy_orphans "$UNRELEASED_BODY")" ]; then
+    echo -e "${YELLOW}warning:${NC} Unreleased content above the first '### ' heading — the release will refuse:" >&2
+    legacy_orphans "$UNRELEASED_BODY" | sed 's/^/    /' >&2
   fi
   if [ "$FRAGMENT_COUNT" -eq 0 ] && ! grep -q '[^[:space:]]' "$UNRELEASED_BODY"; then
     echo -e "${YELLOW}nothing to preview — no fragments and no Unreleased content${NC}"
@@ -281,6 +318,13 @@ if [ "$FRAGMENT_COUNT" -eq 0 ] && ! grep -q '[^[:space:]]' "$UNRELEASED_BODY"; t
   die "nothing to release — no fragments and no Unreleased content"
 fi
 
+# Orphaned Unreleased content would be deleted unpublished. Refuse rather than
+# guess a category the author did not choose (#216).
+ORPHANS="$(legacy_orphans "$UNRELEASED_BODY")"
+if [ -n "$ORPHANS" ]; then
+  die "Unreleased content sits above the first '### ' heading and would be dropped unpublished:"$'\n'"$(echo "$ORPHANS" | sed 's/^/    /')"$'\n'"move it under a '### ' category heading (${CATEGORIES// /, }) or into a changelog.d/ fragment"
+fi
+
 # Rebuild: header, empty Unreleased, then the new version section.
 awk -v version="$VERSION" -v date="$DATE" '
   /^## Unreleased/ {
@@ -302,6 +346,13 @@ trap 'rm -f "$TMP" "$UNRELEASED_BODY" "$BODY"' EXIT
 # Hand-written Unreleased entries merge into the fragment sections by category,
 # so a legacy "### Added" never produces a second header.
 render_fragments "$UNRELEASED_BODY" | collapse_blanks > "$BODY"
+
+# A fold that renders nothing must not publish an empty section over content it
+# is about to delete. The orphan guard above catches the known cause; this is
+# the backstop for any renderer gap it does not (#216).
+if [ ! -s "$BODY" ]; then
+  die "rendered an empty release body from $FRAGMENT_COUNT fragment(s) and $LEGACY_COUNT Unreleased entry(ies) — refusing to publish an empty $VERSION section; nothing was written"
+fi
 
 awk -v bodyfile="$BODY" -v version="$VERSION" '
   {

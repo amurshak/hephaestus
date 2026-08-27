@@ -396,6 +396,93 @@ out=$("$R/scripts/collect-changelog.sh" --check 2>&1); rc=$?
 assert_exit_code "setext underline passes --check" 0 "$rc"
 
 # ─────────────────────────────────────────────────────────────────────────────
+begin_test "a top-level heading in an entry body is rejected"
+
+# A `## ` line in a fragment splices in verbatim and forges a second version
+# section, which also poisons the next release: the duplicate-version guard
+# greps for exactly that heading shape (#216).
+R="$FIXTURE/frag-heading"
+make_repo "$R"
+printf '**Entry**\n\n## 2.0.0 — 1999-01-01\n' > "$R/changelog.d/99.added.md"
+out=$("$R/scripts/collect-changelog.sh" --check 2>&1); rc=$?
+assert_exit_code "fragment heading rejected by --check" 1 "$rc"
+assert_contains "names the offending fragment" "$out" "99.added.md"
+assert_contains "names the problem" "$out" "top-level heading"
+
+out=$("$R/scripts/collect-changelog.sh" 2.2.0 2>&1); rc=$?
+assert_exit_code "release refuses the same fragment" 1 "$rc"
+assert_not_contains "no phantom section written" "$(cat "$R/CHANGELOG.md")" "1999-01-01"
+
+# `### ` and deeper are list-safe and must still pass.
+printf '**Entry**\n\n### A sub-heading\n' > "$R/changelog.d/99.added.md"
+out=$("$R/scripts/collect-changelog.sh" --check 2>&1); rc=$?
+assert_exit_code "sub-heading still passes --check" 0 "$rc"
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "Unreleased content above the first ### heading is refused, not dropped"
+
+# render_legacy only reaches content under a `### ` heading, but the release
+# blanks the whole Unreleased body — so anything above the first heading was
+# deleted without ever being published, while the run reported success (#214).
+R="$FIXTURE/orphan"
+make_repo "$R" "- an unheaded entry that must not vanish"
+before=$(cat "$R/CHANGELOG.md")
+out=$("$R/scripts/collect-changelog.sh" 2.2.0 2>&1); rc=$?
+assert_exit_code "release refuses orphaned Unreleased content" 1 "$rc"
+assert_contains "quotes the orphaned line" "$out" "an unheaded entry that must not vanish"
+assert_eq "CHANGELOG.md untouched" "$before" "$(cat "$R/CHANGELOG.md")"
+
+# Prose is lost the same way as a bullet — a lead paragraph is not a list item.
+R="$FIXTURE/orphan-prose"
+make_repo "$R" "A lead paragraph explaining the theme."
+out=$("$R/scripts/collect-changelog.sh" 2.2.0 2>&1); rc=$?
+assert_exit_code "release refuses orphaned prose" 1 "$rc"
+assert_contains "quotes the orphaned prose" "$out" "A lead paragraph explaining the theme."
+
+# Preview rehearses it as a warning rather than dying, like the other preconditions.
+out=$("$R/scripts/collect-changelog.sh" 2.2.0 --preview 2>&1); rc=$?
+assert_exit_code "preview still succeeds" 0 "$rc"
+assert_contains "preview warns about the orphan" "$out" "above the first"
+
+# Content properly under a heading is unaffected.
+R="$FIXTURE/orphan-none"
+make_repo "$R" "### Added
+- a properly placed entry"
+out=$("$R/scripts/collect-changelog.sh" 2.2.0 2>&1); rc=$?
+assert_exit_code "well-formed Unreleased body still releases" 0 "$rc"
+assert_contains "entry published" "$(cat "$R/CHANGELOG.md")" "a properly placed entry"
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "a second ## Unreleased section is refused"
+
+# With two, the rebuild prints a version heading at each match and the splice
+# inserts the body at each: every entry published twice (#216).
+R="$FIXTURE/double-unreleased"
+make_repo "$R" "### Added
+- first"
+# Splice a second Unreleased section in ahead of the released one.
+awk '/^## 2\.1\.0 / && !done { print "## Unreleased"; print ""; print "### Added"; print "- second"; print ""; done = 1 } { print }' \
+  "$R/CHANGELOG.md" > "$R/CHANGELOG.new" && mv "$R/CHANGELOG.new" "$R/CHANGELOG.md"
+before=$(cat "$R/CHANGELOG.md")
+out=$("$R/scripts/collect-changelog.sh" 2.2.0 2>&1); rc=$?
+assert_exit_code "release refuses two Unreleased sections" 1 "$rc"
+assert_contains "says how many it found" "$out" "2 '## Unreleased' sections"
+assert_eq "CHANGELOG.md untouched" "$before" "$(cat "$R/CHANGELOG.md")"
+
+# ─────────────────────────────────────────────────────────────────────────────
+begin_test "a fragment authored with its own bullet is normalized"
+
+# changelog.d/README.md says the body omits the leading "- "; an author who
+# includes it anyway must not produce "- - entry" (#216).
+R="$FIXTURE/double-bullet"
+make_repo "$R"
+printf -- '- already bulleted\n' > "$R/changelog.d/1.added.md"
+out=$("$R/scripts/collect-changelog.sh" 2.2.0 2>&1); rc=$?
+assert_exit_code "release succeeds" 0 "$rc"
+assert_contains "single bullet emitted" "$(cat "$R/CHANGELOG.md")" "- already bulleted"
+assert_not_contains "no doubled bullet" "$(cat "$R/CHANGELOG.md")" "- - already bulleted"
+
+# ─────────────────────────────────────────────────────────────────────────────
 begin_test "repo's own fragments are valid"
 
 out=$("$HEPHAESTUS_ROOT/scripts/collect-changelog.sh" --check 2>&1); rc=$?
