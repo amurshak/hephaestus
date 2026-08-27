@@ -281,6 +281,44 @@ assert_eq "CHANGELOG.md untouched" "$before" "$(cat "$R/CHANGELOG.md")"
 assert_file_exists "fragment retained" "$R/changelog.d/107.added.md"
 
 # ─────────────────────────────────────────────────────────────────────────────
+begin_test "a fragment left conflicted mid-merge fails validation"
+
+# Follow-up to #205 (#209): validation checked filename shape and non-emptiness
+# but not content, so unresolved conflict markers passed --check and release
+# mode published them verbatim — then deleted the conflicted file.
+R="$FIXTURE/conflict"
+make_repo "$R"
+frag "$R" "107.added.md" '**Cursor generator** (#107): a feature.'
+printf '<<<<<<< HEAD\n**Entry** (#209): ours.\n=======\n**Entry** (#209): theirs.\n>>>>>>> master\n' \
+  > "$R/changelog.d/209.fixed.md"
+before=$(cat "$R/CHANGELOG.md")
+out=$("$R/scripts/collect-changelog.sh" --check 2>&1); rc=$?
+assert_exit_code "--check exits 1" 1 "$rc"
+assert_contains "names the conflicted file" "$out" "209.fixed.md"
+assert_contains "flags the markers" "$out" "conflict markers"
+assert_not_contains "valid sibling not flagged" "$out" "107.added.md"
+
+out=$("$R/scripts/collect-changelog.sh" 2.2.0 2>&1); rc=$?
+assert_exit_code "release exits 1" 1 "$rc"
+assert_eq "CHANGELOG.md untouched" "$before" "$(cat "$R/CHANGELOG.md")"
+assert_file_exists "conflicted fragment retained" "$R/changelog.d/209.fixed.md"
+assert_file_exists "valid sibling fragment retained" "$R/changelog.d/107.added.md"
+
+# A wider conflict-marker-size (.gitattributes) emits longer marker runs; the
+# grep is unanchored on the right so those still fail.
+printf '<<<<<<<<<<<<<<<<<<<< HEAD\nours.\n>>>>>>>>>>>>>>>>>>>> master\n' \
+  > "$R/changelog.d/209.fixed.md"
+out=$("$R/scripts/collect-changelog.sh" --check 2>&1); rc=$?
+assert_exit_code "wide markers rejected" 1 "$rc"
+
+# The =======-shaped line a marker grep must NOT match: a setext heading
+# underline is valid markdown, so only the <<<<<<</>>>>>>> pair is checked.
+printf 'Heading\n=======\n**Entry** (#209): a setext heading is not a conflict.\n' \
+  > "$R/changelog.d/209.fixed.md"
+out=$("$R/scripts/collect-changelog.sh" --check 2>&1); rc=$?
+assert_exit_code "setext underline passes --check" 0 "$rc"
+
+# ─────────────────────────────────────────────────────────────────────────────
 begin_test "repo's own fragments are valid"
 
 out=$("$HEPHAESTUS_ROOT/scripts/collect-changelog.sh" --check 2>&1); rc=$?
