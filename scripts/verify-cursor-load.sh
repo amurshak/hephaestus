@@ -5,10 +5,11 @@
 # Two checks, and only the first one is live: cursor-agent exposes no
 # command-listing subcommand, so the adapters can only be checked on disk.
 #
-#   1. `cursor-agent --help` still documents a bare positional prompt.
-#      /worktrees Step 6 spawns `cursor-agent "<prompt>"`, which seeds a session
-#      only while that form holds. The same help output must document the
-#      unattended flags loop.sh passes (--force, --trust).
+#   1. `cursor-agent --help` still documents a bare positional prompt — the
+#      positional half of the `cursor-agent -p "<prompt>"` form /worktrees
+#      Step 6 spawns; the `-p` half is checked separately below. The same help
+#      output must document the unattended flags loop.sh passes (--force,
+#      --trust).
 #   2. The generated commands, subagents, and project rule are present in a root
 #      Cursor reads. Either root counts: $CURSOR_HOME/{commands,agents,rules}
 #      for a user install, the project's .cursor/* when vendored. A `--project`
