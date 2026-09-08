@@ -44,7 +44,6 @@ If no open issues are found:
 - Detect repo via `git remote get-url origin`
 - If the working tree is dirty, record its absolute tree/git-dir, branch, and HEAD; create a unique `task_stash_record`, then `git stash push --include-untracked -m "$task_stash_record"`. Resolve the exact stash OID by that full marker, write those six values plus `captured` to the record, and retain its path for `/finish` and wind-down. Capture failure stops implementation and reports preserved work; never guess an OID or discover another task's record. Without a record, cleanup leaves every stash alone.
 
-
 ### Phase 2: Start the issue → `/start-issue <#>`
 
 Run `/start-issue <#>`. It handles plan-critique loop, parallel coder role agents when available, implementation, and the test gate, and ends ready for `/ship`.
