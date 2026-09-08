@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Execute the canonical cleanup recipes against tiny isolated repositories.
+# Exercise cleanup safeguards with real Git operations in tiny repositories.
 set -euo pipefail
-source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/helpers.sh"
 
 TEST_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/heph-cleanup-tests.XXXXXX")
 trap 'cd "$HEPHAESTUS_ROOT"; rm -rf "$TEST_ROOT"' EXIT
@@ -11,25 +12,23 @@ git config --global user.email cleanup@example.invalid
 git config --global init.defaultBranch main
 REAL_GIT=$(command -v git)
 
-# Select the named block and remove only its terminal invocation. This executes
-# the shipped recipe, so changes to its guards are covered without a test copy.
-load_block() {
-  local file=$1 marker=$2 invocation=$3 output="$TEST_ROOT/$2.sh"
-  awk -v marker="<!-- $marker -->" '
-    $0 == marker {found=1; next}
-    found && $0 == "```bash" {body=1; next}
-    body && $0 == "```" {exit}
-    body {print}
-  ' "$file" > "$output"
-  [ "$(tail -n 1 "$output")" = "$invocation" ]
-  sed '$d' "$output" > "$output.functions"
-  bash -n "$output.functions"
-  source "$output.functions"
-}
-load_block "$HEPHAESTUS_ROOT/.ai/workflows/finish.md" task-branch-cleanup finish_task_branch
-load_block "$HEPHAESTUS_ROOT/.ai/workflows/finish.md" task-stash-checkout return_to_task_stash_checkout
-load_block "$HEPHAESTUS_ROOT/.ai/workflows/finish.md" task-stash-restore restore_task_stash
-load_block "$HEPHAESTUS_ROOT/.ai/workflows/autopilot.md" task-stash-capture capture_task_stash
+# The workflow is prose, so this executable model drives real Git operations;
+# contract assertions keep its guards aligned with the shipped instructions.
+source "$SCRIPT_DIR/fixtures/finish_cleanup_recipes.sh"
+finish_md=$(cat "$HEPHAESTUS_ROOT/.ai/workflows/finish.md")
+autopilot_md=$(cat "$HEPHAESTUS_ROOT/.ai/workflows/autopilot.md")
+
+begin_test 'Workflow and executable cleanup model share the safety contract'
+assert_contains 'finish removes the historical sweep' "$finish_md" 'no repository-wide branch sweep'
+assert_contains 'finish pins PR identity' "$finish_md" 'task_repo`, `task_pr`, `task_branch`, and `task_head`'
+assert_contains 'finish requires exact tips' "$finish_md" 'tip still equals the merged PR head'
+assert_contains 'finish uses an OID lease' "$finish_md" 'explicit OID lease'
+assert_contains 'finish preserves local branch' "$finish_md" 'Preserve the local task branch for `/worktrees cleanup`'
+assert_contains 'finish restores immutable stash OID' "$finish_md" 'Apply by immutable OID with staged state'
+assert_contains 'finish prevents blind conflict retry' "$finish_md" 'cannot be retried blindly'
+assert_contains 'autopilot captures untracked work' "$autopilot_md" '`git stash push --include-untracked'
+assert_contains 'autopilot retains exact record' "$autopilot_md" 'retain its path for `/finish` and wind-down'
+assert_contains 'autopilot stops on uncertain capture' "$autopilot_md" 'Capture failure stops implementation'
 
 fixture_number=0
 fresh() {
