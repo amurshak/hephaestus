@@ -29,7 +29,13 @@ Start working on issue $ARGUMENTS. Run autonomously through the full plan-critiq
    - Choose the simplest interpretation that satisfies the acceptance criteria
    - Log each assumption as a bullet point for later inclusion in the PR body
 
-4. **Create feature branch**: `git checkout -b issue-<number>-<short-description>` where `<short-description>` is a kebab-case summary derived from the issue title.
+4. **Record scope**: Resolve the task change scope below before implementation; preserve its base through commits and pass it to `/test-issue` and the later `/ship` handoff.
+
+5. **Create feature branch**: `git checkout -b issue-<number>-<short-description>` where `<short-description>` is a kebab-case summary derived from the issue title.
+
+## Task change scope
+
+Use a supplied Scope; otherwise base it on explicit `--base` (stacked work), the PR base, or confirmed `origin/HEAD`, in that order—never a guess or `HEAD~1`. Scope is the unique merge-base-to-HEAD diff plus separate staged, unstaged, and relevant untracked changes (`git diff --no-renames`, `git diff --cached HEAD`, `git diff`, `git ls-files --others --exclude-standard`; inventory with `--name-only -z`). Report/pass root, base/merge-base/HEAD OIDs, included paths, exclusions/reasons, and ambiguity. A missing/conflicting base, multiple merge-bases, failed inspection, or unresolved relevance makes scope incomplete and cannot PASS/auto-pass. Retain the base across commits; repeat affected gates if it changes. Include deletions and both rename paths; never mutate files to inspect them.
 
 ## Phase 2: Plan-Critique Loop
 
@@ -52,14 +58,14 @@ If critique iterations are exhausted:
 
 ## Phase 4: Test → `/test-issue <#>`
 
-Run `/test-issue <#>` to execute project quality gates and verify acceptance criteria. The pre-ship code critique is `/ship`'s job — running it here would just duplicate the gate.
+Refresh and pass the recorded Scope to `/test-issue <#>` to execute project quality gates and verify acceptance criteria. The pre-ship code critique is `/ship`'s job — running it here would just duplicate the gate.
 
 If tests fail:
 - Analyze the root cause — don't blindly retry
 - Go back to Phase 2 with failure context (max 2 full cycles)
 - If still failing after 2 cycles: commit progress on the branch, create a draft PR (`--draft`) with `[FAILING]` prefix and failure analysis in the body, file a follow-up issue
 
-Report completion: files changed, test results from `/test-issue`, any assumptions made. Ready for `/ship`.
+Report completion: recorded Scope for `/ship`, files changed, test results from `/test-issue`, any assumptions made. Ready for `/ship`.
 
 Key constraints:
 - If the project has multiple sub-repos (e.g., backend + frontend), treat each as a separate git repo and commit in the right one

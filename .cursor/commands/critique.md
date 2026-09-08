@@ -7,7 +7,7 @@ You are a rigorous, adversarial critic. Your job is to find real problems — in
 > **Cursor:** run from the project root that contains `.cursor/`. Delegate to the subagents in `.cursor/agents/`; they share one working tree, so serialize file-modifying tasks.
 
 
-Determine the mode based on context: if there are uncommitted code changes, run **Code Critique**. If the user is discussing strategy, architecture decisions, plans, proposals, or ideas, run **General Critique**. If both apply, run both.
+Determine the mode from the request: explicit code review (including `/ship`) uses **Code Critique** even on a clean checkout; strategy, plans, or ideas use **General Critique**. Otherwise inspect the task change scope below for code changes, including committed work. If both apply, run both.
 
 ---
 
@@ -19,9 +19,9 @@ Use when there are code changes to review.
 
 ### Steps
 
-1. **Check scope**: Run `git diff --stat` from the project root to determine what has changed.
+1. **Check scope**: Resolve the task change scope below; use all included layers for the auto-pass gate, risk score, and review. Report an empty scope explicitly; a clean checkout alone is not an empty task.
 
-2. **Auto-pass gate**: if every changed file is documentation, a lockfile, or whitespace-only — and no workflow files (`.ai/`, `.claude/`) changed — skip the reviewer entirely. Verdict: PASS, logged as `auto-pass: docs-only diff`.
+2. **Auto-pass gate**: only if scope is complete and nonempty, every changed file is documentation, a lockfile, or whitespace-only — and no workflow files (`.ai/`, `.claude/`) changed — skip the reviewer entirely. Verdict: PASS, logged as `auto-pass: docs-only diff`.
 
 3. **Score risk** (sum, from the diff): +2 auth/payments/crypto/secrets-handling; +1 code changed with no test changes; +1 crosses module boundaries; +1 workflow files (`.ai/`, `.claude/`); +1 schema/migrations. Report the score and its factors.
 
@@ -29,11 +29,12 @@ Use when there are code changes to review.
    - **0–1 → L1**: one reviewer, focused pass on the diff
    - **2–3 → L2**: one reviewer, thorough — full surrounding-file context, pre-mortem protocol
    - **≥4 → L2+Double**: two independent reviewers, neither sees the other's output; final score is the **lower** of the two
-   - Each reviewer reads the full diff, reads surrounding files, evaluates correctness, security, architecture, tests, performance, error handling, and CLAUDE.md compliance, and returns a 0–100 score
+   - Pass the recorded Scope and all change layers to each reviewer, who reads them, reads surrounding files, evaluates correctness, security, architecture, tests, performance, error handling, and CLAUDE.md compliance, and returns a 0–100 score
 
 5. **Synthesize**: Combine reviewer findings into the output format below. Map score → verdict: **PASS ≥ 85**, **PASS WITH CHANGES 70–84**, **FAIL < 70**. Blocking issues always cap the verdict at FAIL regardless of score.
 
 6. **Output**:
+   - **Scope**: base and merge-base OIDs, HEAD, included paths, exclusions, ambiguity
    - **Risk**: score and factors; depth used (or auto-pass)
    - **Score**: 0–100 (lower of two at L2+Double)
    - **Blocking** (must fix before ship): Bugs, security issues, broken tests, constraint violations, data loss risks
@@ -48,6 +49,10 @@ If this critique is iteration 2+ in a retry loop and the verdict is still FAIL:
 - If the same blocker has survived all 3 iterations: classify it as either (a) fixable with a different strategy — describe it, or (b) a design-level problem — recommend proceeding with a documented limitation
 
 ---
+
+## Task change scope
+
+Use a supplied Scope; otherwise base it on explicit `--base` (stacked work), the PR base, or confirmed `origin/HEAD`, in that order—never a guess or `HEAD~1`. Scope is the unique merge-base-to-HEAD diff plus separate staged, unstaged, and relevant untracked changes (`git diff --no-renames`, `git diff --cached HEAD`, `git diff`, `git ls-files --others --exclude-standard`; inventory with `--name-only -z`). Report/pass root, base/merge-base/HEAD OIDs, included paths, exclusions/reasons, and ambiguity. A missing/conflicting base, multiple merge-bases, failed inspection, or unresolved relevance makes scope incomplete and cannot PASS/auto-pass. Retain the base across commits; repeat affected gates if it changes. Include deletions and both rename paths; never mutate files to inspect them.
 
 ## Mode 2: General Critique
 

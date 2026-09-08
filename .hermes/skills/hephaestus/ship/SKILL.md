@@ -30,7 +30,7 @@ Run `git remote get-url origin` to identify the target repo.
 
 ### 2. Pre-push critique gate → `/critique`
 
-Run `/critique` (Code Critique mode auto-detects on uncommitted/staged changes; the reviewer delegate absorbs the verbose diff context). This is the last quality check before the code goes out.
+Resolve the task change scope below and pass the recorded Scope to `/critique` explicitly in Code Critique mode, including on a clean branch with committed work. Use that same scope for every gate; scope incomplete cannot satisfy the ship gate.
 
 - **FAIL**: Fix blocking issues, re-run `/critique` (max 3 iterations). If still FAIL:
   - Separate fixable issues from fundamental design problems
@@ -41,8 +41,8 @@ Run `/critique` (Code Critique mode auto-detects on uncommitted/staged changes; 
 
 ### 3. Run all quality gates in parallel
 Launch as parallel delegates:
-- **Tests**: run per project CLAUDE.md (test command, lint command, build command). If CLAUDE.md has no "Development Commands" section, infer commands from project manifests (package.json, Makefile, pyproject.toml, go.mod, etc.), mark each gate `INFERRED` in the report, and note the gap in the PR body.
-- **Git state**: `git status` (all staged) + detect base branch (`BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || git remote show origin 2>/dev/null | awk '/HEAD branch/{print $NF}' || echo master)`), then `git log --oneline origin/$BASE..HEAD` (commits ready)
+- **Tests**: pass the recorded Scope to the tester; run per project CLAUDE.md (test command, lint command, build command). If CLAUDE.md has no "Development Commands" section, infer commands from project manifests (package.json, Makefile, pyproject.toml, go.mod, etc.), mark each gate `INFERRED` in the report, and note the gap in the PR body.
+- **Git state**: refresh the recorded Scope and inspect `git status`; list all task commits with `git log --oneline "$scope_merge_base..$scope_head"`. Preserve unrelated user work. Resolve the PR destination branch matching the recorded base; do not silently switch to the default branch for stacked work.
 
 If any gate fails:
 - Analyze root cause — don't blindly re-run
@@ -54,7 +54,7 @@ If any gate fails:
 
 ### 4. Update docs
 - Record the change. If `changelog.d/` exists, write one fragment per PR: `changelog.d/<issue-or-slug>.<added|changed|fixed|removed>.md`, containing the entry body without the leading `- `. Distinct filenames mean parallel branches never collide. Otherwise append under `## Unreleased` in CHANGELOG.md.
-- Commit doc changes
+- Commit task-owned changes, including docs. Refresh Scope after these edits and commits; repeat affected critique and test gates before pushing.
 
 ### 5. Push and create PR
 ```
@@ -63,6 +63,7 @@ git push -u origin HEAD
 
 ```
 gh pr create --repo <detected-repo> \
+  --base "<resolved-base-branch>" \
   --title "<concise title>" \
   --body "$(cat <<'EOF'
 ## Summary
@@ -71,6 +72,9 @@ gh pr create --repo <detected-repo> \
 
 ## Assumptions Made
 - <any assumptions made during autonomous operation, or "None">
+
+## Scope
+- <base ref/OID, merge-base OID, HEAD OID, included paths, exclusions/reasons, ambiguity>
 
 ## Quality gates
 - [x] All tests passing
@@ -106,6 +110,10 @@ gh pr view <pr-number> --repo <detected-repo> --json state,autoMergeRequest
 - Command failed, or any other state (branch protection, required reviewers) — do NOT retry or force-push. Note that manual merge is required. This is a valid stopping point; the work is preserved in the PR.
 
 ### 7. Return the PR URL.
+
+## Task change scope
+
+Use a supplied Scope; otherwise base it on explicit `--base` (stacked work), the PR base, or confirmed `origin/HEAD`, in that order—never a guess or `HEAD~1`. Scope is the unique merge-base-to-HEAD diff plus separate staged, unstaged, and relevant untracked changes (`git diff --no-renames`, `git diff --cached HEAD`, `git diff`, `git ls-files --others --exclude-standard`; inventory with `--name-only -z`). Report/pass root, base/merge-base/HEAD OIDs, included paths, exclusions/reasons, and ambiguity. A missing/conflicting base, multiple merge-bases, failed inspection, or unresolved relevance makes scope incomplete and cannot PASS/auto-pass. Retain the base across commits; repeat affected gates if it changes. Include deletions and both rename paths; never mutate files to inspect them.
 
 ### Next steps
 - Run `/test-issue` to verify CI status if needed
