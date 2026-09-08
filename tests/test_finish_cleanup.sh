@@ -27,6 +27,7 @@ load_block() {
   source "$output.functions"
 }
 load_block "$HEPHAESTUS_ROOT/.ai/workflows/finish.md" task-branch-cleanup finish_task_branch
+load_block "$HEPHAESTUS_ROOT/.ai/workflows/finish.md" task-stash-checkout return_to_task_stash_checkout
 load_block "$HEPHAESTUS_ROOT/.ai/workflows/finish.md" task-stash-restore restore_task_stash
 load_block "$HEPHAESTUS_ROOT/.ai/workflows/autopilot.md" task-stash-capture capture_task_stash
 
@@ -77,7 +78,7 @@ fresh
 git branch historical
 git push -q origin historical
 finish_task_branch > "$fixture/output" 2>&1
-assert_eq 'task local branch removed' '' "$(local_tip)"
+assert_eq 'task local branch retained for safe reaping' "$task_head" "$(local_tip)"
 assert_eq 'task remote branch removed' '' "$(remote_tip)"
 assert_eq 'historical local branch retained' "$task_head" "$(git rev-parse historical)"
 assert_eq 'historical remote branch retained' "$task_head" "$(git --git-dir="$fixture/remote.git" rev-parse historical)"
@@ -114,29 +115,23 @@ for scenario in tracked untracked current other_worktree linked missing changed_
 done
 
 begin_test 'PR identity is revalidated before each deletion'
-for fail_on in 2 3; do
-  fresh
-  printf '0\n' > "$fixture/queries"
-  gh() {
-    case "$1 $2" in
-      'pr view')
-        calls=$(cat "$fixture/queries")
-        calls=$((calls + 1))
-        printf '%s\n' "$calls" > "$fixture/queries"
-        if [ "$calls" -ge "$fail_on" ]; then printf '%s\n' "${payload/MERGED/OPEN}"
-        else printf '%s\n' "$payload"; fi ;;
-      'pr list') printf '0\n' ;;
-      *) return 1 ;;
-    esac
-  }
-  finish_task_branch > "$fixture/output" 2>&1
-  assert_eq 'revalidation preserves local branch' "$task_head" "$(local_tip)"
-  if [ "$fail_on" = 2 ]; then
-    assert_eq 'revalidation preserves remote before push' "$task_head" "$(remote_tip)"
-  else
-    assert_eq 'remote deletion completed before later state change' '' "$(remote_tip)"
-  fi
-done
+fresh
+printf '0\n' > "$fixture/queries"
+gh() {
+  case "$1 $2" in
+    'pr view')
+      calls=$(cat "$fixture/queries")
+      calls=$((calls + 1))
+      printf '%s\n' "$calls" > "$fixture/queries"
+      if [ "$calls" -ge 2 ]; then printf '%s\n' "${payload/MERGED/OPEN}"
+      else printf '%s\n' "$payload"; fi ;;
+    'pr list') printf '0\n' ;;
+    *) return 1 ;;
+  esac
+}
+finish_task_branch > "$fixture/output" 2>&1
+assert_eq 'revalidation preserves local branch' "$task_head" "$(local_tip)"
+assert_eq 'revalidation preserves remote before push' "$task_head" "$(remote_tip)"
 gh() {
   [ "$query_failure" = 0 ] || return 1
   case "$1 $2" in
@@ -162,30 +157,42 @@ for side in local remote; do
   fi
 done
 
-begin_test 'Concurrent advances reject lease and compare-and-swap deletion'
-for race in remote local; do
-  fresh
-  advanced=$(new_commit)
-  "$REAL_GIT" --git-dir="$fixture/remote.git" fetch -q "$fixture/repo" "$advanced"
-  git() {
-    if [ "$race" = remote ] && [ "${1:-}" = push ]; then
-      "$REAL_GIT" --git-dir="$fixture/remote.git" update-ref "refs/heads/$task_branch" "$advanced"
-    elif [ "$race" = local ] && [ "${1:-}" = update-ref ] && [ "${2:-}" = -d ]; then
-      "$REAL_GIT" update-ref "refs/heads/$task_branch" "$advanced"
-    fi
-    "$REAL_GIT" "$@"
-  }
-  result=0
-  finish_task_branch > "$fixture/output" 2>&1 || result=$?
-  unset -f git
-  assert_exit_code "$race race reports failure" 1 "$result"
-  if [ "$race" = remote ]; then
-    assert_eq 'remote lease preserves concurrent advance' "$advanced" "$(remote_tip)"
-    assert_eq 'remote failure preserves local branch' "$task_head" "$(local_tip)"
-  else
-    assert_eq 'local CAS preserves concurrent advance' "$advanced" "$(local_tip)"
+begin_test 'Concurrent remote advances reject the deletion lease'
+fresh
+advanced=$(new_commit)
+"$REAL_GIT" --git-dir="$fixture/remote.git" fetch -q "$fixture/repo" "$advanced"
+git() {
+  if [ "${1:-}" = push ]; then
+    "$REAL_GIT" --git-dir="$fixture/remote.git" update-ref "refs/heads/$task_branch" "$advanced"
   fi
-done
+  "$REAL_GIT" "$@"
+}
+result=0
+finish_task_branch > "$fixture/output" 2>&1 || result=$?
+unset -f git
+assert_exit_code 'remote race reports failure' 1 "$result"
+assert_eq 'remote lease preserves concurrent advance' "$advanced" "$(remote_tip)"
+assert_eq 'remote failure preserves local branch' "$task_head" "$(local_tip)"
+git worktree add -q "$fixture/late-worktree" "$task_branch"
+assert_dir_exists 'retained local branch remains safe for a later checkout' "$fixture/late-worktree"
+
+begin_test 'Normal autopilot lifecycle returns to the original checkout and restores work'
+fresh
+printf 'task user work\n' > tracked
+printf 'task untracked\n' > task-file
+capture_task_stash > "$fixture/capture-output"
+owned=$(sed -n '5p' "$task_stash_record")
+git checkout -q "$task_branch"
+return_to_task_stash_checkout > "$fixture/output" 2>&1
+assert_eq 'returns to original branch' refs/heads/main "$(git symbolic-ref HEAD)"
+assert_eq 'returns to original HEAD' "$task_head" "$(git rev-parse HEAD)"
+finish_task_branch >> "$fixture/output" 2>&1
+assert_eq 'normal cleanup removes exact remote task branch' '' "$(remote_tip)"
+assert_eq 'normal cleanup retains local task branch for reaping' "$task_head" "$(local_tip)"
+restore_task_stash >> "$fixture/output" 2>&1
+assert_eq 'normal lifecycle restores tracked work' 'task user work' "$(cat tracked)"
+assert_eq 'normal lifecycle restores untracked work' 'task untracked' "$(cat task-file)"
+assert_contains 'normal lifecycle retains exact recovery stash' "$(git stash list --format=%H)" "$owned"
 
 begin_test 'Capture and restore exact stash with staged and untracked work'
 fresh

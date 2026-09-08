@@ -151,7 +151,7 @@ Thirteen commands, but the delivery spine is `/autopilot` and the three commands
 | `/autopilot` | Full pipeline — pick issue, plan, implement, test, ship, finish |
 | `/start-issue 42` | Plan-critique-implement for one issue |
 | `/ship` | Code review → quality gates → CHANGELOG → PR → auto-merge |
-| `/finish` | Close issue, clean task-owned branches, restore the exact task stash, file follow-ups |
+| `/finish` | Close issue, clean the task-owned remote branch, restore the exact task stash, file follow-ups |
 | `/refactor` | Autonomous refactoring with review gate and before/after metrics |
 | `/worktrees` | Parallel multi-session orchestration — reap finished worktrees, wave-plan non-conflicting issues, spawn a seeded session per issue |
 
@@ -167,7 +167,7 @@ Thirteen commands, but the delivery spine is `/autopilot` and the three commands
 | `/update-hephaestus` | Pull latest, re-install, show what changed |
 | `/orient` | Cold-start: repo state, open issues, next action |
 
-`/finish` cleans only the merged task's unchanged, unoccupied branches. It preserves dirty checkouts, advanced or reused branches, and pending PRs. `/autopilot` records its exact preflight stash and original checkout; restoration applies that OID only in the original clean primary checkout, retains a recovery copy, and reports conflicts or deferred cleanup.
+`/finish` deletes only the merged task's unchanged, unoccupied remote branch under an explicit lease. It retains the local branch for safe reaping because Git cannot atomically check its tip and worktree occupancy. Dirty checkouts, advanced or reused branches, and pending PRs are preserved. `/autopilot` records its exact preflight stash and original checkout; finish safely returns to that checkout, applies only the recorded OID, retains a recovery copy, and reports conflicts or deferred cleanup.
 
 ### Separation of orchestration from configuration
 

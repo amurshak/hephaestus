@@ -32,8 +32,52 @@ Steps:
    - If PR state is not merged, skip issue close and include the pending/manual-merge reason in the session summary.
 
 4. **Clean up only task-owned resources** — no repository-wide branch sweep. Run the block below with the task identity retained in step 2. Never infer ownership from historical merged PR names. Failed queries or checks preserve resources and must be reported; cleanup failure does not abort breadcrumbs, docs, or the summary.
-   - Delete only an unoccupied task branch whose tip still equals the merged PR head. Preserve dirty checkouts, unpushed/advanced or reused branches, open PR heads, fork heads, base/default branches, and ambiguous ownership. Do not switch checkouts to make deletion possible. Local deletion compares the old OID atomically; remote deletion uses an explicit OID lease, so a concurrent advance is rejected.
+   - Delete only the task's remote branch when its tip still equals the merged PR head. Preserve dirty checkouts, unpushed/advanced or reused branches, open PR heads, fork heads, base/default branches, and ambiguous ownership. Remote deletion uses an explicit OID lease, so a concurrent advance is rejected. Preserve the local task branch for `/worktrees cleanup`: Git has no operation that atomically verifies both its expected OID and worktree occupancy, so direct local deletion can race another checkout.
    - **Linked worktree** — leave the branch and worktree in place and log `left worktree <path> on <branch> for reaping`. Never self-remove: `git worktree remove .` deletes this session's cwd. A primary session can reap it via `/worktrees cleanup`; finish does not remove any worktree. If another session may check out the branch during cleanup and exclusive ownership cannot be established, defer deletion as well.
+
+   - **Return to the stash checkout** — before branch cleanup, a task with a stash record must move from its clean task branch back to the recorded original branch and HEAD. The block validates the immutable record, primary-checkout context, unchanged original branch, and worktree occupancy. Git performs the final occupancy check during checkout. If any check fails, preserve the stash and task branch and report the record; do not switch from an unrelated checkout.
+
+<!-- task-stash-checkout -->
+```bash
+return_to_task_stash_checkout() (
+  preserve() { printf 'preserved task stash checkout: %s\n' "$*"; }
+  [ -n "${task_stash_record:-}" ] || return
+  {
+    IFS= read -r stash_tree && IFS= read -r stash_gitdir &&
+    IFS= read -r stash_branch && IFS= read -r stash_head &&
+    IFS= read -r stash_oid && IFS= read -r stash_state
+  } < "$task_stash_record" || { preserve 'incomplete record'; return 1; }
+  [ "$stash_state" = captured ] || { preserve 'record needs inspection'; return 1; }
+  [ "$(git rev-parse --git-dir)" = "$(git rev-parse --git-common-dir)" ] &&
+    [ "$(git rev-parse --absolute-git-dir)" = "$stash_gitdir" ] || {
+    preserve "original primary checkout required ($task_stash_record)"; return;
+  }
+  current_branch=$(git symbolic-ref -q HEAD) || {
+    preserve 'detached or uncertain checkout'; return;
+  }
+  if [ "$current_branch" = "$stash_branch" ] && [ "$(git rev-parse HEAD)" = "$stash_head" ]; then
+    return
+  fi
+  [ -n "${task_branch:-}" ] && [ "$current_branch" = "refs/heads/$task_branch" ] || {
+    preserve 'unrelated checkout'; return;
+  }
+  dirty=$(git status --porcelain --untracked-files=all) || return
+  [ -z "$dirty" ] || { preserve 'task checkout dirty'; return; }
+  git check-ref-format "$stash_branch" || { preserve 'invalid original branch'; return 1; }
+  [ "$(git rev-parse --verify "$stash_branch")" = "$stash_head" ] || {
+    preserve 'original branch advanced'; return;
+  }
+  original_branch=${stash_branch#refs/heads/}
+  worktrees=$(git worktree list --porcelain) || return
+  ! grep -qxF "branch $stash_branch" <<< "$worktrees" || {
+    preserve 'original branch occupied'; return;
+  }
+  git checkout "$original_branch" || {
+    preserve "checkout failed ($task_stash_record)"; return 1;
+  }
+)
+return_to_task_stash_checkout
+```
 
 <!-- task-branch-cleanup -->
 ```bash
@@ -83,17 +127,13 @@ finish_task_branch() (
     git push --force-with-lease="refs/heads/$task_branch:$task_head" \
       origin ":refs/heads/$task_branch" || { preserve 'remote deletion failed'; return 1; }
   fi
-  if [ -n "$local_tip" ]; then
-    verify_task || { preserve 'local deletion recheck failed'; return; }
-    git update-ref -d "refs/heads/$task_branch" "$task_head" || {
-      preserve 'local deletion failed'; return 1;
-    }
-  fi
+  git for-each-ref --format='preserved local task branch: %(refname:short)' \
+    "refs/heads/$task_branch"
 )
 finish_task_branch
 ```
 
-   - **Restore the exact task stash** — use only the `task_stash_record` captured by this task's autopilot preflight, never a message search or the top stash. Missing identity or a different checkout/branch/HEAD means leave it and report the record path. Restore only in the original clean primary checkout; linked worktrees defer restoration. Apply by immutable OID with staged state, retain the stash as a recovery copy, and mark the record before attempting restoration so a conflict or interrupted apply cannot be retried blindly. Report conflicts visibly, preserve the index/worktree and stash, and require resolution before any further implementation. Never reset/clean to force restoration or drop/pop a moving stash index.
+   - **Restore the exact task stash** — after the guarded return above, use only the `task_stash_record` captured by this task's autopilot preflight, never a message search or the top stash. Missing identity or a different checkout/branch/HEAD means leave it and report the record path. Restore only in the original clean primary checkout; linked worktrees defer restoration. Apply by immutable OID with staged state, retain the stash as a recovery copy, and mark the record before attempting restoration so a conflict or interrupted apply cannot be retried blindly. Report conflicts visibly, preserve the index/worktree and stash, and require resolution before any further implementation. Never reset/clean to force restoration or drop/pop a moving stash index.
 
 <!-- task-stash-restore -->
 ```bash
