@@ -229,7 +229,9 @@ Each canonical workflow declares what it directly uses (`requires:` for agents) 
 
 The critique system is the most heavily gated part of the pipeline. It operates at three levels:
 
-**The `/critique` command** — a standalone, dual-mode entry point. Auto-detects whether to run code critique (uncommitted changes → reviewer agent) or general critique (strategy/plans → inline evaluation across logic, assumptions, completeness, trade-offs, evidence, second-order effects, timing).
+**The `/critique` command** — a standalone, dual-mode entry point. Auto-detects whether to run code critique (complete task changes, including committed work → reviewer agent) or general critique (strategy/plans → inline evaluation across logic, assumptions, completeness, trade-offs, evidence, second-order effects, timing).
+
+Code review and acceptance verification share the branch diff from its merge-base, staged/unstaged changes, and relevant untracked files. Supply `--base <ref>` for stacked work (for example `/start-issue 42 --base origin/parent-feature`); otherwise the PR base or confirmed remote default is used. Reports carry the base and commit IDs plus exclusions; unresolved scope cannot receive a complete PASS.
 
 **The reviewer agent** — the specialized code critic. Evaluates correctness, security (OWASP top 10), architecture, test adequacy, performance, error handling, and CLAUDE.md compliance. Read-only tool permissions enforce separation between critic and creator.
 

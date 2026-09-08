@@ -8,7 +8,7 @@ readonly: true
 > **Read-only.** `readonly: true` sandboxes your shell — a shell write fails with `operation not permitted`. It does **not** withhold the write tools, and those bypass the sandbox: do not use them.
 
 
-Perform a thorough code review of uncommitted changes.
+Perform a thorough code review of the complete task change, including committed work.
 
 ## Principles
 
@@ -18,7 +18,7 @@ Perform a thorough code review of uncommitted changes.
 
 ## Steps
 
-1. Get the diff: `git diff` and `git diff --cached` from the project root
+1. Use the supplied Scope or resolve the task change scope below; inspect every included change layer
 2. For each changed file, read the full file to understand surrounding context
 3. Evaluate:
    - **Correctness**: Logic bugs, edge cases, off-by-one errors, null/empty states
@@ -29,9 +29,15 @@ Perform a thorough code review of uncommitted changes.
    - **Error handling**: Graceful failures, partial failure states
    - **CLAUDE.md compliance**: Does the change follow constraints in the project's CLAUDE.md (conventions, guardrails, dev commands)?
 
+## Task change scope
+
+Use a supplied Scope; otherwise base it on explicit `--base` (stacked work), the PR base, or confirmed `origin/HEAD`, in that order—never a guess or `HEAD~1`. Scope is the unique merge-base-to-HEAD diff plus separate staged, unstaged, and relevant untracked changes (`git diff --no-renames`, `git diff --cached HEAD`, `git diff`, `git ls-files --others --exclude-standard`; inventory with `--name-only -z`). Report/pass root, base/merge-base/HEAD OIDs, included paths, exclusions/reasons, and ambiguity. A missing/conflicting base, multiple merge-bases, failed inspection, or unresolved relevance makes scope incomplete and cannot PASS/auto-pass. Retain the base across commits; repeat affected gates if it changes. Include deletions and both rename paths; never mutate files to inspect them.
+
 ## Output format
 
 Return exactly this structure:
+
+**Scope**: base and merge-base OIDs, HEAD, included paths, exclusions/reasons, ambiguity
 
 **Blocking** (must fix):
 - [list or "None"]

@@ -14,8 +14,7 @@ Run tests for the project and return a structured summary.
 
 ## Steps
 
-1. Determine which areas have changes:
-   - `git diff --name-only HEAD~1` (or, for multiple commits: detect base branch with `BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || git remote show origin 2>/dev/null | awk '/HEAD branch/{print $NF}' || echo master)`, then `git diff --name-only origin/$BASE..HEAD`)
+1. Use the supplied Scope or resolve the task change scope below; determine affected areas from every included change layer.
 
 2. Run the appropriate quality checks per the project's CLAUDE.md:
    - Check CLAUDE.md for the test command, lint command, and build command for this project
@@ -23,6 +22,7 @@ Run tests for the project and return a structured summary.
    - Run each applicable check based on which files changed
 
 3. Return a structured summary:
+   - **Scope**: base and merge-base OIDs, HEAD, included paths, exclusions/reasons, ambiguity
    - **Status**: PASS or FAIL
    - **Tests run**: count
    - **Tests passed**: count
@@ -33,3 +33,7 @@ Run tests for the project and return a structured summary.
    - **Duration**: total time
 
 Do NOT include full test output — only the summary and any failure details.
+
+## Task change scope
+
+Use a supplied Scope; otherwise base it on explicit `--base` (stacked work), the PR base, or confirmed `origin/HEAD`, in that order—never a guess or `HEAD~1`. Scope is the unique merge-base-to-HEAD diff plus separate staged, unstaged, and relevant untracked changes (`git diff --no-renames`, `git diff --cached HEAD`, `git diff`, `git ls-files --others --exclude-standard`; inventory with `--name-only -z`). Report/pass root, base/merge-base/HEAD OIDs, included paths, exclusions/reasons, and ambiguity. A missing/conflicting base, multiple merge-bases, failed inspection, or unresolved relevance makes scope incomplete and cannot PASS/auto-pass. Retain the base across commits; repeat affected gates if it changes. Include deletions and both rename paths; never mutate files to inspect them.

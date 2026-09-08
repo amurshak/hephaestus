@@ -119,6 +119,7 @@ Five agent roles, canonical in `.ai/agents/` and stratified by least-privilege t
 
 - Agents declare allowed tools, isolation mode, and model tier in YAML frontmatter
 - All agents return structured output (files changed, status, verdict) — never raw verbose logs
+- Reviewer and tester receive the same recorded task scope from workflow callers, including committed and local changes. `tests/test_complete_change_scope.sh` checks the six canonical scope contracts and runs their Git commands against isolated regression fixtures.
 - Reviewer verdicts: PASS / PASS WITH CHANGES / FAIL
 - General critique verdicts: SOUND / NEEDS REFINEMENT / RETHINK
 
