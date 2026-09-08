@@ -42,9 +42,30 @@ If no open issues are found:
 ### Phase 1: Orient
 - Run `git status` and `git log --oneline -5` for recent context
 - Detect repo via `git remote get-url origin`
-- If working tree is dirty:
-  - Stash changes: `git stash push -m "autopilot-pre-<issue-number>"`
-  - Continue (do NOT stop to ask)
+- If working tree is dirty, capture the pre-existing changes (including untracked files) with this block. Retain the returned `task_stash_record` path in task context and pass it to `/finish` and any wind-down; never discover a record from another task. Its unique marker identifies the stash even if another worktree pushes a newer one concurrently. Capture failure stops implementation and reports the preserved changes/stash; do not guess an OID. Without a record, cleanup leaves all stashes alone.
+
+<!-- task-stash-capture -->
+```bash
+capture_task_stash() {
+  task_stash_record=
+  local dirty stash_tree stash_gitdir stash_branch stash_head stash_oid
+  dirty=$(git status --porcelain --untracked-files=all) || return
+  [ -n "$dirty" ] || return 0
+  stash_tree=$(pwd -P) || return
+  stash_gitdir=$(git rev-parse --absolute-git-dir) || return
+  stash_branch=$(git symbolic-ref -q HEAD) || { echo 'preserve dirty detached checkout'; return 1; }
+  stash_head=$(git rev-parse HEAD) || return
+  task_stash_record=$(mktemp "${TMPDIR:-/tmp}/heph-task-stash.XXXXXX") || return
+  git stash push --include-untracked -m "$task_stash_record" || return
+  stash_oid=$(git stash list --format='%H %gs' | awk -v marker=": $task_stash_record" \
+    'substr($0, length($0)-length(marker)+1) == marker {print $1}') || return
+  case "$stash_oid" in ''|*[!0-9a-f]*) echo 'stash identity uncertain; preserve and stop'; return 1 ;; esac
+  printf '%s\n' "$stash_tree" "$stash_gitdir" "$stash_branch" "$stash_head" \
+    "$stash_oid" captured > "$task_stash_record" || return
+  printf 'task stash record: %s\n' "$task_stash_record"
+}
+capture_task_stash
+```
 
 ### Phase 2: Start the issue → `/start-issue <#>`
 
@@ -76,7 +97,7 @@ When the pipeline reaches a natural stopping point (after Phase 4) or is forced 
    - What was attempted
    - What failed or remains
    - Suggested next approach
-4. **Clean local state** — delete merged branches, pop any stashes created during the session.
+4. **Clean local state** — use `/finish`'s task identity checks and exact stash restoration block, including on early wind-down; never sweep branches or pop the top stash. Preserve resources when identity is missing, and report deferred cleanup or restoration conflicts. Do not continue to another issue with an unresolved restoration.
 5. **Print session summary**:
    - Issues completed (with PR links)
    - Issues created (with links)
