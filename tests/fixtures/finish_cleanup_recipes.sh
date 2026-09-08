@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Extracted executable models for tests/test_finish_cleanup.sh.
+# Executable model for the task-owned finish cleanup contract.
 capture_task_stash() {
   task_stash_record=
   local dirty stash_tree stash_gitdir stash_branch stash_head stash_oid

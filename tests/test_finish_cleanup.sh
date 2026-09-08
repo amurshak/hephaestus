@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exercise cleanup safeguards with real Git operations in tiny repositories.
+# Execute the canonical cleanup recipes against tiny isolated repositories.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/helpers.sh"
@@ -12,23 +12,24 @@ git config --global user.email cleanup@example.invalid
 git config --global init.defaultBranch main
 REAL_GIT=$(command -v git)
 
-# The workflow is prose, so this executable model drives real Git operations;
-# contract assertions keep its guards aligned with the shipped instructions.
+# Exercise real Git operations through a test fixture while pinning its safety
+# decisions to the shipped workflow contract below.
 source "$SCRIPT_DIR/fixtures/finish_cleanup_recipes.sh"
 finish_md=$(cat "$HEPHAESTUS_ROOT/.ai/workflows/finish.md")
 autopilot_md=$(cat "$HEPHAESTUS_ROOT/.ai/workflows/autopilot.md")
 
 begin_test 'Workflow and executable cleanup model share the safety contract'
-assert_contains 'finish removes the historical sweep' "$finish_md" 'no repository-wide branch sweep'
-assert_contains 'finish pins PR identity' "$finish_md" 'task_repo`, `task_pr`, `task_branch`, and `task_head`'
-assert_contains 'finish requires exact tips' "$finish_md" 'tip still equals the merged PR head'
-assert_contains 'finish uses an OID lease' "$finish_md" 'explicit OID lease'
-assert_contains 'finish preserves local branch' "$finish_md" 'Preserve the local task branch for `/worktrees cleanup`'
-assert_contains 'finish restores immutable stash OID' "$finish_md" 'Apply by immutable OID with staged state'
-assert_contains 'finish prevents blind conflict retry' "$finish_md" 'cannot be retried blindly'
-assert_contains 'autopilot captures untracked work' "$autopilot_md" '`git stash push --include-untracked'
-assert_contains 'autopilot retains exact record' "$autopilot_md" 'retain its path for `/finish` and wind-down'
-assert_contains 'autopilot stops on uncertain capture' "$autopilot_md" 'Capture failure stops implementation'
+assert_contains 'finish removes historical sweep' "$finish_md" 'no repository-wide branch sweep'
+assert_contains 'finish pins PR identity' "$finish_md" 'task_repo`, `task_pr`, `task_branch`, and `task_head'
+assert_contains 'finish requires exact tips' "$finish_md" 'every existing local/remote task ref to equal `task_head`'
+assert_contains 'finish uses OID lease' "$finish_md" 'force-with-lease'
+assert_contains 'finish retains local ref' "$finish_md" 'Preserve the local task branch for `/worktrees cleanup`'
+assert_contains 'finish checks clean original checkout' "$finish_md" 'clean task branch back to the recorded original branch and HEAD'
+assert_contains 'finish restores immutable stash OID' "$finish_md" 'recorded immutable OID'
+assert_contains 'finish prevents blind retry' "$finish_md" 'prevents blind retry'
+assert_contains 'autopilot includes untracked work' "$autopilot_md" '--include-untracked'
+assert_contains 'autopilot resolves exact marker' "$autopilot_md" 'full record-path marker'
+assert_contains 'autopilot stops uncertain capture' "$autopilot_md" 'Capture failure stops implementation'
 
 fixture_number=0
 fresh() {

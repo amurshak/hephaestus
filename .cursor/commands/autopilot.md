@@ -37,7 +37,7 @@ If no open issues are found:
 ### Phase 1: Orient
 - Run `git status` and `git log --oneline -5` for recent context
 - Detect repo via `git remote get-url origin`
-- If the working tree is dirty, record its absolute tree/git-dir, branch, and HEAD; create a unique `task_stash_record`, then `git stash push --include-untracked -m "$task_stash_record"`. Resolve the exact stash OID by that full marker, write those six values plus `captured` to the record, and retain its path for `/finish` and wind-down. Capture failure stops implementation and reports preserved work; never guess an OID or discover another task's record. Without a record, cleanup leaves every stash alone.
+- If the working tree is dirty, record its physical path, absolute git-dir, symbolic branch, and HEAD; create a unique `task_stash_record`, then run `git stash push --include-untracked -m "$task_stash_record"`. Resolve exactly one stash OID by the full record-path marker, write the recorded values, OID, and `captured` state to that file, and retain its path for `/finish` and wind-down. Another worktree may add a newer stash, so never use a stash index or the top entry. Capture failure stops implementation and reports the preserved changes, stash, and record path; never guess an OID. Without the exact record, cleanup leaves every stash alone.
 
 ### Phase 2: Start the issue → `/start-issue <#>`
 
