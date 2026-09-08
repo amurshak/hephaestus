@@ -47,16 +47,18 @@ assert_contains "auto-merge pending log" "$finish_md" "auto-merge pending for PR
 assert_contains "manual merge needed log" "$finish_md" "manual merge needed for PR #N"
 assert_contains "closed-unmerged abort log" "$finish_md" "PR #N closed without merge"
 assert_contains "pending states do not close issue" "$finish_md" "do not close the issue"
-assert_contains "pending states preserve PR branch" "$finish_md" "do not delete or sweep this PR's branch"
+assert_contains "pending states preserve PR branch" "$finish_md" "do not delete this PR's branch"
 
 begin_test "finish.md documents idempotent issue close"
 assert_contains "uses PR closing issue over argument" "$finish_md" "using PR closing issue #M instead of requested #N"
 assert_contains "checks issue state before closing" "$finish_md" "gh issue view <resolved-issue>"
 assert_contains "already-closed issue is clean no-op" "$finish_md" "issue #N already closed by PR #M"
 
-begin_test "finish.md handles branch head changes"
-assert_contains "re-reads headRefName before deletion" "$finish_md" "re-read the same PR field immediately before deletion"
-assert_contains "logs changed head branch" "$finish_md" "head branch changed during finish"
-assert_contains "open PR excluded from sweep" "$finish_md" 'exclude the current PR'\''s `headRefName` from `stale`'
+begin_test "finish.md preserves changed identities and avoids global cleanup"
+assert_contains "rechecks identity before each deletion" "$finish_md" "Re-read PR identity before each deletion"
+assert_contains "does not adopt a changed identity" "$finish_md" "preserve the branch rather than adopting the new identity"
+assert_not_contains "no historical PR listing" "$finish_md" 'gh pr list --state merged'
+assert_not_contains "no top stash pop" "$finish_md" 'git stash pop'
+assert_contains "protects linked worktrees" "$finish_md" 'Never self-remove'
 
 print_summary

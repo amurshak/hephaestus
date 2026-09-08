@@ -55,7 +55,7 @@ Every session ends at a clean checkpoint, in this order of preference: after `/f
 1. **Nothing uncommitted** — commit before stopping, even partial work
 2. **No orphaned branches** — push so progress survives the session
 3. **Breadcrumbs** — a GitHub issue per unfinished thread, with enough context to resume
-4. **Clean local state** — merged branches deleted, session stashes popped
+4. **Clean local state** — clean only task-owned merged branches and restore the exact session stash where safe; report preserved resources and restoration conflicts
 5. **A summary** — what was completed, what was created, what remains
 
 ## Verdicts

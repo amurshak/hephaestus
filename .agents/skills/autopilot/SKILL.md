@@ -42,9 +42,7 @@ If no open issues are found:
 ### Phase 1: Orient
 - Run `git status` and `git log --oneline -5` for recent context
 - Detect repo via `git remote get-url origin`
-- If working tree is dirty:
-  - Stash changes: `git stash push -m "autopilot-pre-<issue-number>"`
-  - Continue (do NOT stop to ask)
+- If the working tree is dirty, record its physical path, absolute git-dir, symbolic branch, and HEAD; create a unique `task_stash_record`, then run `git stash push --include-untracked -m "$task_stash_record"`. Resolve exactly one stash OID by the full record-path marker, write the recorded values, OID, and `captured` state to that file, and retain its path for `/finish` and wind-down. Another worktree may add a newer stash, so never use a stash index or the top entry. Capture failure stops implementation and reports the preserved changes, stash, and record path; never guess an OID. Without the exact record, cleanup leaves every stash alone.
 
 ### Phase 2: Start the issue → `/start-issue <#>`
 
@@ -76,7 +74,7 @@ When the pipeline reaches a natural stopping point (after Phase 4) or is forced 
    - What was attempted
    - What failed or remains
    - Suggested next approach
-4. **Clean local state** — delete merged branches, pop any stashes created during the session.
+4. **Clean local state** — use `/finish`'s task identity checks and exact stash restoration, including on early wind-down; never sweep branches or pop the top stash. Preserve resources when identity is missing, and report deferred cleanup or restoration conflicts. Do not continue to another issue with an unresolved restoration.
 5. **Print session summary**:
    - Issues completed (with PR links)
    - Issues created (with links)

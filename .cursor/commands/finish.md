@@ -13,13 +13,13 @@ Steps:
 
 2. **Load PR state once, then branch deterministically**:
    - Find the PR for the issue (or use the explicit PR number if provided). If no PR exists, stop finish and run `/ship <#>` first.
-   - Read one state payload before cleanup: `gh pr view <pr-number> --repo <detected-repo> --json state,mergedAt,mergeStateStatus,autoMergeRequest,headRefName,headRefOid,baseRefOid,closingIssuesReferences`
+   - Read one state payload before cleanup: `gh pr view <pr-number> --repo <detected-repo> --json state,mergedAt,mergeStateStatus,autoMergeRequest,headRefName,headRefOid,baseRefOid,closingIssuesReferences,number,isCrossRepository,baseRefName`
    - Branch from that payload:
      - `state=MERGED` and `mergedAt != null` → proceed with issue close, branch cleanup, breadcrumbs, retrospective, docs check, and summary.
-     - `state=OPEN`, `mergeStateStatus=CLEAN`, and `autoMergeRequest != null` → log `auto-merge pending for PR #N`; proceed with cleanup-as-far-as-possible, but do not close the issue and do not delete or sweep this PR's branch.
-     - `state=OPEN` and `autoMergeRequest = null` → log `manual merge needed for PR #N`; proceed with cleanup-as-far-as-possible, but do not close the issue and do not delete or sweep this PR's branch.
+     - `state=OPEN`, `mergeStateStatus=CLEAN`, and `autoMergeRequest != null` → log `auto-merge pending for PR #N`; proceed with cleanup-as-far-as-possible, but do not close the issue and do not delete this PR's branch.
+     - `state=OPEN` and `autoMergeRequest = null` → log `manual merge needed for PR #N`; proceed with cleanup-as-far-as-possible, but do not close the issue and do not delete this PR's branch.
      - `state=CLOSED` and `mergedAt = null` → abort finish with `PR #N closed without merge`; do not close the issue, delete branches, run `/update-docs`, or file a shipped retrospective.
-   - If cleanup later needs `headRefName`, re-read the same PR field immediately before deletion and use the latest value. If it changed since the first payload, log `PR #N head branch changed during finish: <old> -> <new>` and use the latest value.
+   - Retain the resolved repository, PR number, `headRefName`, and `headRefOid` as `task_repo`, `task_pr`, `task_branch`, and `task_head`; retain the origin URL from step 1 as `task_origin`. These identify the task, not a branch name found in historical PRs. Missing or ambiguous identity means preserve resources. Re-read PR identity before each deletion; if it changed, preserve the branch rather than adopting the new identity. Treat every other OPEN state as pending/manual merge too.
 
 3. **Close the issue**:
    - Derive the shipped issue from `closingIssuesReferences`; if it disagrees with `$ARGUMENTS`, use the PR's closing issue and log `using PR closing issue #M instead of requested #N`. If the PR closes no issue and none was provided, skip this step.
@@ -31,18 +31,17 @@ Steps:
      ```
    - If PR state is not merged, skip issue close and include the pending/manual-merge reason in the session summary.
 
-4. **Clean up branches** — sweep aggressively; GitHub's auto-delete only catches branches merged *after* the setting was enabled, so debt accumulates without an active sweep. Local cleanup depends on the checkout context, so resolve it first: `[ "$(git rev-parse --git-dir)" = "$(git rev-parse --git-common-dir)" ]` is the primary checkout; otherwise this session runs in a linked worktree.
-   - **Primary checkout** — switch off the merged branch (squash-merged branches can't be deleted while checked out): `BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo master); git checkout "$BASE"`. Then delete the PR's local branch only when PR state is merged (idempotent — `/finish` may re-run): `BR=$(gh pr view <pr-number> --repo <detected-repo> --json headRefName -q '.headRefName'); git show-ref --verify --quiet "refs/heads/$BR" && git branch -D "$BR"` (use `-D` — squash merges leave the tip unreachable, so `-d` refuses)
-   - **Linked worktree** — skip both, and never self-remove. `git checkout "$BASE"` fails (`already used by worktree`), `git branch -D` refuses the branch its worktree occupies, and `git worktree remove .` *succeeds* by deleting this session's cwd, killing the run before the retrospective and summary. Leave the branch and worktree in place and log `left worktree <path> on <branch> for reaping`; a primary session reaps it via `/worktrees cleanup`, which `/orient` chains.
-   - Delete remote branches for *all* merged PRs (handles this PR plus any stranded by prior runs, auto-merge timing, or pre-setting merges):
-     ```
-     merged=$(gh pr list --state merged --limit 200 --repo <detected-repo> --json headRefName --jq '.[].headRefName' | sort -u)
-     remote=$(git ls-remote --heads origin | awk '{print $2}' | sed 's|refs/heads/||' | grep -Ev '^(master|main)$' | sort -u)
-     stale=$(comm -12 <(echo "$merged") <(echo "$remote"))
-     [ -n "$stale" ] && git push origin --delete $stale
-     ```
-     Safe because the intersection requires a remote branch *and* a merged PR with that headRef — but if branch names get reused (rare), live work could match. For an open PR state, exclude the current PR's `headRefName` from `stale` before pushing deletes. Raise `--limit 200` if your unswept debt is older than the last 200 PRs. On push failure: print the error and continue to step 5; do **not** swallow with `|| true`, and do **not** abort the finish flow.
-   - Prune local refs: `git fetch --prune origin`. Pop the session stash in the primary checkout only — the stash ref lives in the common git dir, so a worktree popping `autopilot-pre` would apply the primary session's changes into the wrong tree: `git stash list | grep -q "autopilot-pre" && git stash pop || true`
+4. **Clean up only task-owned resources** — no repository-wide branch sweep. Use the identity retained in step 2; never infer ownership from historical merged PR names. Failed queries or checks preserve resources and must be reported; cleanup failure does not abort breadcrumbs, docs, or the summary.
+   - **Delete the task remote branch** only after re-reading `number,state,mergedAt,headRefName,headRefOid,isCrossRepository,baseRefName` and matching the retained task identity, a merged state, and a same-repository head. Require the branch to differ from main, master, the PR base, and `origin/HEAD`; require origin's fetch and every push URL to equal `task_origin`; require no open PR for that head; require a clean primary checkout where no worktree occupies the task branch; and require every existing local/remote task ref to equal `task_head`. Repeat these checks immediately before deletion. Any changed, missing, dirty, active, forked, advanced, reused, or ambiguous state preserves both refs.
+   - Delete the unchanged remote ref with `git push --force-with-lease="refs/heads/$task_branch:$task_head" origin ":refs/heads/$task_branch"`; a concurrent advance must fail visibly. Preserve the local task branch for `/worktrees cleanup`: Git cannot atomically verify both its expected OID and worktree occupancy during deletion.
+   - **Linked worktree** — leave the branch and worktree in place and log `left worktree <path> on <branch> for reaping`. Never self-remove: `git worktree remove .` deletes this session's cwd. A primary session can reap it via `/worktrees cleanup`; finish does not remove any worktree. If another session may check out the branch during cleanup and exclusive ownership cannot be established, defer deletion as well.
+
+   - **Return to the stash checkout** — before branch cleanup, read the record's physical path, absolute git-dir, symbolic branch, HEAD, stash OID, and state. A `captured` record in the same primary git-dir may move from its clean task branch back to the recorded original branch and HEAD only when that ref is unchanged and unoccupied; `git checkout` performs the final occupancy check. If already at the exact original checkout, continue. Any other state preserves the stash and task branch and reports the record; never switch from an unrelated checkout.
+
+
+
+   - **Restore the exact task stash** — after the guarded return, require the record's `captured` state, exact original clean primary path/git-dir/branch/HEAD, and recorded immutable OID in `git stash list --format=%H`. Write `applying` to the record before `git stash apply --index "$stash_oid"`. On success write `restored` and retain the stash as a recovery copy. On failure return nonzero, report the record, retain the recovery stash and partial index/worktree state, and require resolution before further implementation; the `applying` state prevents blind retry. Never search messages, use the top stash, reset/clean to force restoration, or pop/drop a moving stash index.
+
 
 5. **Create breadcrumbs for remaining work**:
    - Check if there are any TODO/FIXME comments added during this session's implementation
