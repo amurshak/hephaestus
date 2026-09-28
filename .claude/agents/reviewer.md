@@ -25,6 +25,7 @@ Perform a thorough code review of the complete task change, including committed 
    - **Test adequacy**: Are new behaviors tested? Does risky/complex logic have coverage? Are existing tests broken?
    - **Performance**: N+1 queries, missing indexes, unbounded loops, memory leaks
    - **Error handling**: Graceful failures, partial failure states
+   - **Dependencies** (manifest or lockfile changed): which packages and versions moved, including transitive ones; major bumps; manifest/lockfile agreement; install scripts or new registries; known advisories (via the ecosystem's audit tool, if available). A lockfile-only change is a runtime change, not a no-op
    - **CLAUDE.md compliance**: Does the change follow constraints in the project's CLAUDE.md (conventions, guardrails, dev commands)?
 
 ## Task change scope
