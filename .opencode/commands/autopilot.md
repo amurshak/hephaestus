@@ -45,13 +45,13 @@ If no open issues are found:
 
 Run `/start-issue <#>`. It handles plan-critique loop, parallel @coder Task invocations, implementation, and the test gate, and ends ready for `/ship`.
 
-If `/start-issue` winds down early (`[WIP]`, `[BLOCKED]`, `[FAILING]` prefix on the draft PR it created), respect that wind-down — the breadcrumbs are filed; do not try to push past them.
+Proceed to `/ship` only when `/start-issue` reports `ready`. Any other outcome (`[WIP]`, `[BLOCKED]`, `[FAILING]`) goes to wind-down — including incomplete work that has no draft PR yet, where wind-down opens it. Do not try to push past it.
 
 ### Phase 3: Ship → `/ship <#>`
 
 Run `/ship <#>`. It runs the pre-push critique gate, runs all quality gates in parallel, updates CHANGELOG, pushes the branch, creates the PR, and auto-merges.
 
-If `/ship` cannot auto-merge (branch protection, required reviewers): the PR is left open, the work is preserved, and `/ship` notes that manual merge is needed. Still run Phase 4 — `/finish` branches on PR state and performs safe cleanup for unmerged PRs without closing the issue or deleting the branch.
+If `/ship` ends in a draft PR, the issue did not ship: run Phase 4 for cleanup, then wind down. If `/ship` cannot auto-merge (branch protection, required reviewers): the PR is left open, the work is preserved, and `/ship` notes that manual merge is needed. Still run Phase 4 — `/finish` branches on PR state and performs safe cleanup for unmerged PRs without closing the issue or deleting the branch.
 
 ### Phase 4: Finish → `/finish <#>`
 

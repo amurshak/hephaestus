@@ -181,7 +181,7 @@ The target project owns the specifics — what test command to run, what lint ru
 
 ### Deterministic failure modes
 
-Every command specifies what happens when things go wrong — not as afterthoughts but as first-class workflow states. Retry exhaustion produces a draft PR with a descriptive prefix (`[WIP]`, `[BLOCKED]`, `[FAILING]`), a follow-up issue with context, and a clean repo. The system degrades into artifacts the next run or a human can pick up. It never blocks on input and never leaves the repo undefined.
+Every command specifies what happens when things go wrong — not as afterthoughts but as first-class workflow states. Retry exhaustion produces a draft PR with a descriptive prefix (`[WIP]`, `[BLOCKED]`, `[FAILING]`), a follow-up issue with context, and a clean repo. The system degrades into artifacts the next run or a human can pick up. Only optional work degrades: an unmet required criterion, a failing required gate, or a gate that could not run ends in a draft that is never merged or counted as shipped. It never blocks on input and never leaves the repo undefined.
 
 ---
 

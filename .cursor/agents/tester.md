@@ -20,12 +20,12 @@ Run tests for the project and return a structured summary.
 
 3. Return a structured summary:
    - **Scope**: base and merge-base OIDs, HEAD, included paths, exclusions/reasons, ambiguity
-   - **Status**: PASS or FAIL
+   - **Status**: PASS, FAIL, or BLOCKED — BLOCKED when a check could not run (missing tool, service, credentials, or network); never report it as PASS or as a test failure
    - **Tests run**: count
    - **Tests passed**: count
    - **Tests failed**: count (with names and error messages if any)
    - **Likely cause** (if FAIL): flaky test, real regression, missing fixture, environment issue
-   - **Suggested action** (if FAIL): retry once, fix specific test, fix implementation, skip with note
+   - **Suggested action** (if FAIL or BLOCKED): retry once, fix specific test, fix implementation, or restore the missing prerequisite
    - **Lint**: clean or violations
    - **Duration**: total time
 
