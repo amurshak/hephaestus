@@ -56,6 +56,9 @@ begin_test "finish never treats a draft as awaiting merge"
 finish=$(read_ai workflows/finish)
 assert_contains "finish reads isDraft" "$finish" 'baseRefName,isDraft`'
 assert_contains "draft logged as not shipped" "$finish" 'draft PR #N — not shipped'
+assert_contains "draft gets no docs sync or shipped retrospective" "$finish" 'run `/update-docs`, or file a shipped retrospective. A draft is a wind-down outcome'
+assert_contains "branch order is first match" "$finish" 'Branch from that payload (first match wins)'
+assert_contains "draft still commits its fixes" "$ship" "skip step 4's docs record but commit task-owned changes"
 
 begin_test "successful recovery still reaches ship"
 assert_contains "start-issue reports ready to ship" "$start" 'Only `ready` goes to `/ship`'

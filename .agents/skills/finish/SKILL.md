@@ -19,9 +19,9 @@ Steps:
 2. **Load PR state once, then branch deterministically**:
    - Find the PR for the issue (or use the explicit PR number if provided). If no PR exists, stop finish and run `/ship <#>` first.
    - Read one state payload before cleanup: `gh pr view <pr-number> --repo <detected-repo> --json state,mergedAt,mergeStateStatus,autoMergeRequest,headRefName,headRefOid,baseRefOid,closingIssuesReferences,number,isCrossRepository,baseRefName,isDraft`
-   - Branch from that payload:
+   - Branch from that payload (first match wins):
      - `state=MERGED` and `mergedAt != null` → proceed with issue close, branch cleanup, breadcrumbs, retrospective, docs check, and summary.
-     - `state=OPEN` and `isDraft=true` → log `draft PR #N — not shipped`; proceed with cleanup-as-far-as-possible, but do not close the issue and do not delete this PR's branch. A draft is a wind-down outcome, never a merge candidate.
+     - `state=OPEN` and `isDraft=true` → log `draft PR #N — not shipped`; proceed with cleanup-as-far-as-possible, but do not close the issue, delete this PR's branch, run `/update-docs`, or file a shipped retrospective. A draft is a wind-down outcome, never a merge candidate.
      - `state=OPEN`, `mergeStateStatus=CLEAN`, and `autoMergeRequest != null` → log `auto-merge pending for PR #N`; proceed with cleanup-as-far-as-possible, but do not close the issue and do not delete this PR's branch.
      - `state=OPEN` and `autoMergeRequest = null` → log `manual merge needed for PR #N`; proceed with cleanup-as-far-as-possible, but do not close the issue and do not delete this PR's branch.
      - `state=CLOSED` and `mergedAt = null` → abort finish with `PR #N closed without merge`; do not close the issue, delete branches, run `/update-docs`, or file a shipped retrospective.
@@ -35,7 +35,7 @@ Steps:
      ```
      gh issue close <resolved-issue> --repo <detected-repo> --comment "Shipped in PR #<pr-number>."
      ```
-   - If PR state is not merged, skip issue close and include the pending/manual-merge reason in the session summary.
+   - If PR state is not merged, skip issue close and include the draft, pending, or manual-merge reason in the session summary.
 
 4. **Clean up only task-owned resources** — no repository-wide branch sweep. Use the identity retained in step 2; never infer ownership from historical merged PR names. Failed queries or checks preserve resources and must be reported; cleanup failure does not abort breadcrumbs, docs, or the summary.
    - **Delete the task remote branch** only after re-reading `number,state,mergedAt,headRefName,headRefOid,isCrossRepository,baseRefName` and matching the retained task identity, a merged state, and a same-repository head. Require the branch to differ from main, master, the PR base, and `origin/HEAD`; require origin's fetch and every push URL to equal `task_origin`; require no open PR for that head; require a clean primary checkout where no worktree occupies the task branch; and require every existing local/remote task ref to equal `task_head`. Repeat these checks immediately before deletion. Any changed, missing, dirty, active, forked, advanced, reused, or ambiguous state preserves both refs.

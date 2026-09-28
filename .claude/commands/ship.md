@@ -36,7 +36,7 @@ If any gate fails:
   - If a gate could not run (tester BLOCKED): draft PR `[BLOCKED: <gate> unavailable]` naming the missing prerequisite
   - If it's build: draft PR `[FAILING: build]` with the build error
 
-A draft PR ends `/ship`: skip step 4, open it with each failing gate as `- [ ]` and its failure (the evidence gate's no-unchecked rule is for merge-ready PRs), file a follow-up issue, skip step 6 — a draft is never auto-merged — and report the prefix as the outcome.
+A draft PR ends `/ship`: skip step 4's docs record but commit task-owned changes, open it with each failing gate as `- [ ]` and its failure (the evidence gate's no-unchecked rule is for merge-ready PRs), file a follow-up issue, skip step 6 — a draft is never auto-merged — and report the prefix as the outcome.
 
 ### 4. Update docs
 - Record the change. If `changelog.d/` exists, write one fragment per PR: `changelog.d/<issue-or-slug>.<added|changed|fixed|removed>.md`, containing the entry body without the leading `- `. Distinct filenames mean parallel branches never collide. Otherwise append under `## Unreleased` in CHANGELOG.md.
@@ -78,7 +78,7 @@ EOF
 
 For gates that passed with caveats, use `[x]` with a suffix: `- [x] All tests passing (INFERRED — see Known Limitations)`.
 
-**Evidence gate** — before running `gh pr create`, verify the composed body: no unchecked `- [ ]` items, no surviving `<angle-bracket>` placeholders, and every `[x]` quality-gate line corresponds to a gate actually run and passed in this session (a claimed gate with no run behind it is a violation). On violation: run the missing gate or fix the body — never ship a checklist that claims what didn't happen.
+**Evidence gate** — before running `gh pr create`, verify the composed body: no unchecked `- [ ]` items (merge-ready PRs), no surviving `<angle-bracket>` placeholders, and every `[x]` quality-gate line corresponds to a gate actually run and passed in this session (a claimed gate with no run behind it is a violation). On violation: run the missing gate or fix the body — never ship a checklist that claims what didn't happen.
 
 ### 6. Auto-merge
 ```
