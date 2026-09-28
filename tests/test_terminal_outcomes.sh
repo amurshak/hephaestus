@@ -41,7 +41,7 @@ assert_contains "lint failure drafts" "$ship" 'draft PR `[FAILING: lint]`'
 assert_contains "build failure drafts" "$ship" 'draft PR `[FAILING: build]`'
 assert_not_contains "no build path without an outcome" "$ship" 'hard stop — do not create a PR with a broken build'
 assert_contains "unmet criterion loops back like a test failure" "$start" 'If tests fail or a required criterion is unmet'
-assert_contains "evidence gate requires a pass" "$ship" 'actually run and passed in this session'
+assert_contains "evidence gate requires a pass" "$ship" 'every required row passed at the delivered HEAD'
 assert_contains "test-issue outcome needs every gate and criterion" "$testing" 'PASS only if every gate passed and every required criterion is met'
 assert_contains "spec: rung 3 is terminal" "$conventions" 'Rung 3 is a terminal outcome, not a completion'
 
@@ -60,7 +60,7 @@ assert_contains "finish reads isDraft" "$finish" 'baseRefName,isDraft`'
 assert_contains "draft logged as not shipped" "$finish" 'draft PR #N — not shipped'
 assert_contains "draft gets no docs sync or shipped retrospective" "$finish" 'run `/update-docs`, or file a shipped retrospective. A draft is a wind-down outcome'
 assert_contains "branch order is first match" "$finish" 'Branch from that payload (first match wins)'
-assert_contains "draft still commits its fixes" "$ship" "skip step 4's docs record but commit task-owned changes"
+assert_contains "draft still commits its fixes" "$ship" 'A draft PR ends `/ship`: commit task-owned changes'
 
 begin_test "successful recovery still reaches ship"
 assert_contains "start-issue reports ready to ship" "$start" 'Only `ready` goes to `/ship`'

@@ -14,7 +14,7 @@ Every delivery command walks the same phases:
 4. **Implement** — parallel coders for independent tasks, sequential for dependencies
 5. **Review** — adversarial evaluation of the code before it ships
 6. **Test** — the target project's quality gates
-7. **Ship** — PR with a gate checklist, squash auto-merge
+7. **Ship** — PR with revision-bound gate evidence, squash auto-merge
 8. **Finish** — close the issue, delete merged branches, file follow-ups, sync docs
 
 ## Retry limits

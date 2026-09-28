@@ -14,7 +14,7 @@ metadata:
 <!-- generated from .ai/workflows/refactor.md; do not edit directly -->
 
 > **Hermes:** this skill is the `/refactor` adapter.
-> Where a step below names a role (coder, explorer), you **must** call `delegate_task` for it rather than doing that step yourself — measured on `/refactor`: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation, and the cwd it does inherit is frozen at session **launch** — confidently stale if you work in a worktree — so give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
+> Where a step below delegates to a role (coder, explorer), you **must** call `delegate_task` for it rather than doing that step yourself — measured on `/refactor`: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation, and the cwd it does inherit is frozen at session **launch** — confidently stale if you work in a worktree — so give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
 > For chained workflows (/ship, /finish), invoke the matching skill (`/<workflow>`) when it is installed; otherwise read and follow `.hermes/skills/hephaestus/<workflow>/SKILL.md`.
 
 > Hermes does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
@@ -45,7 +45,7 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 
 ### Phase 4: Ship → `/ship`
 
-Run `/ship`. It runs the pre-push critique gate, all quality gates, updates CHANGELOG, pushes the branch, creates the PR, and auto-merges.
+Run `/ship`. It updates docs, runs the pre-push critique and quality gates, pushes the branch, creates the PR, and auto-merges.
 
 When `/ship` builds the PR body, populate the Summary bullets with the refactoring metrics (lines/complexity before/after), API changes (if any) under Known Limitations, and downstream risks.
 

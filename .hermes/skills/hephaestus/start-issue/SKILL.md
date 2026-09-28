@@ -14,7 +14,7 @@ metadata:
 <!-- generated from .ai/workflows/start-issue.md; do not edit directly -->
 
 > **Hermes:** this skill is the `/start-issue` adapter.
-> Where a step below names a role (coder, explorer), you **must** call `delegate_task` for it rather than doing that step yourself — measured on `/refactor`: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation, and the cwd it does inherit is frozen at session **launch** — confidently stale if you work in a worktree — so give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
+> Where a step below delegates to a role (coder, explorer), you **must** call `delegate_task` for it rather than doing that step yourself — measured on `/refactor`: orchestrators otherwise inline the whole workflow and never delegate. Each role's toolsets, cap and prompt are in `.hermes/agents/<role>.md`. A delegate inherits **none** of your conversation, and the cwd it does inherit is frozen at session **launch** — confidently stale if you work in a worktree — so give `context` absolute paths plus every constraint and prior finding it needs. Delegates get no per-child worktree, so parallel ones share one working tree: serialize file-modifying work.
 > For chained workflows (/test-issue), invoke the matching skill (`/<workflow>`) when it is installed; otherwise read and follow `.hermes/skills/hephaestus/<workflow>/SKILL.md`.
 
 > Hermes does not substitute `$ARGUMENTS` — read it as the arguments given in the user's request.
@@ -49,6 +49,10 @@ Start working on issue $ARGUMENTS. Run autonomously through the full plan-critiq
 
 Use a supplied Scope; otherwise base it on explicit `--base` (stacked work), the PR base, or confirmed `origin/HEAD`, in that order—never a guess or `HEAD~1`. Scope is the unique merge-base-to-HEAD diff plus separate staged, unstaged, and relevant untracked changes (`git diff --no-renames`, `git diff --cached HEAD`, `git diff`, `git ls-files --others --exclude-standard`; inventory with `--name-only -z`). Report/pass root, base/merge-base/HEAD OIDs, included paths, exclusions/reasons, and ambiguity. A missing/conflicting base, multiple merge-bases, failed inspection, or unresolved relevance makes scope incomplete and cannot PASS/auto-pass. Retain the base across commits; repeat affected gates if it changes. Include deletions and both rename paths; never mutate files to inspect them.
 
+## Evidence records
+
+Each check yields one record: check, scope, command or method, outcome, and revision — HEAD OID and clean or dirty tree — plus any environment it depends on (tool versions, services, credentials). Outcome is passed, failed, blocked (could not run), not run, or not applicable. Required gates are the project's Development Commands (inferred ones when that section is absent), plus the critique at `/ship`, and only passed satisfies one; a gate the project does not define is not applicable, and any other check is optional. A record covers the delivered state while nothing it reads has changed: code, dependencies, configuration, environment, or — for doc checks — the docs. A dirty-tree record covers only if its dirty paths are outside what the check reads. Reuse a covering record, including one handed over by another command; rerun the rest, and rerun when unsure what a check reads. Keep exit status and failure output; never report a check that did not run as passed.
+
 ## Phase 2: Plan-Critique Loop
 
 1. **Plan**: Break the issue into concrete steps with the todo tool. Identify independent tasks for parallel coders.
@@ -79,7 +83,7 @@ If tests fail or a required criterion is unmet:
 - Go back to Phase 2 with failure context (max 2 full cycles)
 - If still failing after 2 cycles: commit progress on the branch, create a draft PR (`--draft`) with `[FAILING]` prefix and failure analysis in the body, file a follow-up issue
 
-Report the outcome — `ready`, or the draft PR's prefix — with the recorded Scope, files changed, `/test-issue` results, and assumptions. Only `ready` goes to `/ship`.
+Report the outcome — `ready`, or the draft PR's prefix — with the recorded Scope, files changed, `/test-issue` evidence records for `/ship` to reuse, and assumptions. Only `ready` goes to `/ship`.
 
 Key constraints:
 - If the project has multiple sub-repos (e.g., backend + frontend), treat each as a separate git repo and commit in the right one
