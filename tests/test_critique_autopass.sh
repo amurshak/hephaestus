@@ -13,6 +13,7 @@ begin_test "a lockfile-only dependency update is reviewed, not auto-passed"
 assert_not_contains "lockfiles are not a passable file type" "$gate" 'a lockfile, or whitespace-only'
 assert_contains "dependency files always get review" "$gate" 'dependency manifests and lockfiles'
 assert_contains "exemptions are by consequence" "$gate" 'Judge by consequence, not file type'
+assert_contains "adapter-only changes carry instruction risk" "$risk" '+1 agent instructions (as listed above)'
 assert_contains "dependencies raise the risk score" "$risk" '+1 dependencies (manifest or lockfile)'
 assert_contains "reviewer scopes a dependency assessment" "$reviewer" '**Dependencies** (manifest or lockfile changed)'
 assert_contains "lockfile-only is a runtime change" "$reviewer" 'A lockfile-only change is a runtime change, not a no-op'
@@ -23,7 +24,7 @@ for surface in '`.ai/`' '`.claude/`' 'CLAUDE.md' 'AGENTS.md' 'generated adapters
 done
 
 begin_test "genuinely low-impact changes keep their shortcut"
-assert_contains "whitespace and reader-facing prose still auto-pass" "$gate" 'whitespace or reader-facing prose that nothing executes or obeys'
+assert_contains "whitespace and reader-facing prose still auto-pass" "$gate" 'behavior-neutral whitespace or reader-facing prose that nothing executes or obeys'
 assert_contains "empty or incomplete scope never auto-passes" "$gate" 'only if scope is complete and nonempty'
 assert_contains "project review policy wins" "$gate" 'A project review policy in its CLAUDE.md wins'
 

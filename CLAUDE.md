@@ -120,7 +120,7 @@ Five agent roles, canonical in `.ai/agents/` and stratified by least-privilege t
 - Agents declare allowed tools, isolation mode, and model tier in YAML frontmatter
 - All agents return structured output (files changed, status, verdict) — never raw verbose logs
 - Reviewer and tester receive the same recorded task scope from workflow callers, including committed and local changes. `tests/test_complete_change_scope.sh` checks the six canonical scope contracts and runs their Git commands against isolated regression fixtures.
-- Reviewer verdicts: PASS / PASS WITH CHANGES / FAIL
+- Reviewer verdicts: PASS / PASS WITH CHANGES / FAIL. A manifest or lockfile change gets the reviewer's scoped dependency assessment; `/critique` never auto-passes dependency, config, or agent-instruction changes by file type (#223).
 - General critique verdicts: SOUND / NEEDS REFINEMENT / RETHINK
 
 **Model tiers** — every agent declares `model: opus | sonnet | haiku | inherit`. The tier is harness-neutral; `.ai/models.conf` says what it means per harness (OpenCode gets a `provider/model-id`, Codex gets `model_reasoning_effort`, Cursor ships unset because its model namespace churns per release, Hermes gets an advisory `provider/model-id` since it applies one global `delegation.model`, Claude Code takes the tier name as-is). Assign by what the role costs to get wrong: reviewer `opus`, coder and researcher `sonnet`, explorer and tester `haiku`. Override the mapping — not the tiers — in `~/.hephaestus/models.conf` (user level, every project) or `$HEPHAESTUS_MODELS`; layers merge per key. Generator `--check` ignores overrides so committed adapters stay reproducible across machines.
