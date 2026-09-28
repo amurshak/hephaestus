@@ -1,0 +1,1 @@
+Workflow redesign assessment (`docs/design/workflow-redesign.md`): the evidence-based review behind tracker #219 — the proposed minimal delivery contract, a disposition for every workflow and agent, the correctness fixes justified without a benchmark, and the native/minimal/full evaluation plan.
