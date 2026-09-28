@@ -28,7 +28,7 @@ Resolve the task change scope below and pass the recorded Scope to `/critique` e
 
 ### 4. Run quality gates
 Run each gate command directly with tools — in parallel where independent — keeping its exit status and an evidence record (below); reuse a covering record instead of rerunning. Delegate to a tester, passing the recorded Scope, only for long or ambiguous output or an independent acceptance check.
-- **Gates**: the test, lint, and build commands in the project CLAUDE.md. If CLAUDE.md has no "Development Commands" section, infer commands from project manifests (package.json, Makefile, pyproject.toml, go.mod, etc.), mark each gate `INFERRED` in the report, and note the gap in the PR body.
+- **Gates**: the test, lint, and build commands in the project CLAUDE.md. If CLAUDE.md has no "Development Commands" section, infer commands from project manifests (package.json, Makefile, pyproject.toml, go.mod, etc.), mark each gate `INFERRED` in its Evidence row, and note the gap in the PR body.
 - **Git state**: refresh the recorded Scope and inspect `git status`; list all task commits with `git log --oneline "$scope_merge_base..$scope_head"`. Preserve unrelated user work. Resolve the PR destination branch matching the recorded base; do not silently switch to the default branch for stacked work.
 
 If any gate fails:
@@ -40,9 +40,9 @@ If any gate fails:
   - If a gate could not run (blocked): draft PR `[BLOCKED: <gate> unavailable]` naming the missing prerequisite
   - If it's build: draft PR `[FAILING: build]` with the build error
 
-A draft PR ends `/ship`: commit task-owned changes, open it with every gate's evidence including the failed and blocked ones, file a follow-up issue, skip step 6 — a draft is never auto-merged — and report the prefix as the outcome.
+A draft PR ends `/ship`: commit task-owned changes, open it with every gate's evidence including the failed and blocked ones (gates not reached are not run), file a follow-up issue, skip step 6 — a draft is never auto-merged — and report the prefix as the outcome.
 
-Any commit after a gate or critique ran — a fix, a doc edit, a rebase — invalidates the records it touches: refresh Scope and repeat affected critique and test gates before pushing.
+Any commit after a gate or critique ran — a fix, a doc edit, a rebase — invalidates the records it touches: update docs the fix makes inaccurate, refresh Scope, and repeat affected critique and test gates before pushing.
 
 ### 5. Push and create PR
 ```
@@ -102,7 +102,7 @@ Use a supplied Scope; otherwise base it on explicit `--base` (stacked work), the
 
 ## Evidence records
 
-Each check yields one record: check, scope, command or method, outcome, and revision — HEAD OID and clean or dirty tree — plus any environment it depends on (tool versions, services, credentials). Outcome is passed, failed, blocked (could not run), not run, or not applicable; only passed satisfies a required gate. A record covers the delivered state while nothing it reads has changed: code, dependencies, configuration, environment, or — for doc checks — the docs. Reuse a covering record, including one handed over by another command; rerun the rest, and rerun when unsure what a check reads. Keep exit status and failure output; never report a check that did not run as passed.
+Each check yields one record: check, scope, command or method, outcome, and revision — HEAD OID and clean or dirty tree — plus any environment it depends on (tool versions, services, credentials). Outcome is passed, failed, blocked (could not run), not run, or not applicable. Required gates are the critique plus the project's Development Commands, and only passed satisfies one; a gate the project does not define is not applicable, and any other check is optional. A record covers the delivered state while nothing it reads has changed: code, dependencies, configuration, environment, or — for doc checks — the docs. A dirty-tree record covers only if its dirty paths are outside what the check reads. Reuse a covering record, including one handed over by another command; rerun the rest, and rerun when unsure what a check reads. Keep exit status and failure output; never report a check that did not run as passed.
 
 ### Next steps
 - Run `/test-issue` to verify CI status if needed

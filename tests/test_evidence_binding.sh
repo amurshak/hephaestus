@@ -22,7 +22,7 @@ begin_test "records carry scope, method, outcome, revision, and environment"
 assert_contains "record fields" "$contract" 'check, scope, command or method, outcome, and revision — HEAD OID and clean or dirty tree'
 assert_contains "environment assumptions" "$contract" 'plus any environment it depends on (tool versions, services, credentials)'
 assert_contains "five distinct outcomes" "$contract" 'passed, failed, blocked (could not run), not run, or not applicable'
-assert_contains "only passed satisfies" "$contract" 'only passed satisfies a required gate'
+assert_contains "only passed satisfies" "$contract" 'and only passed satisfies one'
 
 begin_test "an unchanged result is reused, not rerun"
 assert_contains "covering record is reused" "$contract" 'Reuse a covering record, including one handed over by another command'
@@ -43,6 +43,12 @@ assert_eq "docs precede critique" "1" "$([ -n "$docs_line" ] && [ -n "$critique_
 assert_eq "critique precedes gates" "1" "$([ -n "$critique_line" ] && [ -n "$gates_line" ] && [ "$critique_line" -lt "$gates_line" ] && echo 1 || echo 0)"
 assert_contains "doc checks read the docs" "$contract" 'for doc checks — the docs'
 
+begin_test "required, optional, and undefined gates are distinguished"
+assert_contains "required gates defined" "$contract" "Required gates are the critique plus the project's Development Commands"
+assert_contains "undefined gate is not applicable" "$contract" 'a gate the project does not define is not applicable'
+assert_contains "dirty-tree record limited" "$contract" 'A dirty-tree record covers only if its dirty paths are outside what the check reads'
+assert_contains "fixes revisit docs" "$ship" 'update docs the fix makes inaccurate'
+
 begin_test "environment changes invalidate"
 assert_contains "environment is a read input" "$contract" 'code, dependencies, configuration, environment'
 
@@ -62,5 +68,11 @@ assert_not_contains "test-issue no longer always delegates" "$testing" 'Always d
 assert_contains "test-issue runs gates directly" "$testing" 'Run gate commands directly with tools, keeping exit status'
 assert_contains "ship runs gates directly" "$ship" 'Run each gate command directly with tools'
 assert_contains "tester reserved for interpretation" "$ship" 'only for long or ambiguous output or an independent acceptance check'
+hermes_ship=$(cat "$HEPHAESTUS_ROOT/.hermes/skills/hephaestus/ship/SKILL.md")
+assert_contains "hermes delegates only delegating steps" "$hermes_ship" 'Where a step below delegates to a role'
+assert_not_contains "hermes does not force every named role" "$hermes_ship" 'Where a step below names a role'
+for wf in autopilot refactor; do
+  assert_contains "$wf summarizes docs-first ship" "$(cat "$HEPHAESTUS_ROOT/.ai/workflows/$wf.md")" 'It updates docs, runs the pre-push critique and quality gates'
+done
 
 print_summary

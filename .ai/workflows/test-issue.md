@@ -20,7 +20,7 @@ Steps:
 
 4. **Verify acceptance criteria**: If an issue number was provided in $ARGUMENTS, run `gh issue view <#> --repo <detected-repo>` and check each acceptance criterion against every included change layer in that same scope, reading relevant untracked contents too. Report each as met, unmet, or unverified, and required unless the issue marks it optional.
 
-5. **Report results** (concise — the subagents already absorbed the verbose output):
+5. **Report results** (concise — summarize, don't paste output):
    - Scope: base and merge-base OIDs, HEAD, included paths, exclusions, ambiguity
    - Evidence: one record per gate — command, outcome, revision, and pass/fail counts or error output
    - ACs: met / unmet / unverified per criterion
@@ -34,7 +34,7 @@ Use a supplied Scope; otherwise base it on explicit `--base` (stacked work), the
 
 ## Evidence records
 
-Each check yields one record: check, scope, command or method, outcome, and revision — HEAD OID and clean or dirty tree — plus any environment it depends on (tool versions, services, credentials). Outcome is passed, failed, blocked (could not run), not run, or not applicable; only passed satisfies a required gate. A record covers the delivered state while nothing it reads has changed: code, dependencies, configuration, environment, or — for doc checks — the docs. Reuse a covering record, including one handed over by another command; rerun the rest, and rerun when unsure what a check reads. Keep exit status and failure output; never report a check that did not run as passed.
+Each check yields one record: check, scope, command or method, outcome, and revision — HEAD OID and clean or dirty tree — plus any environment it depends on (tool versions, services, credentials). Outcome is passed, failed, blocked (could not run), not run, or not applicable. Required gates are the critique plus the project's Development Commands, and only passed satisfies one; a gate the project does not define is not applicable, and any other check is optional. A record covers the delivered state while nothing it reads has changed: code, dependencies, configuration, environment, or — for doc checks — the docs. A dirty-tree record covers only if its dirty paths are outside what the check reads. Reuse a covering record, including one handed over by another command; rerun the rest, and rerun when unsure what a check reads. Keep exit status and failure output; never report a check that did not run as passed.
 
 ### Next steps
 - If all tests pass: run `/ship` to create a PR, or `/finish <#>` if already merged

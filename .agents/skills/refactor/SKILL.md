@@ -36,7 +36,7 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 
 ### Phase 4: Ship → `/ship`
 
-Run `/ship`. It runs the pre-push critique gate, all quality gates, updates CHANGELOG, pushes the branch, creates the PR, and auto-merges.
+Run `/ship`. It updates docs, runs the pre-push critique and quality gates, pushes the branch, creates the PR, and auto-merges.
 
 When `/ship` builds the PR body, populate the Summary bullets with the refactoring metrics (lines/complexity before/after), API changes (if any) under Known Limitations, and downstream risks.
 
