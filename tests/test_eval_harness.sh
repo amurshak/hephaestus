@@ -24,7 +24,7 @@ out=$(HEPH_EVAL_CMD=/bin/true "$RUN" run --budget-usd 1 --bogus 2>&1); rc=$?
 assert_exit_code "unknown flag refuses" 1 "$rc"
 
 begin_test "an invalid plan is refused before anything runs"
-for bad in "--arms native,bogus" "no-such-task" "--repeats 0" "--budget-usd 1 --run-cap-usd x"; do
+for bad in "--arms native,bogus" "--arms ," "no-such-task" "--repeats 0" "--budget-usd 1 --run-cap-usd x"; do
   # shellcheck disable=SC2086
   out=$(HEPH_EVAL_CMD=/bin/true HEPH_EVAL_OUT="$WORK/refused" "$RUN" run --budget-usd 1 $bad 2>&1); rc=$?
   assert_exit_code "'$bad' refuses" 1 "$rc"
@@ -77,6 +77,29 @@ else
   pass "full arm ordered after the budget stop at this seed"
 fi
 
+begin_test "the run plan never reaches a harness's stdin, so every planned run executes"
+cat > "$WORK/reader" <<'STUB'
+#!/usr/bin/env bash
+cat > "$HOME/stdin-seen"
+git config user.email > "$HOME/identity"
+printf '{"total_cost_usd": 0.01,"num_turns": 1}\n'
+STUB
+chmod +x "$WORK/reader"
+out=$(HEPH_EVAL_CMD="$WORK/reader" HEPH_EVAL_OUT="$WORK/reader-out" "$RUN" run --budget-usd 5 --repeats 3 --seed 9 \
+  --arms native changelog-conflict-markers 2>&1); rc=$?
+assert_exit_code "stdin-reading run completes" 0 "$rc"
+assert_eq "all three planned runs executed" "3" "$(tail -n +2 "$(ls "$WORK"/reader-out/results-*-9.tsv | head -1)" | wc -l | tr -d ' ')"
+for seen in "$WORK"/reader-out/runs/*/home/stdin-seen; do
+  assert_eq "harness stdin is empty ($(basename "$(dirname "$(dirname "$seen")")"))" "" "$(cat "$seen")"
+done
+assert_eq "sandbox commits use the eval identity" "eval@example.invalid" "$(cat "$(ls "$WORK"/reader-out/runs/*/home/identity | head -1)")"
+
+begin_test "a budget stop lists the runs it did not execute"
+out=$(HEPH_EVAL_CMD="$WORK/reader" HEPH_EVAL_OUT="$WORK/stop-out" "$RUN" run --budget-usd 0.01 --repeats 3 --seed 4 \
+  --arms native changelog-conflict-markers 2>&1)
+assert_contains "names the stop" "$out" "not executed:"
+assert_eq "two runs listed as not executed" "2" "$(grep -c '^  changelog-conflict-markers native' <<<"$out")"
+
 begin_test "a timed-out run keeps its columns, counts as a timeout, and is charged its cap"
 printf '#!/usr/bin/env bash\nsleep 30\n' > "$WORK/slow"; chmod +x "$WORK/slow"
 out=$(HEPH_EVAL_TIMEOUT=2 HEPH_EVAL_CMD="$WORK/slow" HEPH_EVAL_OUT="$WORK/slow-out" "$RUN" run --budget-usd 1 --run-cap-usd 0.3 \
@@ -90,6 +113,15 @@ assert_eq "timed_out flagged" "1" "$(cut -f12 <<<"$slow")"
 assert_contains "charged the per-run cap" "$out" "spent \$0.3"
 slow_report=$("$RUN" report "$(ls "$WORK"/slow-out/results-*-5.tsv | head -1)")
 assert_contains "report counts the timeout and missing cost" "$slow_report" "1 run(s) reported no cost"
+
+begin_test "report counts install failures and excludes their cost"
+synthetic="$WORK/synthetic.tsv"
+head -1 "$results" > "$synthetic"
+printf 'changelog-arg-order\tfull\t1\t0\t0\t0\t0\tna\t0\tna\tinstall_failed\t0\tm\th\tp\tb\n' >> "$synthetic"
+printf 'changelog-arg-order\tfull\t2\t1\t1\t1\t0\t2.00\t60\t9\t0\t0\tm\th\tp\tb\n' >> "$synthetic"
+syn=$("$RUN" report "$synthetic")
+assert_contains "install failure counted" "$syn" "1 install failure(s)"
+assert_contains "cost/run averages only reported costs" "$syn" "2.00"
 
 begin_test "report summarizes per arm and per task"
 out=$("$RUN" report "$results" 2>&1); rc=$?

@@ -28,13 +28,13 @@ Judged by the runner after the agent stops, never by the agent's own report:
 
 ## Controls
 
-- **Fresh sandbox per run**: the repo exported at the task's base with no history beyond it, so the fix commit is not in the sandbox; a local bare origin with `origin/HEAD` set; an isolated `HOME`; a cleared environment (no tokens or runner variables reach the agent).
+- **Fresh sandbox per run**: the repo exported at the task's base with no history beyond it, so the fix commit is not in the sandbox; a local bare origin with `origin/HEAD` set; an isolated `HOME`; a cleared environment (no tokens or runner variables reach the agent) with a fixed shell and an `eval` git identity.
 - **No harness adapters in the sandbox**: the repo's own generated `.claude/commands`, `.claude/agents`, and other harness directories are removed, so native is native and full sees only the pinned install.
 - **Pinned install excludes answers**: the full arm's pinned copy carries only what a user-level install needs — no scripts under test, changelog, tests, or tasks.
 - **No network for answers**: a `gh` shim serves the task's issue and refuses everything else; WebFetch and WebSearch are disabled in both arms. Shell network access remains, so every run is scanned for references to the evaluation checkout or the public repository and flagged `contaminated`; report such runs separately rather than dropping them.
 - **Archives outside the repo**: results and per-run sandboxes default to `$XDG_STATE_HOME/hephaestus/evals`, so no run can read an earlier run's solution through the checkout.
 - **Order**: every (task, arm, repeat) is shuffled by a recorded seed.
-- **Denominator**: failed, timed-out, and install-failed runs are recorded as runs; nothing is dropped after the fact. Runs the budget stop never started are listed as not executed.
+- **Denominator**: failed, timed-out, and install-failed runs are recorded as runs; nothing is dropped after the fact. Runs the budget stop never started are printed as not executed.
 
 ## Decision rule
 
@@ -52,7 +52,7 @@ Re-run the baseline, and the component comparisons that depend on it, when any o
 
 - **One stratum.** All seed tasks are well-specified shell bugfixes from this repository, with issue texts that often name the fix. They under-represent features, ambiguity, unfamiliar code, and multi-file design, which is where planning and review would plausibly matter most. #238 widens the strata; add tasks in the format below.
 - **Self-hosting.** The task repo is hephaestus; its CLAUDE.md describes the workflow to both arms. Tasks from public history may be in training data.
-- **Residual leakage.** Agents run with full filesystem and shell network access. The sandbox withholds the fix and the web tools are off, but a determined agent could find the evaluation checkout on disk or clone the public repository; the `contaminated` flag detects the obvious paths, not every one.
+- **Residual leakage.** Agents run with full filesystem and shell network access. The sandbox withholds the fix and the web tools are off, but a determined agent could find the evaluation checkout on disk or clone the public repository; the `contaminated` flag detects the obvious paths, not every one — and none when the runner is launched from a linked worktree whose main clone the agent reads instead. The timeout kills the run's process group; anything detached with `setsid` escapes it.
 - **One harness.** The runner drives Claude Code headless; other harnesses need their own dispatch and cost parsing.
 - **Budget.** Each run is held to `--max-budget-usd` at the smaller of `--run-cap-usd` and what remains; a run that reports no cost is charged its full cap. Spend can still exceed the budget by whatever the harness's own cap enforcement lets through.
 
@@ -61,7 +61,7 @@ Re-run the baseline, and the component comparisons that depend on it, when any o
 ```bash
 evals/run.sh validate                          # unbilled; must pass before any live run
 ANTHROPIC_API_KEY=... evals/run.sh run --budget-usd 40 --run-cap-usd 4 --repeats 3 --seed 1
-evals/run.sh report evals/results/results-<stamp>-<seed>.tsv
+evals/run.sh report "${XDG_STATE_HOME:-$HOME/.local/state}"/hephaestus/evals/results-<stamp>-<seed>.tsv
 ```
 
 Live runs are billed and opt-in: `run` refuses without `--budget-usd` and an `ANTHROPIC_API_KEY` (the isolated `HOME` has no stored login). Results and per-run sandboxes (transcript JSON, acceptance and regression logs, `gh.log`) land in `HEPH_EVAL_OUT`, outside the repository by default.

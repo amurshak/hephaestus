@@ -55,10 +55,11 @@ load_task() {
 
 git_q() { git -c user.name=eval -c user.email=eval@example.invalid "$@"; }
 
-# work_branches <repo>: local branches carrying commits past the base, newest first.
+# work_branches <repo>: branches other than the base's carrying commits past it, newest first.
 work_branches() {
+  local base; base=$(git -C "$1" rev-parse --abbrev-ref origin/HEAD 2>/dev/null); base=${base#origin/}
   git -C "$1" for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads \
-    | while read -r b; do [ "$(git -C "$1" rev-list --count "$b")" -gt 1 ] && echo "$b"; done
+    | while read -r b; do [ "$b" != "$base" ] && [ "$(git -C "$1" rev-list --count "$b")" -gt 1 ] && echo "$b"; done
 }
 
 # sandbox <task> <dir>: the repo at BASE with no history past it, a local origin with
@@ -76,6 +77,7 @@ sandbox() {
   git -C "$sb/repo" push -q origin HEAD 2>/dev/null
   git -C "$sb/repo" remote set-head origin -a >/dev/null 2>&1
   cp "$EVAL_DIR/tasks/$task/issue.md" "$sb/issue.md"
+  printf '[user]\n\tname = eval\n\temail = eval@example.invalid\n' > "$sb/home/.gitconfig"
   cat > "$sb/bin/gh" <<SHIM
 #!/usr/bin/env bash
 # Evaluation gh: serves issue #$ISSUE and refuses everything else — no network.
@@ -101,14 +103,15 @@ accept() {
     tip=$(work_branches "$check" | head -1)
     [ -n "$tip" ] && git -C "$check" checkout -q "$tip"
   fi
-  bash "$EVAL_DIR/tasks/$task/accept.sh" "$check" > "$sb/accept.log" 2>&1 && a=1
+  bash "$EVAL_DIR/tasks/$task/accept.sh" "$check" < /dev/null > "$sb/accept.log" 2>&1 && a=1
   # Regression: the base revision's own tests, restored so edits to them cannot pass.
   rm -rf "$check/tests"
   git -C "$ROOT" archive "$BASE" tests | tar -x -C "$check"
   if [ -n "$REGRESSION_DROP" ]; then
+    [ "$(grep -cF -- "$REGRESSION_DROP" "$check/$REGRESSION")" = 1 ] || die "$task: REGRESSION_DROP must match exactly one line"
     grep -vF -- "$REGRESSION_DROP" "$check/$REGRESSION" > "$check/$REGRESSION.kept" && mv "$check/$REGRESSION.kept" "$check/$REGRESSION"
   fi
-  bash "$check/$REGRESSION" > "$sb/regression.log" 2>&1 && r=1
+  bash "$check/$REGRESSION" < /dev/null > "$sb/regression.log" 2>&1 && r=1
   echo "$a $r"
 }
 
@@ -146,11 +149,11 @@ invoke() {
   # env -i: nothing from the operator's shell (tokens, HEPH_EVAL_*) reaches the agent.
   # The watchdog kills the whole process group, so no test or build outlives a timeout.
   (cd "$sb/repo" && env -i PATH="$sb/bin:$PATH" HOME="$sb/home" TMPDIR="$sb/tmp" LANG="${LANG:-C.UTF-8}" \
-      TERM=dumb XDG_STATE_HOME="$sb/state" XDG_CONFIG_HOME="$sb/config" ${ANTHROPIC_API_KEY:+ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"} \
+      SHELL=/bin/bash USER=eval LOGNAME=eval TERM=dumb XDG_STATE_HOME="$sb/state" XDG_CONFIG_HOME="$sb/config" ${ANTHROPIC_API_KEY:+ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"} \
       perl -e '$t = shift; $pid = fork; if (!$pid) { setpgrp(0, 0); exec @ARGV; exit 127 }
                $SIG{ALRM} = sub { kill "TERM", -$pid; sleep 5; kill "KILL", -$pid; exit 142 };
                alarm $t; waitpid($pid, 0); exit(($? & 127) ? 128 + ($? & 127) : $? >> 8)' "$TIMEOUT" "${cmd[@]}") \
-    > "$sb/harness.json" 2> "$sb/harness.err"
+    < /dev/null > "$sb/harness.json" 2> "$sb/harness.err"
   rc=$?; end=$(date +%s)
   [ "$rc" = 142 ] && timed_out=1
   cost=$(sed -n 's/.*"total_cost_usd": *\([0-9.eE+-]*\).*/\1/p' "$sb/harness.json" | head -1)
@@ -161,7 +164,7 @@ invoke() {
 # contaminated <sb>: 1 if the agent's transcript touched the evaluation checkout or
 # the public repository — a run that may have seen the answer.
 contaminated() {
-  grep -rqsF -e "$ROOT" -e "github.com/amurshak/hephaestus" "$1/home/.claude/projects" "$1/harness.json" && echo 1 || echo 0
+  grep -rqsF -e "$ROOT" -e "github.com/amurshak/hephaestus" "$1/home/.claude/projects" "$1/harness.json" "$1/harness.err" && echo 1 || echo 0
 }
 
 min() { awk -v a="$1" -v b="$2" 'BEGIN { print (a < b ? a : b) }'; }
@@ -185,6 +188,7 @@ cmd_run() {
   [[ "$repeats" =~ ^[1-9][0-9]*$ ]] || die "--repeats must be a positive integer"
   cap=${cap:-$budget}
   local arm task
+  [ -n "${arms//,/}" ] || die "--arms names no arm"
   for arm in ${arms//,/ }; do case "$arm" in native|full) ;; *) die "unknown arm: $arm" ;; esac; done
   for task in $(task_list "${tasks[@]+"${tasks[@]}"}"); do load_task "$task"; done
   command -v jq >/dev/null || die "jq is required (the gh shim uses it)"
@@ -211,10 +215,12 @@ cmd_run() {
   [ -n "$plan" ] || die "empty plan"
 
   local spent=0 sb cost dur turns rc to verdict committed contam prompt remaining held charge
-  while read -r task arm i; do
+  local done_runs=0
+  while read -r -u 3 task arm i; do
     remaining=$(awk -v s="$spent" -v b="$budget" 'BEGIN { r = b - s; print (r > 0 ? r : 0) }')
     if awk -v r="$remaining" 'BEGIN { exit !(r <= 0) }'; then
-      echo "budget reached (\$$spent of \$$budget) — stopping; remaining runs not executed"; break
+      echo "budget reached (\$$spent of \$$budget) — not executed:"
+      tail -n +"$((done_runs + 1))" <<<"$plan" | sed 's/^/  /'; break
     fi
     load_task "$task"
     sb=$(mktemp -d "${TMPDIR:-/tmp}/heph-eval-XXXXXX")
@@ -225,9 +231,9 @@ cmd_run() {
       mkdir -p "$sb/heph"
       # shellcheck disable=SC2086
       if ! { git -C "$ROOT" archive "$pin" -- $PIN_PATHS | tar -x -C "$sb/heph" \
-             && (cd "$sb/heph" && env -i PATH="$PATH" HOME="$sb/home" XDG_STATE_HOME="$sb/state" XDG_CONFIG_HOME="$sb/config" ./install.sh >"$sb/install.log" 2>&1); }; then
-        printf '%s\t%s\t%s\t0\t0\t0\t0\t0\t0\tna\tinstall_failed\t0\t%s\t%s\t%s\t%s\n' "$task" "$arm" "$i" "$MODEL" "$hv" "$pin" "$BASE" >> "$results"
-        mv "$sb" "$OUT/runs/$task-$arm-$i-$stamp-$seed"; echo "$task/$arm/$i: install failed"; continue
+             && (cd "$sb/heph" && env -i PATH="$PATH" HOME="$sb/home" XDG_STATE_HOME="$sb/state" XDG_CONFIG_HOME="$sb/config" ./install.sh < /dev/null >"$sb/install.log" 2>&1); }; then
+        printf '%s\t%s\t%s\t0\t0\t0\t0\tna\t0\tna\tinstall_failed\t0\t%s\t%s\t%s\t%s\n' "$task" "$arm" "$i" "$MODEL" "$hv" "$pin" "$BASE" >> "$results"
+        mv "$sb" "$OUT/runs/$task-$arm-$i-$stamp-$seed"; echo "$task/$arm/$i: install failed"; done_runs=$((done_runs + 1)); continue
       fi
     fi
     held=$(min "$remaining" "$cap")
@@ -243,7 +249,8 @@ cmd_run() {
     spent=$(awk -v s="$spent" -v c="$charge" 'BEGIN { print s + c }')
     mv "$sb" "$OUT/runs/$task-$arm-$i-$stamp-$seed"
     echo "$task/$arm/$i: accepted=${verdict% *} regression=${verdict#* } cost=\$$cost ${dur}s timed_out=$to (spent \$$spent)"
-  done <<<"$plan"
+    done_runs=$((done_runs + 1))
+  done 3<<<"$plan"
   echo "results: $results"
 }
 
@@ -257,7 +264,7 @@ cmd_report() {
     }
     NR == 1 { next }
     { ok = ($4 == 1 && $5 == 1); a = $2; t = $1
-      n[a]++; acc[a] += ok; com[a] += $6; con[a] += $7; to[a] += ($12 == 1); fail[a] += ($12 == "install_failed")
+      n[a]++; acc[a] += ok; com[a] += $6; con[a] += $7; to[a] += ($12 == 1); fail[a] += ($11 == "install_failed")
       if ($8 != "na") { cost[a] += $8; costed[a]++; if (ok) okcost[a] += $8 } else nacost[a]++
       dur[a] += $9; tn[t, a]++; ta[t, a] += ok; tasks[t] = 1 }
     END {
