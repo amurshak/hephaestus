@@ -19,11 +19,14 @@ assert_exit_code "validate passes" 0 "$rc"
 for t in $vtasks; do assert_contains "$t validated" "$out" "✓ $t"; done
 
 begin_test "a stale REGRESSION_DROP is refused before anything is billed"
-stale="$HEPHAESTUS_ROOT/evals/tasks/zz-stale-drop"
-mkdir -p "$stale"; trap 'rm -rf "$WORK" "$stale"' EXIT
-sed "s/^REGRESSION_DROP=.*/REGRESSION_DROP='no such assertion anywhere'/" "$HEPHAESTUS_ROOT/evals/tasks/changelog-preview-legacy/task.env" > "$stale/task.env"
-out=$(HEPH_EVAL_CMD=/bin/true HEPH_EVAL_OUT="$WORK/stale" "$RUN" run --budget-usd 1 zz-stale-drop 2>&1); rc=$?
-rm -rf "$stale"
+# A throwaway clone, so the fixture task never appears in the checkout under test.
+git clone -q --shared --no-checkout "$HEPHAESTUS_ROOT" "$WORK/r"
+mkdir -p "$WORK/r/evals/tasks/stale"
+cp "$RUN" "$WORK/r/evals/run.sh"
+( . "$HEPHAESTUS_ROOT/evals/tasks/changelog-preview-legacy/task.env"
+  printf 'ISSUE=%s\nBASE=%s\nFIX=%s\nREGRESSION=%s\nREGRESSION_DROP=%s\n' \
+    "$ISSUE" "$BASE" "$FIX" "$REGRESSION" "'no such assertion anywhere'" ) > "$WORK/r/evals/tasks/stale/task.env"
+out=$(HEPH_EVAL_CMD=/bin/true HEPH_EVAL_OUT="$WORK/stale" "$WORK/r/evals/run.sh" run --budget-usd 1 stale 2>&1); rc=$?
 assert_exit_code "stale drop refuses" 1 "$rc"
 assert_contains "names the drop" "$out" "REGRESSION_DROP must match exactly one line"
 assert_file_not_exists "nothing was run" "$WORK/stale"
