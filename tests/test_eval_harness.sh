@@ -9,12 +9,24 @@ RUN="$HEPHAESTUS_ROOT/evals/run.sh"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/heph-evaltest-XXXXXX")
 trap 'rm -rf "$WORK"' EXIT
 
-begin_test "every acceptance check rejects its base and accepts its reference fix"
-out=$("$RUN" validate 2>&1); rc=$?
+# validate runs each task's regression suite twice, so the default suite checks one task;
+# HEPH_TEST_EVAL_ALL=1 validates every task (do it when adding or changing one).
+begin_test "acceptance checks reject their base and accept their reference fix"
+if [ "${HEPH_TEST_EVAL_ALL:-0}" = 1 ]; then vtasks=$(ls "$HEPHAESTUS_ROOT/evals/tasks"); else vtasks=changelog-conflict-markers; fi
+# shellcheck disable=SC2086
+out=$("$RUN" validate $vtasks 2>&1); rc=$?
 assert_exit_code "validate passes" 0 "$rc"
-for t in "$HEPHAESTUS_ROOT"/evals/tasks/*/; do
-  assert_contains "$(basename "$t") validated" "$out" "✓ $(basename "$t")"
-done
+for t in $vtasks; do assert_contains "$t validated" "$out" "✓ $t"; done
+
+begin_test "a stale REGRESSION_DROP is refused before anything is billed"
+stale="$HEPHAESTUS_ROOT/evals/tasks/zz-stale-drop"
+mkdir -p "$stale"; trap 'rm -rf "$WORK" "$stale"' EXIT
+sed "s/^REGRESSION_DROP=.*/REGRESSION_DROP='no such assertion anywhere'/" "$HEPHAESTUS_ROOT/evals/tasks/changelog-preview-legacy/task.env" > "$stale/task.env"
+out=$(HEPH_EVAL_CMD=/bin/true HEPH_EVAL_OUT="$WORK/stale" "$RUN" run --budget-usd 1 zz-stale-drop 2>&1); rc=$?
+rm -rf "$stale"
+assert_exit_code "stale drop refuses" 1 "$rc"
+assert_contains "names the drop" "$out" "REGRESSION_DROP must match exactly one line"
+assert_file_not_exists "nothing was run" "$WORK/stale"
 
 begin_test "live runs are opt-in and budgeted"
 out=$("$RUN" run 2>&1); rc=$?

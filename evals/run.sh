@@ -51,6 +51,9 @@ load_task() {
   # shellcheck disable=SC1090
   . "$f"
   [ -n "$ISSUE" ] && [ -n "$BASE" ] && [ -n "$FIX" ] && [ -n "$REGRESSION" ] || die "$f: ISSUE, BASE, FIX, REGRESSION required"
+  # Checked here, where the plan is validated, so a stale drop fails before anything is billed.
+  [ -z "$REGRESSION_DROP" ] || [ "$(git -C "$ROOT" show "$BASE:$REGRESSION" | grep -cF -- "$REGRESSION_DROP")" = 1 ] \
+    || die "$1: REGRESSION_DROP must match exactly one line of $REGRESSION at $BASE"
 }
 
 git_q() { git -c user.name=eval -c user.email=eval@example.invalid "$@"; }
@@ -75,7 +78,8 @@ sandbox() {
   git init -q --bare "$sb/origin.git"
   git -C "$sb/repo" remote add origin "$sb/origin.git"
   git -C "$sb/repo" push -q origin HEAD 2>/dev/null
-  git -C "$sb/repo" remote set-head origin -a >/dev/null 2>&1
+  git -C "$sb/repo" remote set-head origin -a >/dev/null 2>&1 && git -C "$sb/repo" rev-parse -q --verify origin/HEAD >/dev/null \
+    || die "$task: sandbox has no origin/HEAD"
   cp "$EVAL_DIR/tasks/$task/issue.md" "$sb/issue.md"
   printf '[user]\n\tname = eval\n\temail = eval@example.invalid\n' > "$sb/home/.gitconfig"
   cat > "$sb/bin/gh" <<SHIM
@@ -103,15 +107,14 @@ accept() {
     tip=$(work_branches "$check" | head -1)
     [ -n "$tip" ] && git -C "$check" checkout -q "$tip"
   fi
-  bash "$EVAL_DIR/tasks/$task/accept.sh" "$check" < /dev/null > "$sb/accept.log" 2>&1 && a=1
+  bash "$EVAL_DIR/tasks/$task/accept.sh" "$check" < /dev/null 3<&- > "$sb/accept.log" 2>&1 && a=1
   # Regression: the base revision's own tests, restored so edits to them cannot pass.
   rm -rf "$check/tests"
   git -C "$ROOT" archive "$BASE" tests | tar -x -C "$check"
   if [ -n "$REGRESSION_DROP" ]; then
-    [ "$(grep -cF -- "$REGRESSION_DROP" "$check/$REGRESSION")" = 1 ] || die "$task: REGRESSION_DROP must match exactly one line"
     grep -vF -- "$REGRESSION_DROP" "$check/$REGRESSION" > "$check/$REGRESSION.kept" && mv "$check/$REGRESSION.kept" "$check/$REGRESSION"
   fi
-  bash "$check/$REGRESSION" < /dev/null > "$sb/regression.log" 2>&1 && r=1
+  bash "$check/$REGRESSION" < /dev/null 3<&- > "$sb/regression.log" 2>&1 && r=1
   echo "$a $r"
 }
 
@@ -153,7 +156,7 @@ invoke() {
       perl -e '$t = shift; $pid = fork; if (!$pid) { setpgrp(0, 0); exec @ARGV; exit 127 }
                $SIG{ALRM} = sub { kill "TERM", -$pid; sleep 5; kill "KILL", -$pid; exit 142 };
                alarm $t; waitpid($pid, 0); exit(($? & 127) ? 128 + ($? & 127) : $? >> 8)' "$TIMEOUT" "${cmd[@]}") \
-    < /dev/null > "$sb/harness.json" 2> "$sb/harness.err"
+    < /dev/null 3<&- > "$sb/harness.json" 2> "$sb/harness.err"
   rc=$?; end=$(date +%s)
   [ "$rc" = 142 ] && timed_out=1
   cost=$(sed -n 's/.*"total_cost_usd": *\([0-9.eE+-]*\).*/\1/p' "$sb/harness.json" | head -1)
@@ -231,7 +234,7 @@ cmd_run() {
       mkdir -p "$sb/heph"
       # shellcheck disable=SC2086
       if ! { git -C "$ROOT" archive "$pin" -- $PIN_PATHS | tar -x -C "$sb/heph" \
-             && (cd "$sb/heph" && env -i PATH="$PATH" HOME="$sb/home" XDG_STATE_HOME="$sb/state" XDG_CONFIG_HOME="$sb/config" ./install.sh < /dev/null >"$sb/install.log" 2>&1); }; then
+             && (cd "$sb/heph" && env -i PATH="$PATH" HOME="$sb/home" XDG_STATE_HOME="$sb/state" XDG_CONFIG_HOME="$sb/config" ./install.sh < /dev/null 3<&- >"$sb/install.log" 2>&1); }; then
         printf '%s\t%s\t%s\t0\t0\t0\t0\tna\t0\tna\tinstall_failed\t0\t%s\t%s\t%s\t%s\n' "$task" "$arm" "$i" "$MODEL" "$hv" "$pin" "$BASE" >> "$results"
         mv "$sb" "$OUT/runs/$task-$arm-$i-$stamp-$seed"; echo "$task/$arm/$i: install failed"; done_runs=$((done_runs + 1)); continue
       fi

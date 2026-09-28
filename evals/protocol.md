@@ -68,4 +68,4 @@ Live runs are billed and opt-in: `run` refuses without `--budget-usd` and an `AN
 
 ## Adding a task
 
-`evals/tasks/<id>/` holds `task.env` (`ISSUE`, `BASE`, `FIX`, `REGRESSION`, optional `REGRESSION_DROP`, `STRATUM`), `issue.md` (the issue as the agent will read it), and an executable `accept.sh <repo-dir>` that exits 0 only for a correct fix. `BASE` is the fix's parent; the reference fix is `FIX`'s diff minus tests and docs. Run `evals/run.sh validate <id>` before committing it.
+`evals/tasks/<id>/` holds `task.env` (`ISSUE`, `BASE`, `FIX`, `REGRESSION`, optional `REGRESSION_DROP`, `STRATUM`), `issue.md` (the issue as the agent will read it), and an executable `accept.sh <repo-dir>` that exits 0 only for a correct fix. `BASE` is the fix's parent; the reference fix is `FIX`'s diff minus tests and docs. Run `evals/run.sh validate <id>` before committing it; `HEPH_TEST_EVAL_ALL=1 bash tests/test_eval_harness.sh` re-validates every task (the default suite checks one, since validation runs each regression suite twice).
