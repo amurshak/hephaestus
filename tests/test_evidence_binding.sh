@@ -44,7 +44,7 @@ assert_eq "critique precedes gates" "1" "$([ -n "$critique_line" ] && [ -n "$gat
 assert_contains "doc checks read the docs" "$contract" 'for doc checks — the docs'
 
 begin_test "required, optional, and undefined gates are distinguished"
-assert_contains "required gates defined" "$contract" "Required gates are the critique plus the project's Development Commands"
+assert_contains "required gates defined" "$contract" "Required gates are the project's Development Commands (inferred ones when that section is absent), plus the critique at \`/ship\`"
 assert_contains "undefined gate is not applicable" "$contract" 'a gate the project does not define is not applicable'
 assert_contains "dirty-tree record limited" "$contract" 'A dirty-tree record covers only if its dirty paths are outside what the check reads'
 assert_contains "fixes revisit docs" "$ship" 'update docs the fix makes inaccurate'
