@@ -40,7 +40,6 @@ Recoverable here only because everything was committed — `git checkout -- CHAN
 - Parse all arguments in a `while` loop rather than a single `case` on `$1`.
 - Reject unknown flags and extra positionals wherever they appear, not just in first position.
 - Let `--preview` take an optional version so `--preview 2.2.0` and `2.2.0 --preview` both render the real heading and both change nothing.
-- Consider requiring the release path to be explicit (`--release <version>`), leaving a bare version as an error, so no typo lands on the destructive branch.
 
 ## Acceptance
 
