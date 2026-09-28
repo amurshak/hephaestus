@@ -6,10 +6,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/helpers.sh"
 
 finish_decision() {
-  local state="$1" merged_at="$2" merge_state="$3" auto_merge="$4"
+  local state="$1" merged_at="$2" merge_state="$3" auto_merge="$4" is_draft="${5:-false}"
 
   if [ "$state" = "MERGED" ] && [ "$merged_at" != "null" ]; then
     echo "proceed"
+  elif [ "$state" = "OPEN" ] && [ "$is_draft" = "true" ]; then
+    echo "draft not shipped"
   elif [ "$state" = "OPEN" ] && [ "$merge_state" = "CLEAN" ] && [ "$auto_merge" != "null" ]; then
     echo "auto-merge pending"
   elif [ "$state" = "OPEN" ] && [ "$auto_merge" = "null" ]; then
@@ -33,6 +35,9 @@ assert_eq "open clean PR with auto-merge waits" \
 assert_eq "open PR without auto-merge needs manual merge" \
   "manual merge needed" \
   "$(finish_decision "OPEN" "null" "BLOCKED" "null")"
+assert_eq "open draft PR is not shipped, not awaiting merge" \
+  "draft not shipped" \
+  "$(finish_decision "OPEN" "null" "BLOCKED" "null" "true")"
 assert_eq "closed unmerged PR aborts finish" \
   "abort closed without merge" \
   "$(finish_decision "CLOSED" "null" "UNKNOWN" "null")"
@@ -45,6 +50,7 @@ assert_contains "reads closing issue references" "$finish_md" "closingIssuesRefe
 begin_test "finish.md documents partial cleanup boundaries"
 assert_contains "auto-merge pending log" "$finish_md" "auto-merge pending for PR #N"
 assert_contains "manual merge needed log" "$finish_md" "manual merge needed for PR #N"
+assert_contains "draft not-shipped log" "$finish_md" "draft PR #N — not shipped"
 assert_contains "closed-unmerged abort log" "$finish_md" "PR #N closed without merge"
 assert_contains "pending states do not close issue" "$finish_md" "do not close the issue"
 assert_contains "pending states preserve PR branch" "$finish_md" "do not delete this PR's branch"

@@ -62,7 +62,7 @@ Refresh and pass the recorded Scope to `/test-issue <#>` to execute project qual
 
 Continue to completion only when `/test-issue` reports every gate PASS and every required criterion met. A gate that could not run (BLOCKED) or an unverified criterion is not a pass: retry once if environmental, else wind down `[BLOCKED]` as below.
 
-If tests fail:
+If tests fail or a required criterion is unmet:
 - Analyze the root cause — don't blindly retry
 - Go back to Phase 2 with failure context (max 2 full cycles)
 - If still failing after 2 cycles: commit progress on the branch, create a draft PR (`--draft`) with `[FAILING]` prefix and failure analysis in the body, file a follow-up issue

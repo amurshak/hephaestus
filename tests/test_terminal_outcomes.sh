@@ -37,7 +37,10 @@ assert_contains "start-issue treats BLOCKED as not a pass" "$start" 'A gate that
 
 begin_test "failed required gates cannot fall through"
 assert_not_contains "lint no longer ships with a note" "$ship" 'note remaining issues in PR body'
-assert_contains "required lint failure drafts" "$ship" 'draft PR `[FAILING: lint]`'
+assert_contains "lint failure drafts" "$ship" 'draft PR `[FAILING: lint]`'
+assert_contains "build failure drafts" "$ship" 'draft PR `[FAILING: build]`'
+assert_not_contains "no build path without an outcome" "$ship" 'hard stop — do not create a PR with a broken build'
+assert_contains "unmet criterion loops back like a test failure" "$start" 'If tests fail or a required criterion is unmet'
 assert_contains "evidence gate requires a pass" "$ship" 'actually run and passed in this session'
 assert_contains "test-issue outcome needs every gate and criterion" "$testing" 'PASS only if every gate passed and every required criterion is met'
 assert_contains "spec: rung 3 is terminal" "$conventions" 'Rung 3 is a terminal outcome, not a completion'
@@ -45,7 +48,14 @@ assert_contains "spec: rung 3 is terminal" "$conventions" 'Rung 3 is a terminal 
 begin_test "autopilot follows the child's actual outcome"
 assert_contains "only ready proceeds to ship" "$autopilot" 'Proceed to `/ship` only when `/start-issue` reports `ready`'
 assert_contains "incomplete without a draft still winds down" "$autopilot" 'including incomplete work that has no draft PR yet'
-assert_contains "draft from ship is not shipped" "$autopilot" 'If `/ship` ends in a draft PR, the issue did not ship'
+assert_contains "draft from ship is not shipped" "$autopilot" 'the issue did not ship: run Phase 4 for cleanup, then wind down'
+assert_contains "wind-down opens the missing draft" "$autopilot" 'Incomplete work with no PR yet gets a draft PR carrying its outcome prefix'
+assert_not_contains "exhausted retries are not a soft stop" "$autopilot" 'exhausted retries (commit progress, file follow-up issue)'
+
+begin_test "finish never treats a draft as awaiting merge"
+finish=$(read_ai workflows/finish)
+assert_contains "finish reads isDraft" "$finish" 'baseRefName,isDraft`'
+assert_contains "draft logged as not shipped" "$finish" 'draft PR #N — not shipped'
 
 begin_test "successful recovery still reaches ship"
 assert_contains "start-issue reports ready to ship" "$start" 'Only `ready` goes to `/ship`'

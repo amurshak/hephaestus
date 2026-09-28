@@ -46,7 +46,7 @@ If no open issues are found:
 
 ### Phase 2: Start the issue → `/start-issue <#>`
 
-Run `/start-issue <#>`. It handles plan-critique loop, parallel coder role agents when available, implementation, and the test gate, and ends ready for `/ship`.
+Run `/start-issue <#>`. It handles plan-critique loop, parallel coder role agents when available, implementation, and the test gate, and reports its outcome.
 
 Proceed to `/ship` only when `/start-issue` reports `ready`. Any other outcome (`[WIP]`, `[BLOCKED]`, `[FAILING]`) goes to wind-down — including incomplete work that has no draft PR yet, where wind-down opens it. Do not try to push past it.
 
@@ -54,7 +54,7 @@ Proceed to `/ship` only when `/start-issue` reports `ready`. Any other outcome (
 
 Run `/ship <#>`. It runs the pre-push critique gate, runs all quality gates in parallel, updates CHANGELOG, pushes the branch, creates the PR, and auto-merges.
 
-If `/ship` ends in a draft PR, the issue did not ship: run Phase 4 for cleanup, then wind down. If `/ship` cannot auto-merge (branch protection, required reviewers): the PR is left open, the work is preserved, and `/ship` notes that manual merge is needed. Still run Phase 4 — `/finish` branches on PR state and performs safe cleanup for unmerged PRs without closing the issue or deleting the branch.
+If `/ship` ends in a draft PR (`[FAILING]`, `[BLOCKED]`), the issue did not ship: run Phase 4 for cleanup, then wind down. If `/ship` cannot auto-merge (branch protection, required reviewers): the PR is left open, the work is preserved, and `/ship` notes that manual merge is needed. Still run Phase 4 — `/finish` branches on PR state and performs safe cleanup for unmerged PRs without closing the issue or deleting the branch.
 
 ### Phase 4: Finish → `/finish <#>`
 
@@ -69,7 +69,7 @@ If there are additional open issues suitable for immediate work and the session 
 When the pipeline reaches a natural stopping point (after Phase 4) or is forced to stop early:
 
 1. **Commit all work** — never leave uncommitted changes. Use descriptive commit messages.
-2. **Push the branch** — even for incomplete work, push so progress is preserved remotely.
+2. **Push the branch** — even for incomplete work, push so progress is preserved remotely. Incomplete work with no PR yet gets a draft PR carrying its outcome prefix.
 3. **Create breadcrumbs** — for any unfinished work, file GitHub issues with:
    - What was attempted
    - What failed or remains
@@ -85,6 +85,6 @@ When the pipeline reaches a natural stopping point (after Phase 4) or is forced 
 ## Guardrails
 
 - **Hard stops** (truly irreversible risk): security vulnerabilities being shipped, data loss paths, force-push to protected branches
-- **Soft stops** (proceed with documentation): ambiguous requirements (make assumption, document it), public API changes (implement with deprecation path, flag in PR), exhausted retries (commit progress, file follow-up issue)
+- **Soft stops** (proceed with documentation): ambiguous requirements (make assumption, document it), public API changes (implement with deprecation path, flag in PR), exhausted retries (wind down to a draft PR and follow-up issue — never shipped)
 - **Never**: force-push, rewrite published history, create PR with known security issues, delete remote branches that aren't yours
 - Everything else runs autonomously.
