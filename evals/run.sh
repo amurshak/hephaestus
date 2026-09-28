@@ -51,6 +51,8 @@ load_task() {
   # shellcheck disable=SC1090
   . "$f"
   [ -n "$ISSUE" ] && [ -n "$BASE" ] && [ -n "$FIX" ] && [ -n "$REGRESSION" ] || die "$f: ISSUE, BASE, FIX, REGRESSION required"
+  git -C "$ROOT" cat-file -e "$BASE^{commit}" 2>/dev/null && git -C "$ROOT" cat-file -e "$FIX^{commit}" 2>/dev/null \
+    || die "$1: BASE/FIX not in local history — a shallow clone? fetch with full history (git fetch --unshallow)"
   # Checked here, where the plan is validated, so a stale drop fails before anything is billed.
   [ -z "$REGRESSION_DROP" ] || [ "$(git -C "$ROOT" show "$BASE:$REGRESSION" | grep -cF -- "$REGRESSION_DROP")" = 1 ] \
     || die "$1: REGRESSION_DROP must match exactly one line of $REGRESSION at $BASE"
