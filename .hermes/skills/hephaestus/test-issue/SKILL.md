@@ -33,13 +33,14 @@ Steps:
    - Launch one or more tester delegates based on changed areas (parallelize if there are independent test suites)
    - Pass the recorded Scope and all change layers to each tester; each returns a structured summary for that scope
 
-4. **Verify acceptance criteria**: If an issue number was provided in $ARGUMENTS, run `gh issue view <#> --repo <detected-repo>` and check each acceptance criterion against every included change layer in that same scope, reading relevant untracked contents too. Report pass/fail per criterion.
+4. **Verify acceptance criteria**: If an issue number was provided in $ARGUMENTS, run `gh issue view <#> --repo <detected-repo>` and check each acceptance criterion against every included change layer in that same scope, reading relevant untracked contents too. Report each as met, unmet, or unverified, and required unless the issue marks it optional.
 
 5. **Report results** (concise — the delegates already absorbed the verbose output):
    - Scope: base and merge-base OIDs, HEAD, included paths, exclusions, ambiguity
    - Tests: pass count, fail count, any error output
    - Lint: clean or list of violations
-   - ACs: pass/fail per criterion
+   - ACs: met / unmet / unverified per criterion
+   - **Outcome**: PASS only if every gate passed and every required criterion is met; otherwise name each unmet criterion and each failing or BLOCKED gate
 
 If anything fails, identify the root cause and suggest a fix. Do not just report the failure.
 

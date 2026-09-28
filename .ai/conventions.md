@@ -32,11 +32,11 @@ These are product defaults. A project that needs different values states them in
 When something fails, climb this ladder in order. Each rung is tried before the next:
 
 1. **Self-recover** — try a different approach
-2. **Degrade gracefully** — proceed with the limitation documented, rather than blocking
+2. **Degrade gracefully** — defer optional work with the limitation documented, rather than blocking. A required acceptance criterion or project gate never degrades: unmet, unverified, or unable to run, it goes to rung 3
 3. **Wind down cleanly** — commit progress, push the branch, open a draft PR prefixed `[WIP]` / `[BLOCKED]` / `[FAILING]`, file a follow-up issue with context
 4. **Hard stop** — only for irreversible risk: shipping a known security hole, data loss, force-push
 
-Retry exhaustion is a rung-3 event, never a question to the user.
+Retry exhaustion is a rung-3 event, never a question to the user. Rung 3 is a terminal outcome, not a completion: nothing downstream proceeds to a normal PR, merges a draft, or closes its issue.
 
 **Git conflicts** are a rung-3 case with a fixed shape: check the base branch before implementing, attempt a rebase, and if the rebase fails, commit progress, open a draft PR prefixed `[CONFLICT]`, and file a follow-up issue with the conflict details.
 

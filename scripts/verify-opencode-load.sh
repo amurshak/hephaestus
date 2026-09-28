@@ -32,10 +32,15 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-${TMPDIR:-/tmp}/hephaestus-opencode-cac
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-${TMPDIR:-/tmp}/hephaestus-opencode-config}"
 mkdir -p "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" 2>/dev/null || true
 
-if ! cfg=$(opencode debug config 2>/dev/null); then
+# Through a file, not a pipe: OpenCode 1.18 truncates piped stdout at 64 KiB,
+# which silently drops whichever commands sort past the cut.
+cfg_file=$(mktemp) || exit 1
+trap 'rm -f "$cfg_file"' EXIT
+if ! opencode debug config >"$cfg_file" 2>/dev/null; then
   echo "ERR: opencode debug config failed" >&2
   exit 1
 fi
+cfg=$(cat "$cfg_file")
 
 fail=0
 

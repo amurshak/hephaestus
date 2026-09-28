@@ -46,21 +46,21 @@ If no open issues are found:
 
 ### Phase 2: Start the issue → `/start-issue <#>`
 
-Run `/start-issue <#>`. It handles plan-critique loop, parallel coder role agents when available, implementation, and the test gate, and ends ready for `/ship`.
+Run `/start-issue <#>`. It handles plan-critique loop, parallel coder role agents when available, implementation, and the test gate, and reports its outcome.
 
-If `/start-issue` winds down early (`[WIP]`, `[BLOCKED]`, `[FAILING]` prefix on the draft PR it created), respect that wind-down — the breadcrumbs are filed; do not try to push past them.
+Proceed to `/ship` only when `/start-issue` reports `ready`. Any other outcome (`[WIP]`, `[BLOCKED]`, `[FAILING]`) goes to wind-down — including incomplete work that has no draft PR yet, where wind-down opens it. Do not try to push past it.
 
 ### Phase 3: Ship → `/ship <#>`
 
 Run `/ship <#>`. It runs the pre-push critique gate, runs all quality gates in parallel, updates CHANGELOG, pushes the branch, creates the PR, and auto-merges.
 
-If `/ship` cannot auto-merge (branch protection, required reviewers): the PR is left open, the work is preserved, and `/ship` notes that manual merge is needed. Still run Phase 4 — `/finish` branches on PR state and performs safe cleanup for unmerged PRs without closing the issue or deleting the branch.
+If `/ship` ends in a draft PR (`[FAILING]`, `[BLOCKED]`), the issue did not ship: run Phase 4 for cleanup, then wind down. If `/ship` cannot auto-merge (branch protection, required reviewers): the PR is left open, the work is preserved, and `/ship` notes that manual merge is needed. Still run Phase 4 — `/finish` branches on PR state and performs safe cleanup for unmerged PRs without closing the issue or deleting the branch.
 
 ### Phase 4: Finish → `/finish <#>`
 
 Run `/finish <#>`. It closes the issue, deletes branches, files follow-ups, runs `/update-docs` when the PR diff requires it, captures a retrospective, and prints the session summary.
 
-If there are additional open issues suitable for immediate work and the session is still productive, loop back to Phase 1 with the next issue. Otherwise, wind down.
+If this issue shipped, there are additional open issues suitable for immediate work, and the session is still productive, loop back to Phase 1 with the next issue. Otherwise, wind down.
 
 ---
 
@@ -69,14 +69,14 @@ If there are additional open issues suitable for immediate work and the session 
 When the pipeline reaches a natural stopping point (after Phase 4) or is forced to stop early:
 
 1. **Commit all work** — never leave uncommitted changes. Use descriptive commit messages.
-2. **Push the branch** — even for incomplete work, push so progress is preserved remotely.
+2. **Push the branch** — even for incomplete work, push so progress is preserved remotely. Incomplete work with no PR yet gets a draft PR carrying its outcome prefix.
 3. **Create breadcrumbs** — for any unfinished work, file GitHub issues with:
    - What was attempted
    - What failed or remains
    - Suggested next approach
 4. **Clean local state** — use `/finish`'s task identity checks and exact stash restoration, including on early wind-down; never sweep branches or pop the top stash. Preserve resources when identity is missing, and report deferred cleanup or restoration conflicts. Do not continue to another issue with an unresolved restoration.
 5. **Print session summary**:
-   - Issues completed (with PR links)
+   - Issues completed (merged or merge-pending PRs; drafts go under outstanding work)
    - Issues created (with links)
    - Outstanding work (with issue links)
 
@@ -85,6 +85,6 @@ When the pipeline reaches a natural stopping point (after Phase 4) or is forced 
 ## Guardrails
 
 - **Hard stops** (truly irreversible risk): security vulnerabilities being shipped, data loss paths, force-push to protected branches
-- **Soft stops** (proceed with documentation): ambiguous requirements (make assumption, document it), public API changes (implement with deprecation path, flag in PR), exhausted retries (commit progress, file follow-up issue)
+- **Soft stops** (proceed with documentation): ambiguous requirements (make assumption, document it), public API changes (implement with deprecation path, flag in PR), exhausted retries (wind down to a draft PR and follow-up issue — never shipped)
 - **Never**: force-push, rewrite published history, create PR with known security issues, delete remote branches that aren't yours
 - Everything else runs autonomously.
