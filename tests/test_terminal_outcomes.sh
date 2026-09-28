@@ -50,6 +50,8 @@ assert_contains "only ready proceeds to ship" "$autopilot" 'Proceed to `/ship` o
 assert_contains "incomplete without a draft still winds down" "$autopilot" 'including incomplete work that has no draft PR yet'
 assert_contains "draft from ship is not shipped" "$autopilot" 'the issue did not ship: run Phase 4 for cleanup, then wind down'
 assert_contains "wind-down opens the missing draft" "$autopilot" 'Incomplete work with no PR yet gets a draft PR carrying its outcome prefix'
+assert_contains "no next issue after a draft" "$autopilot" 'If this issue shipped, there are additional open issues'
+assert_contains "drafts are not counted completed" "$autopilot" 'drafts go under outstanding work'
 assert_not_contains "exhausted retries are not a soft stop" "$autopilot" 'exhausted retries (commit progress, file follow-up issue)'
 
 begin_test "finish never treats a draft as awaiting merge"

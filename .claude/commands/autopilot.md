@@ -52,7 +52,7 @@ If `/ship` ends in a draft PR (`[FAILING]`, `[BLOCKED]`), the issue did not ship
 
 Run `/finish <#>`. It closes the issue, deletes branches, files follow-ups, runs `/update-docs` when the PR diff requires it, captures a retrospective, and prints the session summary.
 
-If there are additional open issues suitable for immediate work and the session is still productive, loop back to Phase 1 with the next issue. Otherwise, wind down.
+If this issue shipped, there are additional open issues suitable for immediate work, and the session is still productive, loop back to Phase 1 with the next issue. Otherwise, wind down.
 
 ---
 
@@ -68,7 +68,7 @@ When the pipeline reaches a natural stopping point (after Phase 4) or is forced 
    - Suggested next approach
 4. **Clean local state** — use `/finish`'s task identity checks and exact stash restoration, including on early wind-down; never sweep branches or pop the top stash. Preserve resources when identity is missing, and report deferred cleanup or restoration conflicts. Do not continue to another issue with an unresolved restoration.
 5. **Print session summary**:
-   - Issues completed (with PR links)
+   - Issues completed (merged or merge-pending PRs; drafts go under outstanding work)
    - Issues created (with links)
    - Outstanding work (with issue links)
 
