@@ -24,9 +24,9 @@ Use when there are code changes to review.
 
 1. **Check scope**: Resolve the task change scope below; use all included layers for the auto-pass gate, risk score, and review. Report an empty scope explicitly; a clean checkout alone is not an empty task.
 
-2. **Auto-pass gate**: only if scope is complete and nonempty, every changed file is documentation, a lockfile, or whitespace-only — and no workflow files (`.ai/`, `.claude/`) changed — skip the reviewer entirely. Verdict: PASS, logged as `auto-pass: docs-only diff`.
+2. **Auto-pass gate**: only if scope is complete and nonempty and every change is whitespace or reader-facing prose that nothing executes or obeys — skip the reviewer entirely. Verdict: PASS, logged as `auto-pass: <reason>`. Judge by consequence, not file type: dependency manifests and lockfiles, CI/build/config, agent instructions (`.ai/`, `.claude/`, CLAUDE.md, AGENTS.md, generated adapters), and runbook or install steps someone will follow always get review. A project review policy in its CLAUDE.md wins.
 
-3. **Score risk** (sum, from the diff): +2 auth/payments/crypto/secrets-handling; +1 code changed with no test changes; +1 crosses module boundaries; +1 workflow files (`.ai/`, `.claude/`); +1 schema/migrations. Report the score and its factors.
+3. **Score risk** (sum, from the diff): +2 auth/payments/crypto/secrets-handling; +1 code changed with no test changes; +1 crosses module boundaries; +1 workflow files (`.ai/`, `.claude/`); +1 schema/migrations; +1 dependencies (manifest or lockfile). Report the score and its factors.
 
 4. **Launch reviewer role agent(s)** at the risk-mapped depth:
    - **0–1 → L1**: one reviewer, focused pass on the diff
