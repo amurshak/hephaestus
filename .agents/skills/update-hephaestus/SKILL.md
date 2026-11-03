@@ -20,7 +20,7 @@ Update hephaestus to the latest version.
    - user-level: `bash <clone>/update.sh`
    - vendored: `bash <clone>/update.sh --vendor .`
 3. Report the version transition and what changed.
-4. Vendored installs only — commit the refreshed copy:
+4. Vendored installs only — commit the refreshed copy. Stage every path `update.sh` printed — derived from `.heph-manifest` (the manifest plus every unique top-level path it lists) and installer-written project files that exist (`opencode.json`, `AGENTS.md`). Do not hardcode adapter directories; a new harness would be left out. Then:
    ```
-   git add .heph-manifest .claude .opencode .agents .codex && git commit -m "chore: update hephaestus to <new_version>"
+   git commit -m "chore: update hephaestus to <new_version>"
    ```

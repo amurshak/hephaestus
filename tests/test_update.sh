@@ -83,7 +83,14 @@ rc=$?
 assert_exit_code "exits 0"                  0 "$rc"
 assert_contains  "shows version transition" "$output" "9.9.9"
 assert_contains  "manifest records the new version" "$(cat "$TARGET/.heph-manifest")" "# version: 9.9.9"
-assert_contains  "prints a commit hint"     "$output" "git -C $TARGET add .heph-manifest"
+hint=$(echo "$output" | grep -E 'git -C .* add ' | tail -1)
+assert_contains  "prints a commit hint"     "$hint" "git -C $TARGET add .heph-manifest"
+assert_contains  "hint includes Cursor adapters" "$hint" ".cursor"
+assert_contains  "hint includes Hermes adapters" "$hint" ".hermes"
+assert_contains  "hint includes opencode.json"   "$hint" "opencode.json"
+assert_contains  "hint includes AGENTS.md"       "$hint" "AGENTS.md"
+assert_not_contains "hint is not the old incomplete list" "$hint" \
+  ".heph-manifest .claude .opencode .agents .codex &&"
 assert_not_symlink "copies are still real files" "$TARGET/.claude/commands/ship.md"
 teardown_fixture
 
@@ -104,6 +111,29 @@ assert_contains    "still scaffolds the convention" "$output" "Changelog fragmen
 assert_file_exists "collect script kept"            "$TARGET/scripts/collect-changelog.sh"
 assert_eq "project's CHANGELOG.md preserved" "MY OWN CHANGELOG" "$(cat "$TARGET/CHANGELOG.md")"
 assert_contains "commit hint lists the changelog paths" "$output" "changelog.d scripts/collect-changelog.sh"
+teardown_fixture
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+begin_test "vendor refresh hint lists every unique manifest prefix"
+setup_fixture
+sandbox_home
+TARGET=$(create_target)
+bash "$SOURCE_REPO/install.sh" --vendor "$TARGET" >/dev/null 2>&1
+publish_upstream_change
+output=$(bash "$SOURCE_REPO/update.sh" --vendor "$TARGET" 2>&1)
+hint=$(echo "$output" | grep -E 'git -C .* add ' | tail -1)
+while IFS= read -r prefix; do
+  [ -n "$prefix" ] || continue
+  assert_contains "hint includes manifest prefix $prefix" "$hint" "$prefix"
+done <<EOF
+$(grep -v '^#' "$TARGET/.heph-manifest" | awk -F/ 'NF {print $1}' | awk '!seen[$0]++')
+EOF
+wf=$(cat "$HEPHAESTUS_ROOT/.ai/workflows/update-hephaestus.md")
+assert_not_contains "workflow has no hardcoded incomplete git add" "$wf" \
+  'git add .heph-manifest .claude .opencode .agents .codex'
+assert_contains "workflow derives from the manifest" "$wf" 'derived from `.heph-manifest`'
+assert_contains "workflow forbids hardcoded adapter dirs" "$wf" 'Do not hardcode adapter directories'
 teardown_fixture
 
 # ─────────────────────────────────────────────────────────────────────────────
