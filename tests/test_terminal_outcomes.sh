@@ -66,4 +66,16 @@ begin_test "successful recovery still reaches ship"
 assert_contains "start-issue reports ready to ship" "$start" 'Only `ready` goes to `/ship`'
 assert_contains "gate retries remain" "$ship" 'Fix and re-run (max 2 cycles)'
 
+begin_test "merge is opt-in and callers can skip it"
+assert_contains "default stops after the PR" "$ship" 'by default `/ship` stops after the PR is open and ready'
+assert_contains "default does not merge" "$ship" 'Do not run `gh pr merge`'
+assert_contains "explicit request or setting enables" "$ship" '`--auto-merge` in $ARGUMENTS'
+assert_contains "workflow rules setting" "$ship" '`auto-merge: on`'
+assert_contains "no-merge wins over the setting" "$ship" '`--no-merge` from a calling workflow wins over the setting'
+assert_contains "warns when no required checks" "$ship" 'warn that `--auto` will merge immediately'
+assert_contains "spec says merge is opt-in" "$conventions" 'merge is opt-in'
+assert_contains "autopilot does not assume merge" "$autopilot" 'opens a merge-ready PR'
+assert_contains "autopilot documents caller skip" "$autopilot" 'passes `--no-merge`'
+assert_contains "refactor does not assume merge" "$(read_ai workflows/refactor)" 'opens a merge-ready PR'
+
 print_summary

@@ -491,6 +491,18 @@ assert_file_exists "orient.md scaffolded"  "$TARGET/.claude/commands/orient.md"
 assert_file_exists "AGENTS.md scaffolded"  "$TARGET/AGENTS.md"
 assert_contains "reports adapters installed" "$output" "$TOTAL_ADAPTERS hephaestus adapters installed"
 
+hint=$(echo "$output" | grep -E 'git add ' | tail -1)
+assert_contains "next-steps includes Cursor adapters" "$hint" ".cursor"
+assert_contains "next-steps includes Hermes adapters" "$hint" ".hermes"
+assert_contains "next-steps includes opencode.json"   "$hint" "opencode.json"
+assert_contains "next-steps includes AGENTS.md"       "$hint" "AGENTS.md"
+while IFS= read -r prefix; do
+  [ -n "$prefix" ] || continue
+  assert_contains "next-steps includes manifest prefix $prefix" "$hint" "$prefix"
+done <<EOF
+$(grep -v '^#' "$TARGET/.heph-manifest" | awk -F/ 'NF {print $1}' | awk '!seen[$0]++')
+EOF
+
 # The user-level dirs must be untouched by a vendored install
 assert_file_not_exists "no user-level install" "$USER_MANIFEST"
 teardown_fixture

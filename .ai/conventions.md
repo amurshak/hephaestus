@@ -14,7 +14,7 @@ Every delivery command walks the same phases:
 4. **Implement** — parallel coders for independent tasks, sequential for dependencies
 5. **Review** — adversarial evaluation of the code before it ships
 6. **Test** — the target project's quality gates
-7. **Ship** — PR with revision-bound gate evidence, squash auto-merge
+7. **Ship** — PR with revision-bound gate evidence; merge is opt-in
 8. **Finish** — close the issue, delete merged branches, file follow-ups, sync docs
 
 ## Retry limits
@@ -73,4 +73,4 @@ Hephaestus ships the loop; the project supplies the specifics. Workflows read th
 | `## Worktrees` | `/worktrees` | `max`, `serialize_paths`, `setup` |
 | `## Docs Requirements` | `/finish` | which doc files a change must update, overriding the defaults |
 
-Only `## Development Commands` is required. The rest have working defaults. `## Workflow Rules` is not in this table because no step goes looking for it: a project's CLAUDE.md is ambient context, so an explicit rule there wins over a command's default without anything having to fetch it.
+Only `## Development Commands` is required. The rest have working defaults. `## Workflow Rules` is not in this table because no step goes looking for it: a project's CLAUDE.md is ambient context, so an explicit rule there wins over a command's default without anything having to fetch it. `/ship` merge is off by default; `auto-merge: on` there (or an explicit request) turns it on, and `--no-merge` from a caller turns it off.

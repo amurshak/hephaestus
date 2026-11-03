@@ -49,9 +49,9 @@ Proceed to `/ship` only when `/start-issue` reports `ready`. Any other outcome (
 
 ### Phase 3: Ship → `/ship <#>`
 
-Run `/ship <#>`. It updates docs, runs the pre-push critique and quality gates, pushes the branch, creates the PR, and auto-merges.
+Run `/ship <#>`. It updates docs, runs the pre-push critique and quality gates, pushes the branch, and opens a merge-ready PR. Merge is opt-in (see `/ship`); a caller that owns merge or CI wait passes `--no-merge`.
 
-If `/ship` ends in a draft PR (`[FAILING]`, `[BLOCKED]`), the issue did not ship: run Phase 4 for cleanup, then wind down. If `/ship` cannot auto-merge (branch protection, required reviewers): the PR is left open, the work is preserved, and `/ship` notes that manual merge is needed. Still run Phase 4 — `/finish` branches on PR state and performs safe cleanup for unmerged PRs without closing the issue or deleting the branch.
+If `/ship` ends in a draft PR (`[FAILING]`, `[BLOCKED]`), the issue did not ship: run Phase 4 for cleanup, then wind down. If `/ship` left the PR open (the default, or merge declined): the work is preserved. Still run Phase 4 — `/finish` branches on PR state and performs safe cleanup for unmerged PRs without closing the issue or deleting the branch.
 
 ### Phase 4: Finish → `/finish <#>`
 

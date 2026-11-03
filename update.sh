@@ -53,15 +53,31 @@ fi
 
 echo "Updated hephaestus: $OLD_VERSION → $NEW_VERSION"
 if [ "$MODE" = vendor ]; then
-  # Match the paths install.sh just listed — a project that adopted changelog
-  # fragments has more to stage than the adapters. Same two-mark test install.sh
-  # uses: a same-named script we did not write is not an adoption.
-  CHANGELOG_PATHS=""
-  if [ -d "$TARGET/changelog.d" ] \
-     && grep -qE '^# hephaestus:collect-changelog([[:space:]]|$)' "$TARGET/scripts/collect-changelog.sh" 2>/dev/null; then
-    CHANGELOG_PATHS=" changelog.d scripts/collect-changelog.sh CHANGELOG.md .gitattributes"
-  fi
+  # Derived from .heph-manifest so a new harness cannot be forgotten, plus
+  # installer-written project files that exist (those are not in the manifest).
+  # Keep in sync with install.sh's vendor_stage_paths.
+  vendor_stage_paths() {
+    local target="$1"
+    {
+      echo ".heph-manifest"
+      if [ -f "$target/.heph-manifest" ]; then
+        grep -v '^#' "$target/.heph-manifest" | awk -F/ 'NF {print $1}'
+      fi
+      for path in opencode.json AGENTS.md .hermes/.gitignore; do
+        [ -e "$target/$path" ] && echo "$path"
+      done
+      if [ -d "$target/changelog.d" ] \
+         && grep -qE '^# hephaestus:collect-changelog([[:space:]]|$)' \
+              "$target/scripts/collect-changelog.sh" 2>/dev/null; then
+        echo changelog.d
+        echo scripts/collect-changelog.sh
+        echo CHANGELOG.md
+        echo .gitattributes
+      fi
+    } | awk 'NF && !seen[$0]++'
+  }
+  paths=$(vendor_stage_paths "$TARGET" | tr '\n' ' ' | sed 's/[[:space:]]*$//')
   echo ""
   echo "Commit the refreshed copy:"
-  echo "  git -C $TARGET add .heph-manifest .claude .opencode .agents .codex .cursor .hermes/skills .hermes/agents$CHANGELOG_PATHS && git -C $TARGET commit -m 'chore: update hephaestus to $NEW_VERSION'"
+  echo "  git -C $TARGET add $paths && git -C $TARGET commit -m 'chore: update hephaestus to $NEW_VERSION'"
 fi

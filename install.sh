@@ -648,6 +648,34 @@ changelog_adopted() {
   [ -d "$TARGET/changelog.d" ] && collect_is_ours "$TARGET/scripts/collect-changelog.sh"
 }
 
+# Paths to `git add` after a vendor install. Derived from .heph-manifest so a
+# new harness cannot be forgotten, plus installer-written project files that
+# exist (those are not in the manifest). Keep in sync with update.sh.
+vendor_stage_paths() {
+  local target="${1:-$TARGET}"
+  {
+    echo ".heph-manifest"
+    if [ -f "$target/.heph-manifest" ]; then
+      grep -v '^#' "$target/.heph-manifest" | awk -F/ 'NF {print $1}'
+    fi
+    for path in opencode.json AGENTS.md .hermes/.gitignore; do
+      [ -e "$target/$path" ] && echo "$path"
+    done
+    if [ -d "$target/changelog.d" ] \
+       && grep -qE '^# hephaestus:collect-changelog([[:space:]]|$)' \
+            "$target/scripts/collect-changelog.sh" 2>/dev/null; then
+      echo changelog.d
+      echo scripts/collect-changelog.sh
+      echo CHANGELOG.md
+      echo .gitattributes
+    fi
+  } | awk 'NF && !seen[$0]++'
+}
+
+vendor_stage_paths_line() {
+  vendor_stage_paths "$1" | tr '\n' ' ' | sed 's/[[:space:]]*$//'
+}
+
 scaffold_changelog() {
   local src="$SCRIPT_DIR/scripts/collect-changelog.sh"
   local dest="$TARGET/scripts/collect-changelog.sh"
@@ -1175,7 +1203,7 @@ else
   CHANGELOG_PATHS=""
   changelog_adopted && CHANGELOG_PATHS=" changelog.d scripts/collect-changelog.sh CHANGELOG.md .gitattributes"
   if [ "$MODE" = vendor ]; then
-    echo "  4. git add .heph-manifest .claude .opencode .agents .codex .hermes/skills .hermes/agents .hermes/.gitignore opencode.json AGENTS.md$CHANGELOG_PATHS && git commit"
+    echo "  4. git add $(vendor_stage_paths_line "$TARGET") && git commit"
   else
     echo "  4. git add .claude .opencode .agents .hermes/skills .hermes/.gitignore opencode.json AGENTS.md$CHANGELOG_PATHS && git commit"
   fi

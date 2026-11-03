@@ -70,7 +70,7 @@ That's it — commands appear under `/heph:` (`/heph:autopilot`, `/heph:ship`, �
 | 4 | **Implement** | Parallel coder agents in isolated worktrees, one commit per logical unit |
 | 5 | **Review** | Security, architecture, test coverage, convention compliance (up to 3 rounds) |
 | 6 | **Test** | Quality gates from the project's `CLAUDE.md` (up to 2 full retry cycles) |
-| 7 | **Ship** | CHANGELOG, then gates, PR with per-check evidence bound to the delivered commit, squash auto-merge — which gates on CI only where the base branch requires a status check, and otherwise merges on the spot, reported as such |
+| 7 | **Ship** | CHANGELOG, then gates, PR with per-check evidence bound to the delivered commit. Merge is opt-in; default is a merge-ready open PR. Auto-merge warns when the base branch has no required checks |
 | 8 | **Finish** | Branch on PR state, close shipped issues, clean branches, file follow-ups, and run or skip docs sync by a deterministic PR-diff rule |
 
 ### Agents
@@ -150,7 +150,7 @@ Thirteen commands, but the delivery spine is `/autopilot` and the three commands
 |---|---|
 | `/autopilot` | Full pipeline — pick issue, plan, implement, test, ship, finish |
 | `/start-issue 42` | Plan-critique-implement for one issue |
-| `/ship` | Code review → quality gates → CHANGELOG → PR → auto-merge |
+| `/ship` | Code review → quality gates → CHANGELOG → PR; merge only if asked or enabled |
 | `/finish` | Close issue, clean the task-owned remote branch, restore the exact task stash, file follow-ups |
 | `/refactor` | Autonomous refactoring with review gate and before/after metrics |
 | `/worktrees` | Parallel multi-session orchestration — reap finished worktrees, wave-plan non-conflicting issues, spawn a seeded session per issue |

@@ -29,7 +29,7 @@ Refactor the target specified in $ARGUMENTS. Run autonomously — do not pause f
 
 ### Phase 4: Ship → `/ship`
 
-Run `/ship`. It updates docs, runs the pre-push critique and quality gates, pushes the branch, creates the PR, and auto-merges.
+Run `/ship`. It updates docs, runs the pre-push critique and quality gates, pushes the branch, and opens a merge-ready PR. Merge is opt-in (see `/ship`); a caller that owns merge or CI wait passes `--no-merge`.
 
 When `/ship` builds the PR body, populate the Summary bullets with the refactoring metrics (lines/complexity before/after), API changes (if any) under Known Limitations, and downstream risks.
 

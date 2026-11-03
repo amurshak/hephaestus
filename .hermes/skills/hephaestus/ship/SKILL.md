@@ -21,7 +21,7 @@ metadata:
 
 Prepare, validate, and ship the current work. Issue number to close (optional): $ARGUMENTS
 
-PRs must be **merge-ready** — every required gate passed on the delivered revision before creation, auto-merge after.
+PRs must be **merge-ready** — every required gate passed on the delivered revision before creation. Merge is opt-in: by default `/ship` stops after the PR is open and ready.
 
 ## Pipeline
 
@@ -96,20 +96,27 @@ EOF
 
 **Evidence gate** — before running `gh pr create`, verify the composed body: no surviving `<angle-bracket>` placeholders; a row for the critique and every required gate; for a merge-ready PR, every required row passed at the delivered HEAD or through a covering record the row names. A row claiming a run that did not happen is a violation; an optional check not executed is listed as not run, never passed. On violation: run the missing gate or fix the body — never ship evidence that claims what didn't happen.
 
-### 6. Auto-merge
+### 6. Merge (opt-in)
+
+By default, stop after the PR is open and merge-ready. Do not run `gh pr merge`. Report the PR URL.
+
+Merge only when this run explicitly asked (`--auto-merge` in $ARGUMENTS, or the user said to merge) or the project's CLAUDE.md `## Workflow Rules` enables it (`auto-merge: on`). `--no-merge` from a calling workflow wins over the setting — a caller that owns CI wait or approval passes it so `/ship` cannot preempt it. A draft never reaches this step.
+
+When merging, check whether the base branch requires status checks (`gh api repos/<owner>/<repo>/branches/<base>/protection/required_status_checks`). If that fails or lists none, warn that `--auto` will merge immediately with only step 4's local gates, then proceed.
+
 ```
 gh pr merge --squash --auto
 ```
 
-Read back what happened — where the base branch requires no status check, `--auto` has nothing to wait on and the command succeeds by merging on the spot:
+Read back what happened:
 
 ```
 gh pr view <pr-number> --repo <detected-repo> --json state,autoMergeRequest
 ```
 
-- `OPEN` with `autoMergeRequest` set — armed as intended; it merges when checks pass.
-- `MERGED` — it merged immediately. Step 4's local gates were the only thing between this branch and the base, and CI gated nothing. Report that rather than "auto-merge enabled", and name the cause: the base branch requires no status checks.
-- Command failed, or any other state (branch protection, required reviewers) — do NOT retry or force-push. Note that manual merge is required. This is a valid stopping point; the work is preserved in the PR.
+- `OPEN` with `autoMergeRequest` set — armed; it merges when checks pass.
+- `MERGED` — it merged immediately. Name the cause: the base branch requires no status checks.
+- Command failed, or any other state (branch protection, required reviewers) — do NOT retry or force-push. Note that manual merge is required. The work is preserved in the PR.
 
 ### 7. Return the PR URL.
 
